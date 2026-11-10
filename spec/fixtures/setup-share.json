@@ -1,0 +1,139 @@
+{
+  "description": "Setup links (docs/SHARING.md) -> the household settings, or the error the user sees. Links were made with Python's zlib (raw deflate, base64url without padding), not with the app, so they prove the format works across implementations. Made-up devices and addresses.",
+  "cases": [
+    {
+      "name": "Two devices, rooms, icons and order",
+      "input": "homehub://import?d=hVHBTsMwDP0V5HPo4rSdRG8TVxCTOKIeSmK2SGkbNW0lVPXfcQpjQ9BxifJsP_s9e4IRChRgaLSaAhQvE1gDBYQjOffu3RCUr28r-YpamZSytxwEVMZ0FLga8E4lMlEJyhj2nkP7yNk_Mj5QA4USoI9V05ALC2iH3g89_yeQ8Wmqmpj1UNWeKV3b1hHZ0TaHmwUJsLrlRuBiySwAL2jPfWf_44WlZp5n8csbsjdEpdI0y_J8u_3bG_7whivecNXbPVnHss4ydzY4OgvUX3mWWJ6aPHWGOj7HFbGbuPP1O23welpC-Snoe9RJ1uUWy_kD",
+      "expected": {
+        "household": {
+          "v": 1,
+          "devices": [
+            {
+              "id": "shellyplus2pm-a0b1c2d3e4f5",
+              "address": "192.0.2.10",
+              "app": "Plus2PM",
+              "gen": 2,
+              "channels": 2,
+              "outputs": {
+                "0": {
+                  "name": "Lamp",
+                  "room": "Living room",
+                  "icon": "lamp"
+                },
+                "1": {
+                  "name": "Strip",
+                  "room": "Living room",
+                  "icon": "strip"
+                }
+              }
+            },
+            {
+              "id": "shellyplus1pm-112233445566",
+              "address": "192.0.2.11",
+              "app": "Plus1PM",
+              "gen": 2,
+              "channels": 1,
+              "outputs": {
+                "0": {
+                  "name": "Ceiling",
+                  "room": "Aisle",
+                  "icon": "ceiling"
+                }
+              }
+            }
+          ],
+          "outputOrder": [
+            "shellyplus1pm-112233445566/0",
+            "shellyplus2pm-a0b1c2d3e4f5/1",
+            "shellyplus2pm-a0b1c2d3e4f5/0"
+          ],
+          "roomOrder": [
+            "Aisle",
+            "Living room"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Link pasted with spaces and a line break around it",
+      "input": "  homehub://import?d=hVHBTsMwDP0V5HPo4rSdRG8TVxCTOKIeSmK2SGkbNW0lVPXfcQpjQ9BxifJsP_s9e4IRChRgaLSaAhQvE1gDBYQjOffu3RCUr28r-YpamZSytxwEVMZ0FLga8E4lMlEJyhj2nkP7yNk_Mj5QA4USoI9V05ALC2iH3g89_yeQ8Wmqmpj1UNWeKV3b1hHZ0TaHmwUJsLrlRuBiySwAL2jPfWf_44WlZp5n8csbsjdEpdI0y_J8u_3bG_7whivecNXbPVnHss4ydzY4OgvUX3mWWJ6aPHWGOj7HFbGbuPP1O23welpC-Snoe9RJ1uUWy_kD\n",
+      "expected": {
+        "household": {
+          "v": 1,
+          "devices": [
+            {
+              "id": "shellyplus2pm-a0b1c2d3e4f5",
+              "address": "192.0.2.10",
+              "app": "Plus2PM",
+              "gen": 2,
+              "channels": 2,
+              "outputs": {
+                "0": {
+                  "name": "Lamp",
+                  "room": "Living room",
+                  "icon": "lamp"
+                },
+                "1": {
+                  "name": "Strip",
+                  "room": "Living room",
+                  "icon": "strip"
+                }
+              }
+            },
+            {
+              "id": "shellyplus1pm-112233445566",
+              "address": "192.0.2.11",
+              "app": "Plus1PM",
+              "gen": 2,
+              "channels": 1,
+              "outputs": {
+                "0": {
+                  "name": "Ceiling",
+                  "room": "Aisle",
+                  "icon": "ceiling"
+                }
+              }
+            }
+          ],
+          "outputOrder": [
+            "shellyplus1pm-112233445566/0",
+            "shellyplus2pm-a0b1c2d3e4f5/1",
+            "shellyplus2pm-a0b1c2d3e4f5/0"
+          ],
+          "roomOrder": [
+            "Aisle",
+            "Living room"
+          ]
+        }
+      }
+    },
+    {
+      "name": "From a newer app",
+      "input": "homehub://import?d=q1YqU7KytNRRSkkty0xOLVayio6tBQA",
+      "expected": {
+        "error": "This setup comes from a newer Home Hub. Update the app first."
+      }
+    },
+    {
+      "name": "Not a setup link",
+      "input": "https://example.org/",
+      "expected": {
+        "error": "This is not a Home Hub setup link."
+      }
+    },
+    {
+      "name": "Damaged data",
+      "input": "homehub://import?d=!!!not-base64!!!",
+      "expected": {
+        "error": "The setup link is damaged."
+      }
+    },
+    {
+      "name": "Valid data but not a setup",
+      "input": "homehub://import?d=q1bKSM3JyVeyUirPL8pJUaoFAA",
+      "expected": {
+        "error": "This is not a Home Hub setup."
+      }
+    }
+  ]
+}

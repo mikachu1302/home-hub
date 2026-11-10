@@ -142,22 +142,17 @@ From a wireframe round (variants: one long list, tabs, tiles + amp bar, menu fir
       Output order and room order are household data (shared with 2c); the view choice is personal.
 
 ### Phase 2c – share the setup between phones (requested 2026-11-10)
-Two people use the app; they should share the household setup but keep their own preferences.
+Two people use the app; they share the household setup but keep their own preferences. **Format, rules and the
+classification of every setting: `docs/SHARING.md`** (every future setting must be classified there).
 
-- **Shared ("household") data:** the devices (id, address, type, channels) and per output name, room, icon, order;
-  later the IR bridge address. **Personal (never shared):** last page, list view, hints, later theme.
-- **Credentials are not in the QR code by default** (the bridge login, a future Shelly password): anyone who sees
-  the code could read them. If ever wanted, only behind an explicit "include passwords" switch.
-- **How:** Devices page → "Share setup" shows a QR code. The code holds a link (`homehub://import?…`) with the setup
-  as compact JSON; scanning it with the normal camera app opens Home Hub, which shows what will change and imports
-  on confirm. No camera code in the app; only QR *generation* needs a small library (ZXing core, Apache-2.0).
-  The same link works for the iPhone app later.
-- **Import rule:** devices are matched by id; the shared names/rooms/icons/order replace the local ones for those
-  devices; devices only on the receiving phone are kept.
-- **It is a copy, not a sync:** a later change needs sharing again. Real sync would need shared storage (for example a
-  file on the user's Nextcloud) and is out of scope unless the copy turns out to be annoying.
-- The payload format goes into `spec/fixtures/` with versioning (`v=1`), so both platforms read the same codes.
-- Size check: 5 devices with names and rooms are about 1 KB, well within a QR code.
+- [x] Devices page → "Show QR code" (with "Copy link") and "Paste link"; `homehub://import?d=…` opens the app from the
+      camera; an import dialog says what changes and nothing is applied before "Import".
+- [x] Shared: devices with address, names, rooms, icons, output and room order. Personal: last page, list view, hints.
+      No credentials in the code.
+- [x] Import: devices matched by id take the shared version; local-only devices stay.
+- [x] `SettingKeys` classifies every stored key; `ShareTest` fails for an unclassified one.
+- [ ] Check on the second phone: scan with its camera app (does that camera open `homehub://` links?) and import.
+- It is a copy, not a sync (see SHARING.md).
 
 ### iOS (after the first slice)
 Decision 2026-11-10: **Android first, iPhone after the first slice**, not both at once. Reasons: the model is still
@@ -166,7 +161,14 @@ so each iOS iteration is a CI round trip; porting a settled design is cheaper (`
 the port cheap: a pure core layer, everything written down in `docs/PROTOCOLS.md`, and shared test fixtures in
 `spec/fixtures/` that both platforms run. Setup then follows `tv-remote` (Swift package core, XcodeGen, macOS CI).
 
-- [ ] Start iOS once the first slice works on Android
+Updated 2026-11-10: **iOS starts after the design pass**, not right after the first slice (the user's call): the look
+should be settled first so it is built once. The second user has an iPhone 13 mini, so sharing the setup (2c)
+only reaches them once the iOS app exists.
+
+- [ ] Start iOS after the design pass
+- [ ] The iOS app reads/writes the same setup link (docs/SHARING.md) and runs spec/fixtures/setup-share.json
+- [ ] The iOS app gets the same tripwire as `ShareTest.everySettingIsClassifiedExactlyOnce`: every stored key
+      classified household or personal
 
 ### Later (only when wanted)
 - Time schedules: none in use (checked 2026-11-10). If wanted, they run on the device (`Schedule.*`), no server needed

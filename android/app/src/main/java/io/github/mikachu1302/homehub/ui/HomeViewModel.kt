@@ -9,10 +9,13 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import io.github.mikachu1302.homehub.core.Household
 import io.github.mikachu1302.homehub.core.OutputIcon
 import io.github.mikachu1302.homehub.core.OutputPrefs
 import io.github.mikachu1302.homehub.core.SavedDevice
 import io.github.mikachu1302.homehub.core.Section
+import io.github.mikachu1302.homehub.core.SetupShare
+import io.github.mikachu1302.homehub.core.ShareException
 import io.github.mikachu1302.homehub.core.SwitchConfig
 import io.github.mikachu1302.homehub.core.SwitchStatus
 import io.github.mikachu1302.homehub.core.SwitchView
@@ -178,6 +181,40 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     private fun saveOutputOrder(order: List<String>) {
         outputOrder = order
         store.outputOrder = order
+    }
+
+    // --- sharing the setup (docs/SHARING.md) ---
+
+    /** A received setup waiting for the user's confirmation. */
+    var pendingImport by mutableStateOf<Household?>(null)
+        private set
+
+    /** The link for the QR code: the household settings of this phone. */
+    fun shareLink(): String = SetupShare.toLink(store.household)
+
+    /** A link from the camera, a messenger or the clipboard; parsed now, applied only after confirmation. */
+    fun offerImport(link: String) {
+        try {
+            pendingImport = SetupShare.fromLink(link)
+        } catch (e: ShareException) {
+            message = e.message
+        }
+    }
+
+    fun cancelImport() {
+        pendingImport = null
+    }
+
+    fun confirmImport() {
+        val shared = pendingImport ?: return
+        pendingImport = null
+        val merged = SetupShare.merge(store.household, shared)
+        store.household = merged
+        devices = merged.devices
+        outputOrder = merged.outputOrder
+        roomOrder = merged.roomOrder
+        message = "Setup imported"
+        viewModelScope.launch { refresh(withConfig = true) }
     }
 
     /** The "Try now" button. */

@@ -10,6 +10,8 @@ coroutines = "1.11.0"
 junit = "4.13.2"
 # Android's org.json is a stub in JVM unit tests; this is the real one, tests only.
 orgJson = "20240303"
+# QR code generation for sharing the setup (docs/SHARING.md); Apache-2.0, no Android parts.
+zxing = "3.5.3"
 
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "coreKtx" }
@@ -22,6 +24,7 @@ compose-material3 = { module = "androidx.compose.material3:material3" }
 kotlinx-coroutines-android = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-android", version.ref = "coroutines" }
 junit = { module = "junit:junit", version.ref = "junit" }
 org-json = { module = "org.json:json", version.ref = "orgJson" }
+zxing-core = { module = "com.google.zxing:core", version.ref = "zxing" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

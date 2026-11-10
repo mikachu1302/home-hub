@@ -1,11 +1,13 @@
 package io.github.mikachu1302.homehub
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
+import androidx.activity.viewModels
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -32,29 +34,43 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.mikachu1302.homehub.core.Section
 import io.github.mikachu1302.homehub.ui.AmpScreen
 import io.github.mikachu1302.homehub.ui.Dimens
 import io.github.mikachu1302.homehub.ui.DevicesScreen
 import io.github.mikachu1302.homehub.ui.HomeHubTheme
 import io.github.mikachu1302.homehub.ui.HomeViewModel
+import io.github.mikachu1302.homehub.ui.ImportDialog
 import io.github.mikachu1302.homehub.ui.MenuScreen
 import io.github.mikachu1302.homehub.ui.SwitchesScreen
 import io.github.mikachu1302.homehub.ui.TvScreen
 
 class MainActivity : ComponentActivity() {
+    private val vm: HomeViewModel by viewModels()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        if (savedInstanceState == null) handleLink(intent)
         setContent {
-            HomeHubTheme { App() }
+            HomeHubTheme { App(vm) }
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleLink(intent)
+    }
+
+    /** A shared setup link (docs/SHARING.md) opened from the camera; nothing is applied before the user confirms. */
+    private fun handleLink(intent: Intent?) {
+        val data = intent?.data ?: return
+        if (intent.action == Intent.ACTION_VIEW && data.scheme == "homehub") vm.offerImport(data.toString())
     }
 }
 
 @Composable
-private fun App(vm: HomeViewModel = viewModel()) {
+private fun App(vm: HomeViewModel) {
     val snackbar = remember { SnackbarHostState() }
 
     // Back is the only way to the menu, the same on every page (docs/PLAN.md, "App layout").
@@ -71,6 +87,15 @@ private fun App(vm: HomeViewModel = viewModel()) {
             vm.message = null
             snackbar.showSnackbar(it)
         }
+    }
+
+    vm.pendingImport?.let { shared ->
+        ImportDialog(
+            shared = shared,
+            localDeviceIds = vm.devices.map { it.id }.toSet(),
+            onConfirm = vm::confirmImport,
+            onCancel = vm::cancelImport,
+        )
     }
 
     Scaffold(

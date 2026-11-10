@@ -11,6 +11,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.foundation.layout.Row
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -22,6 +29,8 @@ import androidx.compose.ui.unit.sp
 
 @Composable
 fun DevicesScreen(vm: HomeViewModel) {
+    val context = LocalContext.current
+    var sharing by remember { mutableStateOf<String?>(null) }
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState())
             .padding(horizontal = Dimens.screenPadding, vertical = Dimens.topPadding),
@@ -73,5 +82,35 @@ fun DevicesScreen(vm: HomeViewModel) {
             modifier = Modifier.padding(top = 8.dp),
         )
         Notice("Not set up yet. It is added here once the ATOM Lite runs (esphome/README.md).")
+
+        Text(
+            "Share with another phone",
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 8.dp),
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(Dimens.gap)) {
+            Button(
+                onClick = { sharing = vm.shareLink() },
+                enabled = vm.devices.isNotEmpty(),
+                modifier = Modifier.weight(1f).height(52.dp),
+            ) { Text("Show QR code") }
+            OutlinedButton(
+                onClick = {
+                    val text = readClipboard(context)
+                    if (text.isNullOrBlank()) vm.message = "The clipboard is empty. Copy the setup link first."
+                    else vm.offerImport(text)
+                },
+                modifier = Modifier.weight(1f).height(52.dp),
+            ) { Text("Paste link") }
+        }
+        Text(
+            "Shares devices, names, rooms, icons and order. Scan the code with the other phone's camera, " +
+                "or copy the link and send it. Each phone keeps its own view settings.",
+            fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
+    sharing?.let { link -> ShareDialog(link, onDismiss = { sharing = null }) }
 }

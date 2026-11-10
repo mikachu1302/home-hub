@@ -3,7 +3,8 @@
 One app (Android first, then iPhone) that controls the Shelly devices, the Onkyo A-9050 amplifier
 (through an ESP32 IR bridge) and later the TV, at home and through the user's own WireGuard VPN. One user,
 one household. `README.md` is the user-facing description, `docs/PLAN.md` the plan and status (keep it current),
-`docs/PROTOCOLS.md` what every device speaks (the spec for the iOS port).
+`docs/PROTOCOLS.md` what every device speaks (the spec for the iOS port), `docs/SHARING.md` the shared setup (QR code)
+and which settings are shared.
 
 ## Hard rules
 
@@ -25,6 +26,10 @@ one household. `README.md` is the user-facing description, `docs/PLAN.md` the pl
   you verified on real devices and what you could not.
 - **Credentials** (a Shelly password later, the bridge's web login) are stored encrypted (Android Keystore /
   iOS Keychain), never in plain preferences, files or logs. Don't log request URLs with credentials.
+- **Every stored setting is household (shared by QR code) or personal (this phone only)** – decide when you add it and
+  follow `docs/SHARING.md` in the same change: classify the key in `SettingKeys`, and for a household setting extend
+  `Household`, `SetupShare`, the payload table and `spec/fixtures/setup-share.json`. `ShareTest` fails for an
+  unclassified key. Credentials never go into the share payload.
 - **Show real state, not assumed state.** After a command, read the device back and show what it reports. The IR
   bridge is one-way (the amplifier reports nothing): the UI must never claim a power or volume state it cannot
   know, unless it is derived from something measurable (for example the Plug S MG3's power draw).
@@ -69,14 +74,17 @@ Keep a hard line between two layers, because the iOS app reimplements the first 
 Android layout, under `android/app/src/main/java/io/github/mikachu1302/homehub/`:
 
 - `core/` – pure, JVM-tested against `spec/fixtures`: `Shelly.kt` (parsing, request bodies), `Model.kt` (saved devices,
-  sections, formatting, merge, storage JSON), `Lan.kt` (`isLanAddress`), `IrBridge.kt` (amp keys, placeholder)
+  output settings, icons, rooms, ordering, formatting, merge, storage JSON), `Share.kt` (setup link, import rules),
+  `Lan.kt` (`isLanAddress`), `IrBridge.kt` (amp keys, placeholder)
 - `net/` – `LanHttp` (the one HTTP client), `ShellyClient`, `Discovery` (/24 probe, user action only)
-- `data/Store.kt` – device list, last page, hint flag (SharedPreferences; backup disabled)
-- `ui/` – `HomeViewModel`, `Theme` (all colours/sizes), `MenuScreen`, `SwitchesScreen` (+ timer sheet), `DevicesScreen`,
+- `data/Store.kt` – `SettingKeys` (every key, classified household/personal) and `Store` (SharedPreferences; backup disabled)
+- `ui/` – `HomeViewModel`, `Theme` (all colours/sizes), `Icons` (drawn output icons), `Reorderable` (drag list),
+  `MenuScreen`, `SwitchesScreen` (+ output sheet, arrange mode), `DevicesScreen`, `ShareUi` (QR and import dialogs),
   `PlaceholderScreens` (Amp, TV)
-- `MainActivity.kt` – permission gate, system back to the menu, page switch
+- `MainActivity.kt` – permission gate, system back to the menu, page switch, `homehub://import` links
 
-Tests: `./gradlew test` runs `FixtureTest` (every case in `spec/fixtures`) and `ModelTest`.
+Tests: `./gradlew test` runs `FixtureTest` and `ShareTest` (the cases in `spec/fixtures`), `ModelTest` and `LanHttpTest`
+(the HTTP client against a fake device on loopback).
 
 ## Android and iOS
 
