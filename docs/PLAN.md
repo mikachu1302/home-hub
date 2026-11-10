@@ -98,10 +98,11 @@ Status as of 2026-11-10. Keep this file current; it is the single source of trut
 - [ ] LAN-only HTTP client (refuses non-private addresses) with tests against a loopback fake
 - [ ] Shelly client: discovery via mDNS (+ /24 probe fallback), list devices+channels, switch, show power
 - [ ] Device list storage (names for the 6 outputs, which device is which)
+- [ ] Timers per output: show and edit auto-off and auto-on (on/off + delay), written to the device (`Switch.SetConfig`). Two outputs use auto-off today, one for a light after 7 min. Part of the minimum for the Shelly side.
 - [ ] IR client: buttons for the amp via HTTP to the bridge (after the bridge works)
 - [ ] One screen: Shelly switches + amp (TV joins when ported)
 - [ ] Test through WireGuard from outside
-- [ ] First slice done = Shelly outputs and amp buttons work on the real phone
+- [ ] First slice done = Shelly outputs (switch, power, timers) and amp buttons work on the real phone
 
 ### iOS (after the first slice)
 Decision 2026-11-10: **Android first, iPhone after the first slice**, not both at once. Reasons: the model is still
@@ -113,6 +114,7 @@ the port cheap: a pure core layer, everything written down in `docs/PROTOCOLS.md
 - [ ] Start iOS once the first slice works on Android
 
 ### Later (only when wanted)
+- Time schedules: none in use (checked 2026-11-10). If wanted, they run on the device (`Schedule.*`), no server needed
 - Enable authentication on the Shelly devices and send credentials from the app
 - Detect whether the amp is on, by plugging it into the Plug S MG3 and reading its power draw
 - More IR devices (soundbar, fan, ...): just more buttons on the same bridge; one bridge per room
