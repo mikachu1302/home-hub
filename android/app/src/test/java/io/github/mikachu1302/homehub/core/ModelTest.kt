@@ -7,12 +7,12 @@ import org.junit.Test
 
 /** Made-up devices and addresses throughout. */
 class ModelTest {
-    private val plug = SavedDevice("shellyplugmg3-0a1b2c3d4e5f", "192.0.2.14", "PlugMG3", 3, 1, mapOf(0 to "Socket"))
+    private val plug = SavedDevice("shellyplugmg3-0a1b2c3d4e5f", "192.0.2.14", "PlugMG3", 3, 1, mapOf(0 to OutputPrefs("Socket", "Kitchen")))
     private val twoPm = SavedDevice("shellyplus2pm-a0b1c2d3e4f5", "192.0.2.10", "Plus2PM", 2, 2)
 
     @Test
     fun storageRoundTrip() {
-        val list = listOf(plug, twoPm.copy(names = mapOf(1 to "Lamp")))
+        val list = listOf(plug, twoPm.withPrefs(1, OutputPrefs("Lamp", "Living room")))
         assertEquals(list, DeviceJson.decode(DeviceJson.encode(list)))
     }
 
@@ -24,12 +24,12 @@ class ModelTest {
 
     @Test
     fun mergeKeepsNamesAndTakesNewAddress() {
-        val found = listOf(plug.copy(address = "192.0.2.99", names = emptyMap()), twoPm)
+        val found = listOf(plug.copy(address = "192.0.2.99", outputs = emptyMap()), twoPm)
         val merged = mergeDevices(listOf(plug), found)
         assertEquals(2, merged.size)
         val p = merged.first { it.id == plug.id }
         assertEquals("192.0.2.99", p.address)
-        assertEquals("Socket", p.names[0])
+        assertEquals(OutputPrefs("Socket", "Kitchen"), p.prefsOf(0))
     }
 
     @Test
@@ -37,7 +37,19 @@ class ModelTest {
         assertEquals("Socket", plug.nameOf(0))
         assertEquals("Plus2PM · 1", twoPm.nameOf(0))
         assertEquals("Plus2PM · 2", twoPm.nameOf(1))
-        assertEquals("Plus2PM · 1", twoPm.copy(names = mapOf(0 to "  ")).nameOf(0))
+        assertEquals("Plus2PM · 1", twoPm.withPrefs(0, OutputPrefs("  ")).nameOf(0))
+    }
+
+    @Test
+    fun oldStorageWithOnlyNamesStillLoads() {
+        val old = """[{"id":"shellyplus1pm-000000000001","address":"192.0.2.11","app":"Plus1PM","gen":2,"channels":1,"names":{"0":"Lamp"}}]"""
+        assertEquals(OutputPrefs("Lamp", ""), DeviceJson.decode(old).single().prefsOf(0))
+    }
+
+    @Test
+    fun roomsInUseAreUniqueIgnoringCase() {
+        val devices = listOf(plug, twoPm.withPrefs(0, OutputPrefs("", "kitchen")).withPrefs(1, OutputPrefs("", "Aisle")))
+        assertEquals(listOf("Aisle", "Kitchen"), roomsInUse(devices))
     }
 
     @Test

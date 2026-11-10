@@ -9,11 +9,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import io.github.mikachu1302.homehub.core.OutputPrefs
 import io.github.mikachu1302.homehub.core.SavedDevice
 import io.github.mikachu1302.homehub.core.Section
 import io.github.mikachu1302.homehub.core.SwitchConfig
 import io.github.mikachu1302.homehub.core.SwitchStatus
+import io.github.mikachu1302.homehub.core.SwitchView
 import io.github.mikachu1302.homehub.core.mergeDevices
+import io.github.mikachu1302.homehub.core.roomsInUse
 import io.github.mikachu1302.homehub.data.Store
 import io.github.mikachu1302.homehub.net.ShellyClient
 import io.github.mikachu1302.homehub.net.findShellys
@@ -28,6 +31,8 @@ data class OutputUi(
     val device: SavedDevice,
     val channel: Int,
     val name: String,
+    /** Blank when no room is set. */
+    val room: String,
     val status: SwitchStatus?,
     val config: SwitchConfig?,
     val reachable: Boolean,
@@ -45,6 +50,8 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     var backHint by mutableStateOf(false)
         private set
     var discovering by mutableStateOf(false)
+        private set
+    var switchView by mutableStateOf(store.switchView)
         private set
     /** A short message for the user (a failed command); cleared when shown. */
     var message by mutableStateOf<String?>(null)
@@ -81,6 +88,7 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
                     device = d,
                     channel = ch,
                     name = d.nameOf(ch),
+                    room = d.roomOf(ch),
                     status = statuses[d.id]?.firstOrNull { it.channel == ch },
                     config = configs[d.id to ch],
                     reachable = unreachable[d.id] != true,
@@ -88,6 +96,15 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
                 )
             }
         }
+
+    /** Rooms already used somewhere, offered when setting another output's room. */
+    val rooms: List<String>
+        get() = roomsInUse(devices)
+
+    fun showView(view: SwitchView) {
+        switchView = view
+        store.switchView = view
+    }
 
     fun open(target: Section) {
         section = target
@@ -150,12 +167,13 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** Saves the name locally and the timers on the device, then reads the timers back. */
-    fun save(o: OutputUi, name: String, config: SwitchConfig?) {
-        val trimmed = name.trim()
+    /** Saves name and room on this phone and the timers on the device, then reads the timers back. */
+    fun save(o: OutputUi, name: String, room: String, config: SwitchConfig?) {
+        // A room typed with other capitals or spaces joins the existing one.
+        val cleanRoom = room.trim().let { r -> rooms.firstOrNull { it.equals(r, ignoreCase = true) } ?: r }
         devices = devices.map { d ->
             if (d.id != o.device.id) d
-            else d.copy(names = d.names + (o.channel to trimmed))
+            else d.withPrefs(o.channel, OutputPrefs(name = name.trim(), room = cleanRoom))
         }
         store.devices = devices
         if (config == null || config == o.config) return

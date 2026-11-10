@@ -1,0 +1,45 @@
+{
+  "description": "Outputs -> room groups. Rooms sorted alphabetically, ignoring case; the same room however it is capitalised (first spelling wins); items keep their order inside a room; outputs without a room (blank or spaces) last as a group with room null. Made-up names.",
+  "cases": [
+    {
+      "name": "Mixed",
+      "input": [
+        {"name": "Lamp", "room": "Living room"},
+        {"name": "Ceiling", "room": "Aisle"},
+        {"name": "Socket", "room": ""},
+        {"name": "Strip", "room": "living room"},
+        {"name": "Fan", "room": "  "}
+      ],
+      "expected": [
+        {"room": "Aisle", "items": ["Ceiling"]},
+        {"room": "Living room", "items": ["Lamp", "Strip"]},
+        {"room": null, "items": ["Socket", "Fan"]}
+      ]
+    },
+    {
+      "name": "No rooms at all",
+      "input": [
+        {"name": "A", "room": ""},
+        {"name": "B", "room": ""}
+      ],
+      "expected": [
+        {"room": null, "items": ["A", "B"]}
+      ]
+    },
+    {
+      "name": "Every output has a room",
+      "input": [
+        {"name": "A", "room": "Kitchen"},
+        {"name": "B", "room": " Kitchen "}
+      ],
+      "expected": [
+        {"room": "Kitchen", "items": ["A", "B"]}
+      ]
+    },
+    {
+      "name": "Empty",
+      "input": [],
+      "expected": []
+    }
+  ]
+}

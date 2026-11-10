@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
@@ -41,6 +43,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -52,6 +55,8 @@ import androidx.lifecycle.repeatOnLifecycle
 import io.github.mikachu1302.homehub.core.DELAY_PRESETS
 import io.github.mikachu1302.homehub.core.Section
 import io.github.mikachu1302.homehub.core.SwitchConfig
+import io.github.mikachu1302.homehub.core.SwitchView
+import io.github.mikachu1302.homehub.core.groupByRoom
 import io.github.mikachu1302.homehub.core.formatDelay
 import io.github.mikachu1302.homehub.core.formatWatts
 import kotlinx.coroutines.delay
@@ -103,13 +108,47 @@ fun SwitchesScreen(vm: HomeViewModel) {
                 }
             }
         }
-        items(outputs, key = { "${it.device.id}/${it.channel}" }) { o ->
-            OutputRow(o, onToggle = { vm.toggle(o) }, onEdit = { editing = o.device.id to o.channel })
+        if (outputs.isNotEmpty()) {
+            item {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 4.dp)) {
+                    FilterChip(
+                        selected = vm.switchView == SwitchView.ROOMS,
+                        onClick = { vm.showView(SwitchView.ROOMS) },
+                        label = { Text("By room") },
+                    )
+                    FilterChip(
+                        selected = vm.switchView == SwitchView.ALL,
+                        onClick = { vm.showView(SwitchView.ALL) },
+                        label = { Text("All") },
+                    )
+                }
+            }
+        }
+        if (vm.switchView == SwitchView.ROOMS) {
+            val groups = groupByRoom(outputs) { it.room }
+            groups.forEach { g ->
+                item(key = "room/${g.room}") {
+                    Text(
+                        g.room ?: "Other",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 4.dp, top = 12.dp, bottom = 2.dp).semantics { heading() },
+                    )
+                }
+                items(g.items, key = { "${it.device.id}/${it.channel}" }) { o ->
+                    OutputRow(o, showRoom = false, onToggle = { vm.toggle(o) }, onEdit = { editing = o.device.id to o.channel })
+                }
+            }
+        } else {
+            items(outputs, key = { "${it.device.id}/${it.channel}" }) { o ->
+                OutputRow(o, showRoom = true, onToggle = { vm.toggle(o) }, onEdit = { editing = o.device.id to o.channel })
+            }
         }
         if (outputs.isNotEmpty()) {
             item {
                 Text(
-                    "Tap a name for timers and rename.",
+                    "Tap a name for name, room and timers.",
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp),
@@ -122,9 +161,10 @@ fun SwitchesScreen(vm: HomeViewModel) {
     if (current != null) {
         TimerSheet(
             o = current,
+            rooms = vm.rooms,
             onDismiss = { editing = null },
-            onSave = { name, config ->
-                vm.save(current, name, config)
+            onSave = { name, room, config ->
+                vm.save(current, name, room, config)
                 editing = null
             },
         )
@@ -132,10 +172,11 @@ fun SwitchesScreen(vm: HomeViewModel) {
 }
 
 @Composable
-private fun OutputRow(o: OutputUi, onToggle: () -> Unit, onEdit: () -> Unit) {
+private fun OutputRow(o: OutputUi, showRoom: Boolean, onToggle: () -> Unit, onEdit: () -> Unit) {
     // Unreachable: the last known state may be wrong, so it is not shown (show real state only).
     val on = o.reachable && o.status?.on == true
     val details = buildList {
+        if (showRoom && o.room.isNotEmpty()) add(o.room)
         if (!o.reachable) add("No connection")
         else o.status?.watts?.let { add(formatWatts(it)) }
         o.config?.let { c ->
@@ -150,7 +191,7 @@ private fun OutputRow(o: OutputUi, onToggle: () -> Unit, onEdit: () -> Unit) {
     ) {
         Row(Modifier.fillMaxWidth().padding(Dimens.rowPadding), verticalAlignment = Alignment.CenterVertically) {
             Column(
-                Modifier.weight(1f).clickable(onClickLabel = "Timers and name", onClick = onEdit),
+                Modifier.weight(1f).clickable(onClickLabel = "Name, room and timers", onClick = onEdit),
                 verticalArrangement = Arrangement.spacedBy(3.dp),
             ) {
                 Text(o.name, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
@@ -177,9 +218,15 @@ private fun OutputRow(o: OutputUi, onToggle: () -> Unit, onEdit: () -> Unit) {
 }
 
 @Composable
-private fun TimerSheet(o: OutputUi, onDismiss: () -> Unit, onSave: (String, SwitchConfig?) -> Unit) {
+private fun TimerSheet(
+    o: OutputUi,
+    rooms: List<String>,
+    onDismiss: () -> Unit,
+    onSave: (String, String, SwitchConfig?) -> Unit,
+) {
     val state = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var name by remember { mutableStateOf(o.name) }
+    var room by remember { mutableStateOf(o.room) }
     val start = o.config
     var autoOff by remember { mutableStateOf(start?.autoOff ?: false) }
     var offDelay by remember { mutableDoubleStateOf(start?.autoOffDelay ?: 420.0) }
@@ -188,7 +235,7 @@ private fun TimerSheet(o: OutputUi, onDismiss: () -> Unit, onSave: (String, Swit
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = state) {
         Column(
-            Modifier.padding(horizontal = 20.dp).padding(bottom = 32.dp),
+            Modifier.verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             OutlinedTextField(
@@ -203,6 +250,7 @@ private fun TimerSheet(o: OutputUi, onDismiss: () -> Unit, onSave: (String, Swit
                 fontSize = 12.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            RoomPicker(room = room, rooms = rooms, onRoom = { room = it })
             HorizontalDivider()
             if (start == null) {
                 Text("Timers not loaded yet (device not reachable).", color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -221,7 +269,7 @@ private fun TimerSheet(o: OutputUi, onDismiss: () -> Unit, onSave: (String, Swit
                 Button(
                     onClick = {
                         val config = start?.copy(autoOff = autoOff, autoOffDelay = offDelay, autoOn = autoOn, autoOnDelay = onDelay)
-                        onSave(name, config)
+                        onSave(name, room, config)
                     },
                     modifier = Modifier.weight(1f).height(52.dp),
                 ) { Text(if (start == null) "Save name" else "Save") }
@@ -300,6 +348,36 @@ private fun ConnectionProblem(onRetry: () -> Unit) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             OutlinedButton(onClick = onRetry) { Text("Try now") }
+        }
+    }
+}
+
+/** Pick a room already used by another output, "No room", or type a new one. */
+@Composable
+private fun RoomPicker(room: String, rooms: List<String>, onRoom: (String) -> Unit) {
+    val known = rooms.any { it.equals(room.trim(), ignoreCase = true) }
+    var typing by remember { mutableStateOf(room.isNotBlank() && !known) }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("Room", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            rooms.forEach { r ->
+                FilterChip(
+                    selected = !typing && r.equals(room.trim(), ignoreCase = true),
+                    onClick = { typing = false; onRoom(r) },
+                    label = { Text(r) },
+                )
+            }
+            FilterChip(selected = !typing && room.isBlank(), onClick = { typing = false; onRoom("") }, label = { Text("No room") })
+            FilterChip(selected = typing, onClick = { typing = true; if (known) onRoom("") }, label = { Text("New room…") })
+        }
+        if (typing) {
+            OutlinedTextField(
+                value = room,
+                onValueChange = onRoom,
+                label = { Text("New room") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
     }
 }

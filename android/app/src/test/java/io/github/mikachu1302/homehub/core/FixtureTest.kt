@@ -91,6 +91,20 @@ class FixtureTest {
     }
 
     @Test
+    fun roomGrouping() = cases("room-grouping.json").forEach { c ->
+        val input = c.getJSONArray("input")
+        val items = (0 until input.length()).map { input.getJSONObject(it).let { o -> o.getString("name") to o.getString("room") } }
+        val e = c.getJSONArray("expected")
+        val want = (0 until e.length()).map { i ->
+            val g = e.getJSONObject(i)
+            val names = g.getJSONArray("items")
+            (if (g.isNull("room")) null else g.getString("room")) to (0 until names.length()).map { names.getString(it) }
+        }
+        val got = groupByRoom(items) { it.second }.map { g -> g.room to g.items.map { it.first } }
+        assertEquals(c.getString("name"), want, got)
+    }
+
+    @Test
     fun fixturesAreValidJson() {
         val dir = File(System.getProperty("fixtures")!!)
         dir.listFiles { f -> f.extension == "json" }!!.forEach { JSONObject(it.readText()) }

@@ -17,4 +17,5 @@ broken answers); any other `input` is a JSON document, passed to the parser as i
 | `shelly-switch-status.json` | `Shelly.GetStatus` result → the switch outputs |
 | `shelly-switch-config.json` | `Switch.GetConfig` result → the timer settings |
 | `delay-format.json` | seconds → the label the UI shows |
+| `room-grouping.json` | outputs with a room → room headings and their outputs |
 | `lan-address.json` | IP address literal → whether the LAN-only client may talk to it |

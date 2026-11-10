@@ -131,6 +131,32 @@ From a wireframe round (variants: one long list, tabs, tiles + amp bar, menu fir
 - [ ] Test through WireGuard from outside
 - [ ] First slice done = Shelly outputs (switch, power, timers) and amp buttons work on the real phone
 
+### Phase 2b – organise the switches (requested 2026-11-10)
+- [x] Rooms: each output gets a room (pick one already used by another output, or type a new one); Switches page
+      has two views, "By room" (headings, outputs without a room under "Other") and "All" (flat, room in the line).
+      The view is a personal setting of each phone.
+- [ ] Icons per output from a small fixed set (ceiling light, lamp, LED strip, socket, fan, heater, TV/media, generic).
+      Icons rather than colours: colour is never the only signal, and icons tell outputs apart faster.
+- [ ] Arrange: a sort mode with drag handles (outputs within a room, and the rooms), plus Move up/down for accessibility.
+
+### Phase 2c – share the setup between phones (requested 2026-11-10)
+Two people use the app; they should share the household setup but keep their own preferences.
+
+- **Shared ("household") data:** the devices (id, address, type, channels) and per output name, room, icon, order;
+  later the IR bridge address. **Personal (never shared):** last page, list view, hints, later theme.
+- **Credentials are not in the QR code by default** (the bridge login, a future Shelly password): anyone who sees
+  the code could read them. If ever wanted, only behind an explicit "include passwords" switch.
+- **How:** Devices page → "Share setup" shows a QR code. The code holds a link (`homehub://import?…`) with the setup
+  as compact JSON; scanning it with the normal camera app opens Home Hub, which shows what will change and imports
+  on confirm. No camera code in the app; only QR *generation* needs a small library (ZXing core, Apache-2.0).
+  The same link works for the iPhone app later.
+- **Import rule:** devices are matched by id; the shared names/rooms/icons/order replace the local ones for those
+  devices; devices only on the receiving phone are kept.
+- **It is a copy, not a sync:** a later change needs sharing again. Real sync would need shared storage (for example a
+  file on the user's Nextcloud) and is out of scope unless the copy turns out to be annoying.
+- The payload format goes into `spec/fixtures/` with versioning (`v=1`), so both platforms read the same codes.
+- Size check: 5 devices with names and rooms are about 1 KB, well within a QR code.
+
 ### iOS (after the first slice)
 Decision 2026-11-10: **Android first, iPhone after the first slice**, not both at once. Reasons: the model is still
 moving, so two codebases would double every change; iOS can only be built and tested through GitHub Actions (no Mac),
