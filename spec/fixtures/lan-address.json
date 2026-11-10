@@ -1,0 +1,20 @@
+{
+  "description": "IP address literal -> true when the LAN-only client may connect to it (private, link-local or loopback).",
+  "cases": [
+    {"name": "192.168/16", "input": "192.168.1.5", "expected": true},
+    {"name": "10/8", "input": "10.20.30.40", "expected": true},
+    {"name": "172.16/12 low end", "input": "172.16.0.1", "expected": true},
+    {"name": "172.16/12 high end", "input": "172.31.255.254", "expected": true},
+    {"name": "Just outside 172.16/12", "input": "172.32.0.1", "expected": false},
+    {"name": "Link-local", "input": "169.254.10.1", "expected": true},
+    {"name": "Loopback", "input": "127.0.0.1", "expected": true},
+    {"name": "Public", "input": "8.8.8.8", "expected": false},
+    {"name": "Documentation range is public", "input": "192.0.2.10", "expected": false},
+    {"name": "IPv6 loopback", "input": "::1", "expected": true},
+    {"name": "IPv6 link-local", "input": "fe80::1", "expected": true},
+    {"name": "IPv6 unique local", "input": "fd12:3456::1", "expected": true},
+    {"name": "IPv6 public", "input": "2001:db8::1", "expected": false},
+    {"name": "IPv4-mapped private", "input": "::ffff:192.168.1.1", "expected": true},
+    {"name": "IPv4-mapped public", "input": "::ffff:8.8.8.8", "expected": false}
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "description": "Result of Shelly.GetStatus -> the switch outputs, sorted by channel. Only `output` is required; power and voltage are optional. Made-up values.",
+  "cases": [
+    {
+      "name": "Plus 2PM, two channels, unrelated keys ignored",
+      "input": {
+        "ble": {}, "cloud": {"connected": true}, "input:0": {"id": 0, "state": false}, "input:1": {"id": 1, "state": false},
+        "switch:1": {"id": 1, "source": "init", "output": false, "apower": 0.0, "voltage": 230.1, "freq": 50.0, "current": 0.0, "aenergy": {"total": 1.5, "by_minute": [0.0, 0.0, 0.0], "minute_ts": 1700000000}, "temperature": {"tC": 40.0, "tF": 104.0}},
+        "switch:0": {"id": 0, "source": "HTTP_in", "output": true, "apower": 7.3, "voltage": 228.9, "freq": 50.0, "current": 0.06, "pf": 0.68, "aenergy": {"total": 100.0, "by_minute": [1.0, 1.0, 1.0], "minute_ts": 1700000000}, "temperature": {"tC": 56.2, "tF": 133.2}},
+        "sys": {"mac": "A0B1C2D3E4F5"}, "wifi": {"sta_ip": "192.0.2.10", "status": "got ip", "ssid": "example", "rssi": -60}
+      },
+      "expected": [
+        {"channel": 0, "on": true, "watts": 7.3, "voltage": 228.9},
+        {"channel": 1, "on": false, "watts": 0.0, "voltage": 230.1}
+      ]
+    },
+    {
+      "name": "Plug, one channel",
+      "input": {"switch:0": {"id": 0, "source": "SHC", "tag": null, "output": false, "apower": 0.0, "voltage": 232.4}, "matter": {"num_fabrics": 0}},
+      "expected": [
+        {"channel": 0, "on": false, "watts": 0.0, "voltage": 232.4}
+      ]
+    },
+    {
+      "name": "Switch without power metering",
+      "input": {"switch:0": {"id": 0, "source": "init", "output": true}},
+      "expected": [
+        {"channel": 0, "on": true, "watts": null, "voltage": null}
+      ]
+    },
+    {
+      "name": "No switches at all (for example a sensor)",
+      "input": {"sys": {"mac": "A0B1C2D3E4F5"}, "temperature:0": {"id": 0, "tC": 21.0}},
+      "expected": []
+    }
+  ]
+}

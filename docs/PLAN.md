@@ -122,12 +122,12 @@ From a wireframe round (variants: one long list, tabs, tiles + amp bar, menu fir
 - [x] Decide: new separate app, port `tv-remote` features later (decided 2026-11-10)
 - [x] Platform: Android (Kotlin, Compose) first; iPhone after the first slice, see "iOS" below
 - [x] Project setup: Android skeleton that builds and passes lint, README, AGENTS.md, CLAUDE.md, PROTOCOLS.md
-- [ ] LAN-only HTTP client (refuses non-private addresses) with tests against a loopback fake
-- [ ] Shelly client: discovery via mDNS (+ /24 probe fallback), list devices+channels, switch, show power
-- [ ] Device list storage (names for the 6 outputs, which device is which)
-- [ ] Timers per output: show and edit auto-off and auto-on (on/off + delay), written to the device (`Switch.SetConfig`). Two outputs use auto-off today, one for a light after 7 min. Part of the minimum for the Shelly side.
+- [x] LAN-only HTTP client (refuses non-private addresses); address check tested with fixtures (a loopback-fake test of the client itself is still open)
+- [x] Shelly client: discovery by probing the /24 (found all 5 devices on the real network; mDNS not added, not needed so far), list devices+channels, switch, show power
+- [x] Device list storage (names per output, stored on the phone only, no backup)
+- [x] Timers per output: show and edit auto-off and auto-on (on/off + delay), written to the device (`Switch.SetConfig`). Two outputs use auto-off today, one for a light after 7 min. Part of the minimum for the Shelly side.
 - [ ] IR client: buttons for the amp via HTTP to the bridge (after the bridge works)
-- [ ] One screen: Shelly switches + amp (TV joins when ported)
+- [x] Menu + Switches + Devices pages; Amp and TV pages as placeholders (Amp keys disabled until the bridge works)
 - [ ] Test through WireGuard from outside
 - [ ] First slice done = Shelly outputs (switch, power, timers) and amp buttons work on the real phone
 

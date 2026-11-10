@@ -35,14 +35,18 @@ has 0).
 Verified: reading all fields above, `Switch.Toggle` and `Switch.Set` on a 1PM, read-back after 2 s showing the new
 state and a power draw.
 
+The app sends every call as JSON-RPC `POST /rpc` with `{"id": n, "method": "…", "params": {…}}` and reads `result`, or
+`error.message` on failure: `{"id":1,"src":"<device id>","error":{"code":404,"message":"No handler for Switch.Nope"}}`.
+Verified with reads on Gen2 and Gen3, and switching/timers through the app (2026-11-10).
+
 ### Timers (auto-off / auto-on)
 Run on the device itself: they work without the app and without the cloud.
 - `GET /rpc/Switch.GetConfig?id=0` → `{ "id": 0, "name": null, "auto_off": true, "auto_off_delay": 420.00, "auto_on": false,
   "auto_on_delay": 60.00, "initial_state": "restore_last", … }`. Delays are in seconds. `initial_state` (after power loss)
   is `restore_last`, `match_input`, `on` or `off`.
 - Verified: reading the config on all five devices (2026-11-10). Two outputs use auto-off.
-- Changing it: `Switch.SetConfig` with `{"id":0,"config":{"auto_off":true,"auto_off_delay":420}}` (from Shelly's
-  documentation, not tried here).
+- Changing it: `Switch.SetConfig` with `{"id":0,"config":{"auto_off":true,"auto_off_delay":420}}` → `{"restart_required":false}`.
+  Verified 2026-11-10 by the user through the app.
 
 ### Schedules
 `GET /rpc/Schedule.List` → `{"jobs":[],"rev":0}` on every device (verified: none in use). Schedules would run on the

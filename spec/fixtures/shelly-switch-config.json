@@ -1,0 +1,15 @@
+{
+  "description": "Result of Switch.GetConfig -> timer settings (delays in seconds). Made-up values.",
+  "cases": [
+    {
+      "name": "Auto-off after 7 minutes",
+      "input": {"id": 0, "name": null, "in_mode": "momentary", "initial_state": "restore_last", "auto_on": false, "auto_on_delay": 60.00, "auto_off": true, "auto_off_delay": 420.00, "power_limit": 4480, "voltage_limit": 280, "autorecover_voltage_errors": false, "current_limit": 16.000},
+      "expected": {"channel": 0, "autoOff": true, "autoOffDelay": 420.0, "autoOn": false, "autoOnDelay": 60.0}
+    },
+    {
+      "name": "Second channel, both timers on",
+      "input": {"id": 1, "name": "example", "initial_state": "match_input", "auto_on": true, "auto_on_delay": 30.5, "auto_off": true, "auto_off_delay": 7200.00},
+      "expected": {"channel": 1, "autoOff": true, "autoOffDelay": 7200.0, "autoOn": true, "autoOnDelay": 30.5}
+    }
+  ]
+}

@@ -4,8 +4,9 @@ One local app (Android first, iPhone later) for the things in the living room th
 own remote or app: Shelly switches and sockets, an Onkyo A-9050 amplifier (through an IR bridge) and,
 later, the TV. Everything stays on your home network; away from home it works through your own VPN.
 
-**Status: early setup.** The Android project builds and shows a placeholder screen. Nothing is usable yet;
-see [docs/PLAN.md](docs/PLAN.md) for what comes next.
+**Status: first slice in progress.** The Android app finds the Shelly devices, switches them, shows power and
+edits their auto-off/auto-on timers. The amplifier (IR bridge) and TV pages are placeholders. See
+[docs/PLAN.md](docs/PLAN.md).
 
 ## Goals
 

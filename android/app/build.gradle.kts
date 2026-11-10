@@ -30,6 +30,14 @@ android {
     buildFeatures {
         compose = true
     }
+
+    testOptions {
+        unitTests.all {
+            // Shared fixtures (spec/fixtures), also used by the iOS core later.
+            it.systemProperty("fixtures", rootProject.file("../spec/fixtures").absolutePath)
+            it.inputs.dir(rootProject.file("../spec/fixtures"))
+        }
+    }
 }
 
 dependencies {

@@ -1,0 +1,12 @@
+{
+  "description": "Timer delay in seconds -> label. Hours, minutes and seconds that are not zero, largest first; fractions of a second are rounded.",
+  "cases": [
+    {"name": "Seconds", "input": 45, "expected": "45 s"},
+    {"name": "Whole minutes", "input": 420, "expected": "7 min"},
+    {"name": "Minutes and seconds", "input": 90, "expected": "1 min 30 s"},
+    {"name": "Whole hours", "input": 7200, "expected": "2 h"},
+    {"name": "Hours and minutes", "input": 5400, "expected": "1 h 30 min"},
+    {"name": "Fraction rounded", "input": 59.6, "expected": "1 min"},
+    {"name": "Zero", "input": 0, "expected": "0 s"}
+  ]
+}

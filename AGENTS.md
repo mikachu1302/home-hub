@@ -66,9 +66,17 @@ Keep a hard line between two layers, because the iOS app reimplements the first 
    unit-tested with made-up payloads.
 2. **Platform:** sockets/HTTP, mDNS, storage, permissions, UI.
 
-Planned Android layout, under `android/app/src/main/java/io/github/mikachu1302/homehub/` (create files as the code
-needs them, not ahead of time): `core/` (pure), `net/` (`LanHttp`, discovery), `data/` (device list and settings
-storage), `ui/` (Compose screens), `MainActivity.kt`.
+Android layout, under `android/app/src/main/java/io/github/mikachu1302/homehub/`:
+
+- `core/` – pure, JVM-tested against `spec/fixtures`: `Shelly.kt` (parsing, request bodies), `Model.kt` (saved devices,
+  sections, formatting, merge, storage JSON), `Lan.kt` (`isLanAddress`), `IrBridge.kt` (amp keys, placeholder)
+- `net/` – `LanHttp` (the one HTTP client), `ShellyClient`, `Discovery` (/24 probe, user action only)
+- `data/Store.kt` – device list, last page, hint flag (SharedPreferences; backup disabled)
+- `ui/` – `HomeViewModel`, `Theme` (all colours/sizes), `MenuScreen`, `SwitchesScreen` (+ timer sheet), `DevicesScreen`,
+  `PlaceholderScreens` (Amp, TV)
+- `MainActivity.kt` – permission gate, system back to the menu, page switch
+
+Tests: `./gradlew test` runs `FixtureTest` (every case in `spec/fixtures`) and `ModelTest`.
 
 ## Android and iOS
 

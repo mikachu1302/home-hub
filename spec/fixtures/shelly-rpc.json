@@ -1,0 +1,25 @@
+{
+  "description": "POST /rpc envelope -> the result object, or an error with the device's message. Made-up IDs.",
+  "cases": [
+    {
+      "name": "Result",
+      "input": {"id": 7, "src": "shellyplus1pm-112233445566", "result": {"was_on": false}},
+      "expected": {"result": {"was_on": false}}
+    },
+    {
+      "name": "Error from the device",
+      "input": {"id": 7, "src": "shellyplus1pm-112233445566", "error": {"code": 404, "message": "No handler for Switch.Nope"}},
+      "expected": {"error": "No handler for Switch.Nope"}
+    },
+    {
+      "name": "Neither result nor error",
+      "input": {"id": 7, "src": "shellyplus1pm-112233445566"},
+      "expected": {"error": "Unexpected answer"}
+    },
+    {
+      "name": "Not JSON",
+      "input": "Not Found",
+      "expected": {"error": "Unexpected answer"}
+    }
+  ]
+}
