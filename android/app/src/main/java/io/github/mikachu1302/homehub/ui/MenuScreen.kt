@@ -28,11 +28,12 @@ import io.github.mikachu1302.homehub.core.formatWatts
 fun MenuScreen(vm: HomeViewModel) {
     PollDevices(vm, withConfig = false)
     val outputs = vm.outputs
-    val known = outputs.filter { it.status != null }
+    val known = outputs.filter { it.reachable && it.status != null }
     val on = known.count { it.status?.on == true }
     val watts = known.sumOf { it.status?.watts ?: 0.0 }
     val switchesLine = when {
         outputs.isEmpty() -> "No devices yet"
+        vm.allUnreachable -> "⚠ Can't reach the devices"
         known.isEmpty() -> "${outputs.size} outputs"
         else -> "$on of ${outputs.size} on · ${formatWatts(watts)}"
     }

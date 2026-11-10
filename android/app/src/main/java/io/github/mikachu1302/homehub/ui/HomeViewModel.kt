@@ -1,6 +1,8 @@
 package io.github.mikachu1302.homehub.ui
 
 import android.app.Application
+import android.net.ConnectivityManager
+import android.net.Network
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -15,6 +17,7 @@ import io.github.mikachu1302.homehub.core.mergeDevices
 import io.github.mikachu1302.homehub.data.Store
 import io.github.mikachu1302.homehub.net.ShellyClient
 import io.github.mikachu1302.homehub.net.findShellys
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -50,6 +53,26 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     private val configs = mutableStateMapOf<Pair<String, Int>, SwitchConfig>()
     private val unreachable = mutableStateMapOf<String, Boolean>()
     private val busy = mutableStateMapOf<Pair<String, Int>, Boolean>()
+
+    /** True when devices are saved but none of them answered the last refresh (no Wi-Fi, VPN down, …). */
+    val allUnreachable: Boolean
+        get() = devices.isNotEmpty() && devices.all { unreachable[it.id] == true }
+
+    // When the phone gets a network again (Wi-Fi back, VPN up), refresh at once instead of waiting for the next poll.
+    private val connectivity = app.getSystemService(ConnectivityManager::class.java)
+    private val networkCallback = object : ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(network: Network) {
+            viewModelScope.launch { refresh() }
+        }
+    }
+
+    init {
+        runCatching { connectivity?.registerDefaultNetworkCallback(networkCallback) }
+    }
+
+    override fun onCleared() {
+        runCatching { connectivity?.unregisterNetworkCallback(networkCallback) }
+    }
 
     val outputs: List<OutputUi>
         get() = devices.flatMap { d ->
@@ -91,11 +114,18 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
                     if (withConfig) {
                         for (ch in 0 until d.channels) configs[d.id to ch] = shelly.config(d.address, ch)
                     }
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (_: Exception) {
                     unreachable[d.id] = true
                 }
             }
         }.awaitAll()
+    }
+
+    /** The "Try now" button. */
+    fun retryNow() {
+        viewModelScope.launch { refresh(withConfig = true) }
     }
 
     /** Switches an output to the opposite of what it last reported, then shows what the device reports now. */
@@ -109,7 +139,10 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
                 shelly.set(o.device.address, o.channel, target)
                 statuses[o.device.id] = shelly.switches(o.device.address)
                 unreachable[o.device.id] = false
+            } catch (e: CancellationException) {
+                throw e
             } catch (_: Exception) {
+                unreachable[o.device.id] = true
                 message = "Could not reach ${o.name}"
             } finally {
                 busy[key] = false
@@ -130,6 +163,8 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
             try {
                 shelly.setConfig(o.device.address, config)
                 configs[o.device.id to o.channel] = shelly.config(o.device.address, o.channel)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 message = "Timer not saved: ${e.message ?: "device not reachable"}"
             }

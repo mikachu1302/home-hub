@@ -62,10 +62,17 @@ fun PollDevices(vm: HomeViewModel, withConfig: Boolean) {
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     LaunchedEffect(lifecycle) {
         lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
-            vm.refresh(withConfig)
+            var first = true
             while (true) {
+                // The loop must never die: an unexpected error only skips this round.
+                try {
+                    vm.refresh(withConfig && first)
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
+                } catch (_: Exception) {
+                }
+                first = false
                 delay(5_000)
-                vm.refresh()
             }
         }
     }
@@ -85,6 +92,9 @@ fun SwitchesScreen(vm: HomeViewModel) {
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         item { Text("Switches", fontSize = 24.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp)) }
+        if (vm.allUnreachable) {
+            item { ConnectionProblem(onRetry = vm::retryNow) }
+        }
         if (outputs.isEmpty()) {
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(Dimens.gap)) {
@@ -123,9 +133,10 @@ fun SwitchesScreen(vm: HomeViewModel) {
 
 @Composable
 private fun OutputRow(o: OutputUi, onToggle: () -> Unit, onEdit: () -> Unit) {
-    val on = o.status?.on == true
+    // Unreachable: the last known state may be wrong, so it is not shown (show real state only).
+    val on = o.reachable && o.status?.on == true
     val details = buildList {
-        if (!o.reachable) add("Not reachable")
+        if (!o.reachable) add("No connection")
         else o.status?.watts?.let { add(formatWatts(it)) }
         o.config?.let { c ->
             if (c.autoOff) add("⏱ Auto-off ${formatDelay(c.autoOffDelay)}")
@@ -146,13 +157,14 @@ private fun OutputRow(o: OutputUi, onToggle: () -> Unit, onEdit: () -> Unit) {
                 if (details.isNotEmpty()) Text(details, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             Spacer(Modifier.width(Dimens.gap))
+            val known = o.reachable && o.status != null
             val label = when {
                 o.busy -> "…"
-                o.status == null -> "?"
+                !known -> "–"
                 on -> "On"
                 else -> "Off"
             }
-            val description = "${o.name}: ${if (o.status == null) "state unknown" else if (on) "on" else "off"}. Tap to switch."
+            val description = "${o.name}: ${if (!known) "state unknown" else if (on) "on" else "off"}. Tap to switch."
             val modifier = Modifier.width(Dimens.toggleWidth).height(Dimens.buttonHeight).semantics { contentDescription = description }
             val enabled = !o.busy && o.reachable
             if (on) {
@@ -270,4 +282,24 @@ private fun TimerBlock(
 private fun formatMinutes(seconds: Double): String {
     val m = seconds / 60
     return if (m == Math.floor(m)) m.toLong().toString() else "%.1f".format(java.util.Locale.ROOT, m)
+}
+
+@Composable
+private fun ConnectionProblem(onRetry: () -> Unit) {
+    Surface(
+        shape = RoundedCornerShape(Dimens.corner),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error),
+        color = MaterialTheme.colorScheme.surface,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(Modifier.padding(Dimens.rowPadding), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("⚠ Can't reach the devices", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            Text(
+                "Check the Wi-Fi, or the VPN when you are away. The app keeps trying every few seconds.",
+                fontSize = 13.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            OutlinedButton(onClick = onRetry) { Text("Try now") }
+        }
+    }
 }
