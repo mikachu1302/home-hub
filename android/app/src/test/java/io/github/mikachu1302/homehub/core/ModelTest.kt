@@ -60,6 +60,21 @@ class ModelTest {
     }
 
     @Test
+    fun savedOrderFirstNewOnesAfter() {
+        val items = listOf("a", "b", "c", "d")
+        assertEquals(listOf("c", "a", "b", "d"), sortByOrder(items, { it }, listOf("c", "a", "gone")))
+    }
+
+    @Test
+    fun movedClampsAtTheEnds() {
+        val l = listOf(1, 2, 3)
+        assertEquals(listOf(2, 1, 3), moved(l, 0, 1))
+        assertEquals(listOf(2, 3, 1), moved(l, 0, 5))
+        assertEquals(l, moved(l, 0, -1))
+        assertEquals(l, moved(l, 7, 1))
+    }
+
+    @Test
     fun setConfigOnlySendsTimers() {
         val p = ShellyJson.setConfigParams(SwitchConfig(1, true, 420.0, false, 60.0))
         assertEquals(1, p.getInt("id"))

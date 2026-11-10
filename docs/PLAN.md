@@ -135,9 +135,11 @@ From a wireframe round (variants: one long list, tabs, tiles + amp bar, menu fir
 - [x] Rooms: each output gets a room (pick one already used by another output, or type a new one); Switches page
       has two views, "By room" (headings, outputs without a room under "Other") and "All" (flat, room in the line).
       The view is a personal setting of each phone.
-- [ ] Icons per output from a small fixed set (ceiling light, lamp, LED strip, socket, fan, heater, TV/media, generic).
+- [x] Icons per output from a small fixed set (ceiling light, lamp, LED strip, socket, fan, heater, TV/media, generic).
       Icons rather than colours: colour is never the only signal, and icons tell outputs apart faster.
-- [ ] Arrange: a sort mode with drag handles (outputs within a room, and the rooms), plus Move up/down for accessibility.
+- [x] Arrange: a sort mode with drag handles (outputs within a room, and the rooms; or the flat list in "All"), plus
+      Move up/down for accessibility. Rooms without a set order come after the ordered ones; "Other" stays last.
+      Output order and room order are household data (shared with 2c); the view choice is personal.
 
 ### Phase 2c – share the setup between phones (requested 2026-11-10)
 Two people use the app; they should share the household setup but keep their own preferences.

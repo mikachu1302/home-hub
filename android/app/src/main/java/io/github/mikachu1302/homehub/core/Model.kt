@@ -100,16 +100,37 @@ fun roomsInUse(devices: List<SavedDevice>): List<String> =
 data class RoomGroup<T>(val room: String?, val items: List<T>)
 
 /**
- * Groups [items] by room: rooms alphabetically (case-insensitive, the same room however it is capitalised),
- * items keep their order inside a room, items without a room last (spec/fixtures/room-grouping.json).
+ * Groups [items] by room. Rooms follow [roomOrder] (case-insensitive); rooms not in it come next, alphabetically;
+ * the same room however it is capitalised (first spelling wins); items keep their order inside a room; items
+ * without a room last (spec/fixtures/room-grouping.json).
  */
-fun <T> groupByRoom(items: List<T>, roomOf: (T) -> String): List<RoomGroup<T>> {
+fun <T> groupByRoom(items: List<T>, roomOf: (T) -> String, roomOrder: List<String> = emptyList()): List<RoomGroup<T>> {
+    val rank = roomOrder.withIndex().associate { it.value.trim().lowercase() to it.index }
     val withRoom = items.filter { roomOf(it).trim().isNotEmpty() }
     val groups = withRoom.groupBy { roomOf(it).trim().lowercase() }
         .map { (_, list) -> RoomGroup<T>(roomOf(list.first()).trim(), list) }
-        .sortedBy { it.room!!.lowercase() }
+        .sortedWith(compareBy({ rank[it.room!!.lowercase()] ?: Int.MAX_VALUE }, { it.room!!.lowercase() }))
     val rest = items.filter { roomOf(it).trim().isEmpty() }
     return if (rest.isEmpty()) groups else groups + RoomGroup(null, rest)
+}
+
+/** The key an output is ordered and shared by. */
+fun outputKey(deviceId: String, channel: Int): String = "$deviceId/$channel"
+
+/** [items] in the saved [order] (by key); items not in it keep their relative order and come last. */
+fun <T> sortByOrder(items: List<T>, keyOf: (T) -> String, order: List<String>): List<T> {
+    val rank = order.withIndex().associate { it.value to it.index }
+    return items.withIndex()
+        .sortedWith(compareBy({ rank[keyOf(it.value)] ?: Int.MAX_VALUE }, { it.index }))
+        .map { it.value }
+}
+
+/** [list] with the element at [from] moved by [delta] places (clamped to the ends). */
+fun <T> moved(list: List<T>, from: Int, delta: Int): List<T> {
+    if (from !in list.indices) return list
+    val to = (from + delta).coerceIn(0, list.lastIndex)
+    if (to == from) return list
+    return list.toMutableList().apply { add(to, removeAt(from)) }
 }
 
 object DeviceJson {

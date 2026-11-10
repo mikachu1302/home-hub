@@ -92,15 +92,17 @@ class FixtureTest {
 
     @Test
     fun roomGrouping() = cases("room-grouping.json").forEach { c ->
-        val input = c.getJSONArray("input")
-        val items = (0 until input.length()).map { input.getJSONObject(it).let { o -> o.getString("name") to o.getString("room") } }
+        val input = c.getJSONObject("input")
+        val outs = input.getJSONArray("outputs")
+        val items = (0 until outs.length()).map { outs.getJSONObject(it).let { o -> o.getString("name") to o.getString("room") } }
+        val roomOrder = input.optJSONArray("roomOrder")?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList()
         val e = c.getJSONArray("expected")
         val want = (0 until e.length()).map { i ->
             val g = e.getJSONObject(i)
             val names = g.getJSONArray("items")
             (if (g.isNull("room")) null else g.getString("room")) to (0 until names.length()).map { names.getString(it) }
         }
-        val got = groupByRoom(items) { it.second }.map { g -> g.room to g.items.map { it.first } }
+        val got = groupByRoom(items, { it.second }, roomOrder).map { g -> g.room to g.items.map { it.first } }
         assertEquals(c.getString("name"), want, got)
     }
 

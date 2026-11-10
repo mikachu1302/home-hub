@@ -33,6 +33,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -61,7 +62,6 @@ import io.github.mikachu1302.homehub.core.Section
 import io.github.mikachu1302.homehub.core.OutputIcon
 import io.github.mikachu1302.homehub.core.SwitchConfig
 import io.github.mikachu1302.homehub.core.SwitchView
-import io.github.mikachu1302.homehub.core.groupByRoom
 import io.github.mikachu1302.homehub.core.formatDelay
 import io.github.mikachu1302.homehub.core.formatWatts
 import kotlinx.coroutines.delay
@@ -92,6 +92,7 @@ fun PollDevices(vm: HomeViewModel, withConfig: Boolean) {
 fun SwitchesScreen(vm: HomeViewModel) {
     PollDevices(vm, withConfig = true)
     var editing by remember { mutableStateOf<Pair<String, Int>?>(null) }
+    var arranging by remember { mutableStateOf(false) }
     val outputs = vm.outputs
 
     LazyColumn(
@@ -115,7 +116,11 @@ fun SwitchesScreen(vm: HomeViewModel) {
         }
         if (outputs.isNotEmpty()) {
             item {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(bottom = 4.dp)) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
+                ) {
                     FilterChip(
                         selected = vm.switchView == SwitchView.ROOMS,
                         onClick = { vm.showView(SwitchView.ROOMS) },
@@ -126,12 +131,15 @@ fun SwitchesScreen(vm: HomeViewModel) {
                         onClick = { vm.showView(SwitchView.ALL) },
                         label = { Text("All") },
                     )
+                    Spacer(Modifier.weight(1f))
+                    TextButton(onClick = { arranging = !arranging }) { Text(if (arranging) "Done" else "Arrange") }
                 }
             }
         }
-        if (vm.switchView == SwitchView.ROOMS) {
-            val groups = groupByRoom(outputs) { it.room }
-            groups.forEach { g ->
+        if (arranging && outputs.isNotEmpty()) {
+            item(key = "arrange") { ArrangeContent(vm) }
+        } else if (vm.switchView == SwitchView.ROOMS) {
+            vm.roomGroups.forEach { g ->
                 item(key = "room/${g.room}") {
                     Text(
                         g.room ?: "Other",
@@ -150,7 +158,7 @@ fun SwitchesScreen(vm: HomeViewModel) {
                 OutputRow(o, showRoom = true, onToggle = { vm.toggle(o) }, onEdit = { editing = o.device.id to o.channel })
             }
         }
-        if (outputs.isNotEmpty()) {
+        if (outputs.isNotEmpty() && !arranging) {
             item {
                 Text(
                     "Tap a name for name, room, icon and timers.",
@@ -419,4 +427,64 @@ private fun IconPicker(icon: OutputIcon, onIcon: (OutputIcon) -> Unit) {
             }
         }
     }
+}
+
+/** Arrange mode: drag handles for the rooms and for the outputs (within their room, or in the flat list). */
+@Composable
+private fun ArrangeContent(vm: HomeViewModel) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (vm.switchView == SwitchView.ROOMS) {
+            val groups = vm.roomGroups
+            val named = groups.filter { it.room != null }
+            if (named.size > 1) {
+                ArrangeHeading("Rooms")
+                ReorderableList(
+                    items = named,
+                    keyOf = { "room/${it.room}" },
+                    nameOf = { it.room!! },
+                    onMove = vm::moveRoom,
+                ) { g -> Text(g.room!!, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f)) }
+            }
+            groups.forEach { g ->
+                ArrangeHeading(g.room ?: "Other")
+                ReorderableList(
+                    items = g.items,
+                    keyOf = { it.key },
+                    nameOf = { it.name },
+                    onMove = { from, delta -> vm.moveInRoom(g.room, from, delta) },
+                ) { o -> ArrangeRow(o) }
+            }
+        } else {
+            ReorderableList(
+                items = vm.outputs,
+                keyOf = { it.key },
+                nameOf = { it.name },
+                onMove = vm::moveInAll,
+            ) { o -> ArrangeRow(o) }
+        }
+        Text(
+            "Drag the handle to move. Tap Done when finished.",
+            fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp),
+        )
+    }
+}
+
+@Composable
+private fun ArrangeHeading(text: String) {
+    Text(
+        text,
+        fontSize = 13.sp,
+        fontWeight = FontWeight.SemiBold,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(start = 4.dp, top = 12.dp).semantics { heading() },
+    )
+}
+
+@Composable
+private fun androidx.compose.foundation.layout.RowScope.ArrangeRow(o: OutputUi) {
+    Icon(o.icon.vector(), contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(22.dp))
+    Spacer(Modifier.width(Dimens.gap))
+    Text(o.name, fontSize = 16.sp, modifier = Modifier.weight(1f))
 }

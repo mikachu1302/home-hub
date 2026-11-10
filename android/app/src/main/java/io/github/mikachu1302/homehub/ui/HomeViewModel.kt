@@ -16,7 +16,12 @@ import io.github.mikachu1302.homehub.core.Section
 import io.github.mikachu1302.homehub.core.SwitchConfig
 import io.github.mikachu1302.homehub.core.SwitchStatus
 import io.github.mikachu1302.homehub.core.SwitchView
+import io.github.mikachu1302.homehub.core.RoomGroup
+import io.github.mikachu1302.homehub.core.groupByRoom
 import io.github.mikachu1302.homehub.core.mergeDevices
+import io.github.mikachu1302.homehub.core.moved
+import io.github.mikachu1302.homehub.core.outputKey
+import io.github.mikachu1302.homehub.core.sortByOrder
 import io.github.mikachu1302.homehub.core.roomsInUse
 import io.github.mikachu1302.homehub.data.Store
 import io.github.mikachu1302.homehub.net.ShellyClient
@@ -39,7 +44,9 @@ data class OutputUi(
     val config: SwitchConfig?,
     val reachable: Boolean,
     val busy: Boolean,
-)
+) {
+    val key: String get() = outputKey(device.id, channel)
+}
 
 class HomeViewModel(app: Application) : AndroidViewModel(app) {
     private val store = Store(app)
@@ -55,6 +62,8 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         private set
     var switchView by mutableStateOf(store.switchView)
         private set
+    private var outputOrder by mutableStateOf(store.outputOrder)
+    private var roomOrder by mutableStateOf(store.roomOrder)
     /** A short message for the user (a failed command); cleared when shown. */
     var message by mutableStateOf<String?>(null)
 
@@ -83,7 +92,15 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         runCatching { connectivity?.unregisterNetworkCallback(networkCallback) }
     }
 
+    /** All outputs in the user's order. */
     val outputs: List<OutputUi>
+        get() = sortByOrder(unsortedOutputs, { it.key }, outputOrder)
+
+    /** The outputs grouped by room, rooms in the user's order. */
+    val roomGroups: List<RoomGroup<OutputUi>>
+        get() = groupByRoom(outputs, { it.room }, roomOrder)
+
+    private val unsortedOutputs: List<OutputUi>
         get() = devices.flatMap { d ->
             (0 until d.channels).map { ch ->
                 OutputUi(
@@ -141,6 +158,26 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
                 }
             }
         }.awaitAll()
+    }
+
+    /** Moves an output inside its room ("By room" view). The new overall order is the grouped order. */
+    fun moveInRoom(room: String?, from: Int, delta: Int) {
+        val groups = roomGroups.map { g -> if (g.room == room) g.copy(items = moved(g.items, from, delta)) else g }
+        saveOutputOrder(groups.flatMap { g -> g.items.map { it.key } })
+    }
+
+    /** Moves an output in the flat list ("All" view). */
+    fun moveInAll(from: Int, delta: Int) = saveOutputOrder(moved(outputs, from, delta).map { it.key })
+
+    /** Moves a room; "Other" (no room) always stays last. */
+    fun moveRoom(from: Int, delta: Int) {
+        roomOrder = moved(roomGroups.mapNotNull { it.room }, from, delta)
+        store.roomOrder = roomOrder
+    }
+
+    private fun saveOutputOrder(order: List<String>) {
+        outputOrder = order
+        store.outputOrder = order
     }
 
     /** The "Try now" button. */
