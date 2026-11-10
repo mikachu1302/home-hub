@@ -84,6 +84,10 @@ From a wireframe round (variants: one long list, tabs, tiles + amp bar, menu fir
   - Watch while building: the remote's pager swipe must not trigger the back gesture; on iOS the edge swipe can stop
     working when the navigation bar is hidden (known SwiftUI pitfall, needs the usual fix).
 - **The app reopens on the last page used**, not always on the menu.
+- **The menu is the user's** (2026-11-10): in Settings → Menu the sections can be renamed (the name is also the
+  page title) and reordered by drag. A preference (shared on request, docs/SHARING.md).
+- **Settings has a visible back button** (top left, "‹") as well as the system back: it is not a full-height
+  control page, so the button costs nothing. The section pages stay gesture-only.
 - **Switches page:** one row per output (name, watts, timer), On/Off button on the right; tapping the name opens a
   sheet with rename + auto-off/auto-on.
 - **Amp page:** will grow (more keys than power/volume/mute/inputs); built like the TV remote, with a pager if the
@@ -128,7 +132,7 @@ From a wireframe round (variants: one long list, tabs, tiles + amp bar, menu fir
 - [x] Device list storage (names per output, stored on the phone only, no backup)
 - [x] Timers per output: show and edit auto-off and auto-on (on/off + delay), written to the device (`Switch.SetConfig`). Two outputs use auto-off today, one for a light after 7 min. Part of the minimum for the Shelly side.
 - [ ] IR client: buttons for the amp via HTTP to the bridge (after the bridge works)
-- [x] Menu + Switches + Devices pages; Amp and TV pages as placeholders (Amp keys disabled until the bridge works)
+- [x] Menu + Switches + Settings pages (Settings holds devices, IR bridge, sharing); Amp and TV pages as placeholders (Amp keys disabled until the bridge works)
 - [ ] Test through WireGuard from outside
 - [ ] First slice done = Shelly outputs (switch, power, timers) and amp buttons work on the real phone
 
@@ -146,7 +150,7 @@ From a wireframe round (variants: one long list, tabs, tiles + amp bar, menu fir
 Two people use the app; they share the household setup but keep their own preferences. **Format, rules and the
 classification of every setting: `docs/SHARING.md`** (every future setting must be classified there).
 
-- [x] Devices page → "Show QR code" (with "Copy link") and "Paste link"; `homehub://import?d=…` opens the app from the
+- [x] Settings → "Show QR code" (with "Copy link") and "Paste link"; `homehub://import?d=…` opens the app from the
       camera; an import dialog says what changes and nothing is applied before "Import".
 - [x] Shared: all settings (2026-11-10, the user's call). Household (devices with address, names, rooms, icons,
       output and room order) always; preferences (list view, later theme …) when the receiver ticks the box. Never:

@@ -37,11 +37,11 @@ import androidx.compose.ui.unit.sp
 import io.github.mikachu1302.homehub.core.Section
 import io.github.mikachu1302.homehub.ui.AmpScreen
 import io.github.mikachu1302.homehub.ui.Dimens
-import io.github.mikachu1302.homehub.ui.DevicesScreen
 import io.github.mikachu1302.homehub.ui.HomeHubTheme
 import io.github.mikachu1302.homehub.ui.HomeViewModel
 import io.github.mikachu1302.homehub.ui.ImportDialog
 import io.github.mikachu1302.homehub.ui.MenuScreen
+import io.github.mikachu1302.homehub.ui.SettingsScreen
 import io.github.mikachu1302.homehub.ui.SwitchesScreen
 import io.github.mikachu1302.homehub.ui.TvScreen
 
@@ -107,9 +107,9 @@ private fun App(vm: HomeViewModel) {
                 when (vm.section) {
                     Section.MENU -> MenuScreen(vm)
                     Section.SWITCHES -> SwitchesScreen(vm)
-                    Section.AMP -> AmpScreen()
-                    Section.TV -> TvScreen()
-                    Section.DEVICES -> DevicesScreen(vm)
+                    Section.AMP -> AmpScreen(vm.title(Section.AMP))
+                    Section.TV -> TvScreen(vm.title(Section.TV))
+                    Section.SETTINGS -> SettingsScreen(vm)
                 }
             }
         }

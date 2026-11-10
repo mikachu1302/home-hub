@@ -23,6 +23,8 @@ import io.github.mikachu1302.homehub.core.SwitchView
 import io.github.mikachu1302.homehub.core.RoomGroup
 import io.github.mikachu1302.homehub.core.groupByRoom
 import io.github.mikachu1302.homehub.core.mergeDevices
+import io.github.mikachu1302.homehub.core.menuSections
+import io.github.mikachu1302.homehub.core.sectionTitle
 import io.github.mikachu1302.homehub.core.moved
 import io.github.mikachu1302.homehub.core.outputKey
 import io.github.mikachu1302.homehub.core.sortByOrder
@@ -65,6 +67,10 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     var discovering by mutableStateOf(false)
         private set
     var switchView by mutableStateOf(store.switchView)
+        private set
+    var menuOrder by mutableStateOf(store.menuOrder)
+        private set
+    var menuNames by mutableStateOf(store.menuNames)
         private set
     private var outputOrder by mutableStateOf(store.outputOrder)
     private var roomOrder by mutableStateOf(store.roomOrder)
@@ -124,6 +130,24 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     /** Rooms already used somewhere, offered when setting another output's room. */
     val rooms: List<String>
         get() = roomsInUse(devices)
+
+    /** The menu sections in the user's order. */
+    val menu: List<Section>
+        get() = menuSections(menuOrder)
+
+    /** The title the user gave [section] (menu entry and page title), or its default. */
+    fun title(section: Section): String = sectionTitle(section, menuNames)
+
+    fun moveMenu(from: Int, delta: Int) {
+        menuOrder = moved(menu, from, delta).map { it.name }
+        store.menuOrder = menuOrder
+    }
+
+    /** A blank name goes back to the default title. */
+    fun renameSection(section: Section, name: String) {
+        menuNames = if (name.isBlank()) menuNames - section.name else menuNames + (section.name to name.trim())
+        store.menuNames = menuNames
+    }
 
     fun showView(view: SwitchView) {
         switchView = view
@@ -219,6 +243,8 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
             shared.preferences?.let { p ->
                 store.preferences = p
                 switchView = p.switchView
+                menuOrder = p.menuOrder
+                menuNames = p.menuNames
             }
         }
         shared.household?.let { h ->

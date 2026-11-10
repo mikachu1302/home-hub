@@ -25,9 +25,11 @@ object SettingKeys {
     const val LAST_SECTION = "last_section"
     const val BACK_HINT = "back_hint_shown"
     const val SWITCH_VIEW = "switch_view"
+    const val MENU_ORDER = "menu_order"
+    const val MENU_NAMES = "menu_names"
 
     val HOUSEHOLD = setOf(DEVICES, OUTPUT_ORDER, ROOM_ORDER)
-    val PREFERENCES = setOf(SWITCH_VIEW)
+    val PREFERENCES = setOf(SWITCH_VIEW, MENU_ORDER, MENU_NAMES)
     val STATE = setOf(LAST_SECTION, BACK_HINT)
 }
 
@@ -66,18 +68,32 @@ class Store(context: Context) {
         get() = prefs.getString(SettingKeys.SWITCH_VIEW, null)?.let { runCatching { SwitchView.valueOf(it) }.getOrNull() } ?: SwitchView.ROOMS
         set(value) = prefs.edit { putString(SettingKeys.SWITCH_VIEW, value.name) }
 
+    /** Menu sections in the user's order (`Section` names), and the user's titles for them. */
+    var menuOrder: List<String>
+        get() = readList(SettingKeys.MENU_ORDER)
+        set(value) = writeList(SettingKeys.MENU_ORDER, value)
+
+    var menuNames: Map<String, String>
+        get() = runCatching {
+            val o = org.json.JSONObject(prefs.getString(SettingKeys.MENU_NAMES, "{}") ?: "{}")
+            o.keys().asSequence().associateWith { o.optString(it) }
+        }.getOrDefault(emptyMap())
+        set(value) = prefs.edit { putString(SettingKeys.MENU_NAMES, org.json.JSONObject(value).toString()) }
+
     var preferences: Preferences
-        get() = Preferences(switchView)
+        get() = Preferences(switchView, menuOrder, menuNames)
         set(value) {
             switchView = value.switchView
+            menuOrder = value.menuOrder
+            menuNames = value.menuNames
         }
 
     // --- state (this phone only, never shared) ---
 
-    /** The page the app reopens on (the last section used; Devices counts as the menu). */
+    /** The page the app reopens on (the last section used; Settings counts as the menu). */
     var lastSection: Section
         get() = prefs.getString(SettingKeys.LAST_SECTION, null)?.let { runCatching { Section.valueOf(it) }.getOrNull() } ?: Section.MENU
-        set(value) = prefs.edit { putString(SettingKeys.LAST_SECTION, (if (value == Section.DEVICES) Section.MENU else value).name) }
+        set(value) = prefs.edit { putString(SettingKeys.LAST_SECTION, (if (value == Section.SETTINGS) Section.MENU else value).name) }
 
     /** Whether the one-time "swipe back to the menu" hint was shown. */
     var backHintShown: Boolean

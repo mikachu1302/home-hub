@@ -23,7 +23,13 @@ data class Household(
  * How a person likes to use the app (docs/SHARING.md). Shared too, but the receiving phone chooses whether to take
  * them over. A new preference must be added here, to [SetupShare] and to the doc.
  */
-data class Preferences(val switchView: SwitchView)
+data class Preferences(
+    val switchView: SwitchView,
+    /** Menu sections in the user's order, as `Section` names. Empty = default order. */
+    val menuOrder: List<String> = emptyList(),
+    /** The user's titles for menu sections, keyed by `Section` name. Missing = default title. */
+    val menuNames: Map<String, String> = emptyMap(),
+)
 
 /**
  * What a setup link carries. The sender chooses the parts, so either may be absent (but not both); links from
@@ -51,7 +57,15 @@ object SetupShare {
                 put("outputOrder", JSONArray(h.outputOrder))
                 put("roomOrder", JSONArray(h.roomOrder))
             }
-            s.preferences?.let { put("prefs", JSONObject().put("switchView", it.switchView.name)) }
+            s.preferences?.let { p ->
+                put(
+                    "prefs",
+                    JSONObject()
+                        .put("switchView", p.switchView.name)
+                        .put("menuOrder", JSONArray(p.menuOrder))
+                        .put("menuNames", JSONObject(p.menuNames)),
+                )
+            }
         }
         .toString()
 
@@ -74,6 +88,8 @@ object SetupShare {
         val prefs = o.optJSONObject("prefs")?.let { p ->
             Preferences(
                 switchView = runCatching { SwitchView.valueOf(p.optString("switchView")) }.getOrDefault(SwitchView.ROOMS),
+                menuOrder = strings(p.optJSONArray("menuOrder")),
+                menuNames = p.optJSONObject("menuNames")?.let { n -> n.keys().asSequence().associateWith { n.optString(it) } } ?: emptyMap(),
             )
         }
         if (household == null && prefs == null) throw ShareException("This setup is empty.")

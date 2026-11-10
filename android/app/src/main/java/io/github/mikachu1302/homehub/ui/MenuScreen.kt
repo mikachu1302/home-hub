@@ -44,11 +44,17 @@ fun MenuScreen(vm: HomeViewModel) {
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("Home Hub", fontSize = 28.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-            OutlinedButton(onClick = { vm.open(Section.DEVICES) }) { Text("Devices") }
+            OutlinedButton(onClick = { vm.open(Section.SETTINGS) }) { Text("Settings") }
         }
-        MenuEntry("Switches", switchesLine) { vm.open(Section.SWITCHES) }
-        MenuEntry("Amplifier", "IR bridge not set up yet") { vm.open(Section.AMP) }
-        MenuEntry("TV", "Coming later from tv-remote") { vm.open(Section.TV) }
+        vm.menu.forEach { section ->
+            val line = when (section) {
+                Section.SWITCHES -> switchesLine
+                Section.AMP -> "IR bridge not set up yet"
+                Section.TV -> "Coming later from tv-remote"
+                else -> ""
+            }
+            MenuEntry(vm.title(section), line) { vm.open(section) }
+        }
     }
 }
 

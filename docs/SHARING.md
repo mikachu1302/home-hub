@@ -12,7 +12,7 @@ own state never travels. This file is the contract; read it before adding any se
 | Class | What | Shared? | Examples |
 |---|---|---|---|
 | **Household** | describes the home | when the sender ticks it (on by default) | device list and addresses, output names, rooms, icons, output and room order; later the IR bridge address and its button list |
-| **Preference** | how a person likes to use the app | when the sender ticks it (on by default); the receiver can still decline | list view ("By room"/"All"); later theme, colours, haptics |
+| **Preference** | how a person likes to use the app | when the sender ticks it (on by default); the receiver can still decline | list view ("By room"/"All"), menu order and menu names; later theme, colours, haptics |
 | **State** | what the app remembers about itself | never: copying it would only do odd things | the page that was open last, hints already shown |
 | **Credential** | passwords, keys | only with "Include passwords" (see below) | later: the IR bridge login, a Shelly password |
 
@@ -43,7 +43,7 @@ the meaning of a field does.
 
 ## Choosing what to share
 
-- **Sender** (Devices → "Show QR code"): one checkbox per part – "Devices, names, rooms, icons, order" and
+- **Sender** (Settings → "Show QR code"): one checkbox per part – "Devices, names, rooms, icons, order" and
   "My preferences"; later "Include passwords". The QR code and "Copy link" follow the ticks; with nothing ticked
   there is no code. The choice is per sharing and not remembered.
 - **Receiver**: the import dialog lists only the parts the code carries. With household and preferences it offers
@@ -63,7 +63,7 @@ The QR code uses error correction level M. Five devices with names, rooms and ic
 characters; a code at level M holds 2331 bytes, so there is plenty of room.
 
 Receiving: the phone's camera opens the link, Android starts Home Hub (`intent-filter` for scheme `homehub`, host
-`import`), or the user pastes the link (Devices → "Paste link"). Surrounding spaces and line breaks are ignored.
+`import`), or the user pastes the link (Settings → "Paste link"). Surrounding spaces and line breaks are ignored.
 **Nothing changes before the user confirms** the import dialog. The iPhone camera opens links of registered schemes
 the same way, so the iOS app only has to register `homehub`.
 
@@ -87,7 +87,7 @@ the same way, so the iOS app only has to register `homehub`.
   ],
   "outputOrder": ["shellyplus2pm-a0b1c2d3e4f5/1", "shellyplus2pm-a0b1c2d3e4f5/0"],
   "roomOrder": ["Living room"],
-  "prefs": {"switchView": "ROOMS"}
+  "prefs": {"switchView": "ROOMS", "menuOrder": ["SWITCHES", "AMP", "TV"], "menuNames": {"SWITCHES": "Lights"}}
 }
 ```
 
@@ -102,6 +102,8 @@ the same way, so the iOS app only has to register `homehub`.
 
 A payload with neither part is refused ("This setup is empty.").
 | `prefs.switchView` | `ROOMS` or `ALL` | unknown value → `ROOMS` |
+| `prefs.menuOrder` | menu sections as `Section` names (`SWITCHES`, `AMP`, `TV`) | unknown ids are ignored; sections not listed come last; missing → default order |
+| `prefs.menuNames` | the user's titles, keyed by `Section` name | blank or missing → the default title |
 
 Not in the payload: everything in `SettingKeys.STATE`, and credentials unless "Include passwords" was on.
 

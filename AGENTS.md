@@ -80,7 +80,7 @@ Android layout, under `android/app/src/main/java/io/github/mikachu1302/homehub/`
 - `net/` – `LanHttp` (the one HTTP client), `ShellyClient`, `Discovery` (/24 probe, user action only)
 - `data/Store.kt` – `SettingKeys` (every key, classified household/personal) and `Store` (SharedPreferences; backup disabled)
 - `ui/` – `HomeViewModel`, `Theme` (all colours/sizes), `Icons` (drawn output icons), `Reorderable` (drag list),
-  `MenuScreen`, `SwitchesScreen` (+ output sheet, arrange mode), `DevicesScreen`, `ShareUi` (QR and import dialogs),
+  `MenuScreen`, `SwitchesScreen` (+ output sheet, arrange mode), `SettingsScreen` (devices, IR bridge, sharing), `ShareUi` (QR and import dialogs),
   `PlaceholderScreens` (Amp, TV)
 - `MainActivity.kt` – permission gate, system back to the menu, page switch, `homehub://import` links
 

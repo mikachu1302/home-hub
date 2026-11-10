@@ -30,12 +30,12 @@ import io.github.mikachu1302.homehub.core.IrKey
  * (docs/PLAN.md, phase 1). The keys are the ones esphome/atom-lite-ir.yaml already defines.
  */
 @Composable
-fun AmpScreen() {
+fun AmpScreen(title: String) {
     Column(
         Modifier.fillMaxSize().padding(horizontal = Dimens.screenPadding, vertical = Dimens.topPadding),
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
-        Text("Amplifier", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+        Text(title, fontSize = 24.sp, fontWeight = FontWeight.Bold)
         Notice("The IR bridge is not set up yet. These keys start working once it is.")
         Row(horizontalArrangement = Arrangement.spacedBy(Dimens.gap)) {
             AmpKey(AmpKeys.power, Modifier.weight(1f))
@@ -63,10 +63,10 @@ private fun AmpKey(key: IrKey, modifier: Modifier, text: String = key.label) {
 
 /** TV page, placeholder: the tv-remote screen moves in here later and gets the whole height. */
 @Composable
-fun TvScreen() {
+fun TvScreen(title: String) {
     Box(Modifier.fillMaxSize().padding(Dimens.screenPadding), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Dimens.gap)) {
-            Text("TV", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+            Text(title, fontSize = 24.sp, fontWeight = FontWeight.Bold)
             Text(
                 "The TV remote moves over from tv-remote later. It will use this whole screen.",
                 textAlign = TextAlign.Center,

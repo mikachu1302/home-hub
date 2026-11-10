@@ -75,6 +75,15 @@ class ModelTest {
     }
 
     @Test
+    fun menuFollowsOrderAndNames() {
+        assertEquals(MENU_SECTIONS, menuSections(emptyList()))
+        // Saved order first; unknown ids ignored; a section missing from the order (added later) comes last.
+        assertEquals(listOf(Section.TV, Section.SWITCHES, Section.AMP), menuSections(listOf("TV", "GONE", "SWITCHES")))
+        assertEquals("Lights", sectionTitle(Section.SWITCHES, mapOf("SWITCHES" to " Lights ")))
+        assertEquals("Amplifier", sectionTitle(Section.AMP, mapOf("AMP" to "  ")))
+    }
+
+    @Test
     fun setConfigOnlySendsTimers() {
         val p = ShellyJson.setConfigParams(SwitchConfig(1, true, 420.0, false, 60.0))
         assertEquals(1, p.getInt("id"))

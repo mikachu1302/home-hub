@@ -5,7 +5,25 @@ import org.json.JSONObject
 import kotlin.math.roundToLong
 
 /** The app's sections. The menu is the start screen; the others open full screen. */
-enum class Section { MENU, SWITCHES, AMP, TV, DEVICES }
+enum class Section { MENU, SWITCHES, AMP, TV, SETTINGS }
+
+/** The sections the menu lists, in the default order, with their default titles. */
+val MENU_SECTIONS = listOf(Section.SWITCHES, Section.AMP, Section.TV)
+
+fun defaultTitle(section: Section): String = when (section) {
+    Section.SWITCHES -> "Switches"
+    Section.AMP -> "Amplifier"
+    Section.TV -> "TV"
+    Section.SETTINGS -> "Settings"
+    Section.MENU -> "Home Hub"
+}
+
+/** The menu sections in the user's order (ids are `Section` names; unknown ids are ignored, new sections come last). */
+fun menuSections(order: List<String>): List<Section> = sortByOrder(MENU_SECTIONS, { it.name }, order)
+
+/** The user's title for [section], or the default when none is set. */
+fun sectionTitle(section: Section, names: Map<String, String>): String =
+    names[section.name]?.trim()?.takeIf { it.isNotEmpty() } ?: defaultTitle(section)
 
 /** How the Switches page lists the outputs. */
 enum class SwitchView { ROOMS, ALL }

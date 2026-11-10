@@ -102,7 +102,7 @@ fun SwitchesScreen(vm: HomeViewModel) {
         ),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        item { Text("Switches", fontSize = 24.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp)) }
+        item { Text(vm.title(Section.SWITCHES), fontSize = 24.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp)) }
         if (vm.allUnreachable) {
             item { ConnectionProblem(onRetry = vm::retryNow) }
         }
@@ -110,7 +110,7 @@ fun SwitchesScreen(vm: HomeViewModel) {
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(Dimens.gap)) {
                     Text("No devices yet. Find them on the home Wi-Fi first.")
-                    Button(onClick = { vm.open(Section.DEVICES) }) { Text("Find devices") }
+                    Button(onClick = { vm.open(Section.SETTINGS) }) { Text("Find devices") }
                 }
             }
         }

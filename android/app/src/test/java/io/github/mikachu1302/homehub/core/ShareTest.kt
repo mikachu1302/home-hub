@@ -34,7 +34,13 @@ class ShareTest {
                     assertEquals(name, want, got.household)
                     assertEquals(name, listOf(ceiling, lamp).sortedBy { it.id }, got.household!!.devices.sortedBy { it.id })
                 }
-                val prefs = if (e.isNull("preferences")) null else Preferences(SwitchView.valueOf(e.getJSONObject("preferences").getString("switchView")))
+                val prefs = if (e.isNull("preferences")) null else e.getJSONObject("preferences").let { p ->
+                    Preferences(
+                        SwitchView.valueOf(p.getString("switchView")),
+                        p.optJSONArray("menuOrder")?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList(),
+                        p.optJSONObject("menuNames")?.let { n -> n.keys().asSequence().associateWith { n.getString(it) } } ?: emptyMap(),
+                    )
+                }
                 assertEquals(name, prefs, got.preferences)
             } else {
                 try {
@@ -50,7 +56,7 @@ class ShareTest {
     @Test
     fun roundTrip() {
         val h = Household(listOf(lamp, ceiling), listOf(outputKey(ceiling.id, 0), outputKey(lamp.id, 1)), listOf("Aisle"))
-        val setup = SharedSetup(h, Preferences(SwitchView.ALL))
+        val setup = SharedSetup(h, Preferences(SwitchView.ALL, listOf("TV", "SWITCHES"), mapOf("SWITCHES" to "Lights")))
         val link = SetupShare.toLink(setup)
         assertTrue(link.startsWith(SetupShare.LINK_PREFIX))
         assertEquals(setup, SetupShare.fromLink(link))
@@ -113,6 +119,6 @@ class ShareTest {
         assertTrue("not classified (see docs/SHARING.md): $unclassified", unclassified.isEmpty())
         // What SetupShare carries today; change together with Household/Preferences, SetupShare and docs/SHARING.md.
         assertEquals(setOf(SettingKeys.DEVICES, SettingKeys.OUTPUT_ORDER, SettingKeys.ROOM_ORDER), SettingKeys.HOUSEHOLD)
-        assertEquals(setOf(SettingKeys.SWITCH_VIEW), SettingKeys.PREFERENCES)
+        assertEquals(setOf(SettingKeys.SWITCH_VIEW, SettingKeys.MENU_ORDER, SettingKeys.MENU_NAMES), SettingKeys.PREFERENCES)
     }
 }

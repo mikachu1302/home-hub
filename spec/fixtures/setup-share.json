@@ -232,6 +232,25 @@
       }
     },
     {
+      "name": "Preferences with a custom menu (order and names; unknown section ids are kept but have no effect)",
+      "input": "homehub://import?d=q1YqU7Iy1FEqKEpNK1ayqlYqLs8sSc4Iy0wtV7JSCvL39w1W0lHKTc0r9S9KSS1SsopWCgkDigSHe4Y4e7iCJIP9fV1DPDz93OP9XMOVYiGq_RJzU8HmwRVaKflkpmeUFAN1OPoGALkembpumUq1tbUA",
+      "expected": {
+        "household": null,
+        "preferences": {
+          "switchView": "ROOMS",
+          "menuOrder": [
+            "TV",
+            "SWITCHES",
+            "SOMETHING_NEW"
+          ],
+          "menuNames": {
+            "SWITCHES": "Lights",
+            "AMP": "Hi-Fi"
+          }
+        }
+      }
+    },
+    {
       "name": "Neither part",
       "input": "homehub://import?d=q1YqU7IyrAUA",
       "expected": {
