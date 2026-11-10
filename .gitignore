@@ -1,0 +1,22 @@
+# secrets and local config
+esphome/secrets.yaml
+.env
+local.properties
+
+# build output and tool caches
+build/
+.gradle/
+.kotlin/
+.idea/
+.esphome/
+*.bin
+__pycache__/
+
+# signing material and packages
+*.jks
+*.keystore
+*.apk
+*.ipa
+
+# generated Xcode project (see AGENTS.md, iOS section)
+*.xcodeproj/

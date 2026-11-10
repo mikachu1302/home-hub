@@ -1,0 +1,99 @@
+# IR bridge for M5Stack ATOM Lite (ESP32) -> Onkyo A-9050 (and later more IR gear)
+#
+# Pins (confirmed on M5Stack's ATOM Lite docs page, 2026-11-10):
+#   IR LED (built in)        GPIO12
+#   Grove port signal pins   GPIO32 and GPIO26
+# Which Grove pin carries the Unit IR's receiver is NOT documented: GPIO32 is
+# tried first; if the log stays silent, swap GPIO32 and GPIO26 below.
+#
+# Flow:
+#   1. Flash this file as is. Open the log, point the ORIGINAL Onkyo remote at
+#      the IR receiver and press every button. The log prints the protocol,
+#      address and command of each one.
+#   2. Fill the codes into the buttons below (replace the TODO values).
+#   3. Re-flash (over Wi-Fi from now on). The buttons are now usable over HTTP.
+
+esphome:
+  name: ir-bridge
+  friendly_name: IR Bridge
+
+esp32:
+  board: m5stack-atom
+  framework:
+    type: esp-idf
+
+logger:
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  ap:
+    ssid: "ir-bridge-fallback"
+    password: !secret fallback_ap_password
+
+# Lets you re-enter the Wi-Fi details through the fallback hotspot.
+captive_portal:
+
+ota:
+  - platform: esphome
+    password: !secret ota_password
+
+web_server:
+  port: 80
+  version: 3
+  local: true        # serve the web page from the device, no internet needed
+  auth:
+    type: digest     # password is not sent in clear; also ESPHome's default from 2027.1
+    username: !secret web_username
+    password: !secret web_password
+
+# --- IR out (built-in LED) ---------------------------------------------------
+remote_transmitter:
+  pin: GPIO12
+  carrier_duty_percent: 50%
+
+# --- IR in (Unit IR receiver on the Grove port) - for learning only -----------
+remote_receiver:
+  pin:
+    number: GPIO32
+    inverted: true
+    mode:
+      input: true
+      pullup: true
+  dump: all
+  tolerance: 25%
+
+# --- Buttons: one per remote function ----------------------------------------
+# Onkyo remotes are expected to decode as NEC in the log ("Received NEC:
+# address=0x…, command=0x…"). Replace every TODO value. If the log shows another
+# protocol, use the matching remote_transmitter.transmit_* action instead.
+# The HTTP path uses the button NAME (URL-encoded), as of ESPHome 2026.10:
+#   "Amp Volume Up" -> POST /button/Amp%20Volume%20Up/press
+# If you rename a button, the URL changes with it.
+button:
+  - platform: template
+    name: "Amp Power"
+    on_press:
+      - remote_transmitter.transmit_nec:
+          address: 0x0000   # TODO
+          command: 0x0000   # TODO
+  - platform: template
+    name: "Amp Volume Up"
+    on_press:
+      - remote_transmitter.transmit_nec:
+          address: 0x0000   # TODO
+          command: 0x0000   # TODO
+  - platform: template
+    name: "Amp Volume Down"
+    on_press:
+      - remote_transmitter.transmit_nec:
+          address: 0x0000   # TODO
+          command: 0x0000   # TODO
+  - platform: template
+    name: "Amp Mute"
+    on_press:
+      - remote_transmitter.transmit_nec:
+          address: 0x0000   # TODO
+          command: 0x0000   # TODO
+  # Inputs (CD, Tuner, Phono, Line...): add one block per input once we have seen
+  # which buttons your remote actually has.
