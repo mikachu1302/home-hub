@@ -190,8 +190,13 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     var pendingImport by mutableStateOf<SharedSetup?>(null)
         private set
 
-    /** The link for the QR code: the household settings and the preferences of this phone. */
-    fun shareLink(): String = SetupShare.toLink(SharedSetup(store.household, store.preferences))
+    /** The link for the QR code with the parts the sender ticked; null when nothing is ticked. */
+    fun shareLink(household: Boolean, preferences: Boolean): String? {
+        if (!household && !preferences) return null
+        return SetupShare.toLink(
+            SharedSetup(if (household) store.household else null, if (preferences) store.preferences else null),
+        )
+    }
 
     /** A link from the camera, a messenger or the clipboard; parsed now, applied only after confirmation. */
     fun offerImport(link: String) {
@@ -216,13 +221,15 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
                 switchView = p.switchView
             }
         }
-        val merged = SetupShare.merge(store.household, shared.household)
-        store.household = merged
-        devices = merged.devices
-        outputOrder = merged.outputOrder
-        roomOrder = merged.roomOrder
+        shared.household?.let { h ->
+            val merged = SetupShare.merge(store.household, h)
+            store.household = merged
+            devices = merged.devices
+            outputOrder = merged.outputOrder
+            roomOrder = merged.roomOrder
+            viewModelScope.launch { refresh(withConfig = true) }
+        }
         message = "Setup imported"
-        viewModelScope.launch { refresh(withConfig = true) }
     }
 
     /** The "Try now" button. */

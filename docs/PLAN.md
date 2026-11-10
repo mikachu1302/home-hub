@@ -153,6 +153,7 @@ classification of every setting: `docs/SHARING.md`** (every future setting must 
       app state (last page, hints). No credentials yet.
 - [ ] "Include passwords" switch, built with the IR bridge (its login): rules in docs/SHARING.md.
 - [x] Import: devices matched by id take the shared version; local-only devices stay.
+- [x] The sender chooses the parts too (checkboxes in the share dialog; 2026-11-10, the user's call).
 - [x] `SettingKeys` classifies every stored key (household / preference / state); `ShareTest` fails for an unclassified one.
 - [ ] Check on the second phone: scan with its camera app (does that camera open `homehub://` links?) and import.
 - It is a copy, not a sync (see SHARING.md).

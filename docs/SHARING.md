@@ -1,8 +1,9 @@
 # Sharing the setup between phones
 
-Two people in the same household use the app. Sharing copies **all settings** from one phone to the other as a QR
-code (or the same link sent as text): the household setup always, the sender's preferences if the receiver wants
-them. Only the app's own state stays on each phone. This file is the contract; read it before adding any setting.
+Two people in the same household use the app. Sharing copies settings from one phone to the other as a QR code (or
+the same link sent as text). **Both sides choose:** the sender ticks which parts go into the code (household,
+preferences, later passwords), and the receiver confirms, with a separate choice for the preferences. Only the app's
+own state never travels. This file is the contract; read it before adding any setting.
 
 ## The rule for every new setting
 
@@ -10,8 +11,8 @@ them. Only the app's own state stays on each phone. This file is the contract; r
 
 | Class | What | Shared? | Examples |
 |---|---|---|---|
-| **Household** | describes the home | always | device list and addresses, output names, rooms, icons, output and room order; later the IR bridge address and its button list |
-| **Preference** | how a person likes to use the app | yes; the receiver ticks "Also use the other phone's preferences" (on by default) | list view ("By room"/"All"); later theme, colours, haptics |
+| **Household** | describes the home | when the sender ticks it (on by default) | device list and addresses, output names, rooms, icons, output and room order; later the IR bridge address and its button list |
+| **Preference** | how a person likes to use the app | when the sender ticks it (on by default); the receiver can still decline | list view ("By room"/"All"); later theme, colours, haptics |
 | **State** | what the app remembers about itself | never: copying it would only do odd things | the page that was open last, hints already shown |
 | **Credential** | passwords, keys | only with "Include passwords" (see below) | later: the IR bridge login, a Shelly password |
 
@@ -39,6 +40,16 @@ every phone is tedious. Rules, to be built together with the bridge (docs/PLAN.m
 
 Adding a field that older apps simply ignore (a new optional key) does not need a version bump. Removing or changing
 the meaning of a field does.
+
+## Choosing what to share
+
+- **Sender** (Devices → "Show QR code"): one checkbox per part – "Devices, names, rooms, icons, order" and
+  "My preferences"; later "Include passwords". The QR code and "Copy link" follow the ticks; with nothing ticked
+  there is no code. The choice is per sharing and not remembered.
+- **Receiver**: the import dialog lists only the parts the code carries. With household and preferences it offers
+  "Also use the other phone's preferences"; with preferences only, importing applies them.
+- A new class or part gets its own checkbox on the sender's side; a part is one class, not single settings
+  (keeps the dialog short; finer choices only if they are missed).
 
 ## Link format
 
@@ -83,11 +94,13 @@ the same way, so the iOS app only has to register `homehub`.
 | Field | Meaning | On import |
 |---|---|---|
 | `v` | payload version | newer than the app knows → refused with "Update the app first" |
-| `devices[]` | the Shelly devices, same shape as the app's own storage (`DeviceJson`) | matched by `id`: the shared device replaces the local one (address, outputs with name, room, icon); devices only on the receiving phone stay |
+| `devices[]` | the Shelly devices, same shape as the app's own storage (`DeviceJson`). **The household part is present exactly when `devices` is**; `outputOrder`/`roomOrder` belong to it | matched by `id`: the shared device replaces the local one (address, outputs with name, room, icon); devices only on the receiving phone stay; absent → devices untouched |
 | `outputs` | per channel: `name`, `room`, `icon` (an `OutputIcon` id; unknown ids show the generic icon) | part of the device |
 | `outputOrder` | output keys `<device id>/<channel>` | shared order first, local-only keys after it |
 | `roomOrder` | room names | shared order first, local rooms not in it after (compared ignoring case) |
-| `prefs` | the sender's preferences; optional (older links have none) | replace this phone's preferences only if the receiver ticks the box |
+| `prefs` | the sender's preferences; optional (left out by the sender, or a link from the first version) | replace this phone's preferences only if the receiver agrees |
+
+A payload with neither part is refused ("This setup is empty.").
 | `prefs.switchView` | `ROOMS` or `ALL` | unknown value → `ROOMS` |
 
 Not in the payload: everything in `SettingKeys.STATE`, and credentials unless "Include passwords" was on.

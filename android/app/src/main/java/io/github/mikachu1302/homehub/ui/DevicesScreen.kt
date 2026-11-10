@@ -30,7 +30,7 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun DevicesScreen(vm: HomeViewModel) {
     val context = LocalContext.current
-    var sharing by remember { mutableStateOf<String?>(null) }
+    var sharing by remember { mutableStateOf(false) }
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState())
             .padding(horizontal = Dimens.screenPadding, vertical = Dimens.topPadding),
@@ -92,7 +92,7 @@ fun DevicesScreen(vm: HomeViewModel) {
         )
         Row(horizontalArrangement = Arrangement.spacedBy(Dimens.gap)) {
             Button(
-                onClick = { sharing = vm.shareLink() },
+                onClick = { sharing = true },
                 enabled = vm.devices.isNotEmpty(),
                 modifier = Modifier.weight(1f).height(52.dp),
             ) { Text("Show QR code") }
@@ -106,11 +106,11 @@ fun DevicesScreen(vm: HomeViewModel) {
             ) { Text("Paste link") }
         }
         Text(
-            "Shares devices, names, rooms, icons and order, plus your preferences (the other phone chooses whether " +
-                "to use them). Scan the code with the other phone's camera, or copy the link and send it.",
+            "Choose what to share: devices, names, rooms, icons and order, and your preferences. Scan the code with " +
+                "the other phone's camera, or copy the link and send it.",
             fontSize = 12.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
-    sharing?.let { link -> ShareDialog(link, onDismiss = { sharing = null }) }
+    if (sharing) ShareDialog(linkFor = vm::shareLink, onDismiss = { sharing = false })
 }

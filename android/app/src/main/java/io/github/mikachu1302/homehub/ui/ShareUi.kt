@@ -9,6 +9,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
@@ -54,23 +57,31 @@ private fun qrMatrix(link: String): BitMatrix? = try {
     null
 }
 
-/** Shows the setup as a QR code. Dark on white even in dark mode: scanners need that contrast. */
+/**
+ * Share dialog: the sender ticks what goes into the code; the QR code and "Copy link" follow the ticks.
+ * Dark on white even in dark mode: scanners need that contrast.
+ */
 @Composable
-fun ShareDialog(link: String, onDismiss: () -> Unit) {
+fun ShareDialog(linkFor: (household: Boolean, preferences: Boolean) -> String?, onDismiss: () -> Unit) {
     val context = LocalContext.current
-    val matrix = remember(link) { qrMatrix(link) }
+    var household by remember { mutableStateOf(true) }
+    var preferences by remember { mutableStateOf(true) }
+    val link = remember(household, preferences) { linkFor(household, preferences) }
+    val matrix = remember(link) { link?.let(::qrMatrix) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("Share setup") },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                if (matrix == null) {
-                    Text("The setup is too large for one QR code. Use \"Copy link\" and send it instead.")
-                } else {
-                    Canvas(
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                CheckRow("Devices, names, rooms, icons, order", household) { household = it }
+                CheckRow("My preferences (list view)", preferences) { preferences = it }
+                when {
+                    link == null -> Text("Tick at least one part to share.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    matrix == null -> Text("The setup is too large for one QR code. Use \"Copy link\" and send it instead.")
+                    else -> Canvas(
                         Modifier.fillMaxWidth().aspectRatio(1f)
                             .background(Color.White, RoundedCornerShape(8.dp))
-                            .semantics { contentDescription = "QR code with this phone's setup" },
+                            .semantics { contentDescription = "QR code with the ticked parts of this phone's setup" },
                     ) {
                         val cell = size.width / matrix.width
                         for (y in 0 until matrix.height) for (x in 0 until matrix.width) {
@@ -79,8 +90,8 @@ fun ShareDialog(link: String, onDismiss: () -> Unit) {
                     }
                 }
                 Text(
-                    "Scan it with the other phone's camera. It shares devices, names, rooms, icons and order, " +
-                        "and your preferences (the other phone chooses whether to use them). No passwords are included.",
+                    "Scan it with the other phone's camera. The other phone confirms before anything changes. " +
+                        "No passwords are included.",
                     fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -88,45 +99,57 @@ fun ShareDialog(link: String, onDismiss: () -> Unit) {
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } },
         dismissButton = {
-            TextButton(onClick = { copyToClipboard(context, link) }) { Text("Copy link") }
+            TextButton(onClick = { link?.let { copyToClipboard(context, it) } }, enabled = link != null) { Text("Copy link") }
         },
     )
 }
 
-/** Asks before a received setup changes anything. */
+/** Asks before a received setup changes anything; shows only the parts the code carries. */
 @Composable
 fun ImportDialog(setup: SharedSetup, localDeviceIds: Set<String>, onConfirm: (takePreferences: Boolean) -> Unit, onCancel: () -> Unit) {
     val shared = setup.household
-    val outputs = shared.devices.sumOf { it.channels }
-    val known = shared.devices.count { it.id in localDeviceIds }
-    val new = shared.devices.size - known
     var takePreferences by remember { mutableStateOf(true) }
     AlertDialog(
         onDismissRequest = onCancel,
         title = { Text("Import setup?") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("${shared.devices.size} devices with $outputs outputs ($known already here, $new new).")
-                Text(
-                    "For these devices the names, rooms, icons and order from the other phone replace the ones here. " +
-                        "Devices only on this phone stay.",
-                    fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                if (shared != null) {
+                    val outputs = shared.devices.sumOf { it.channels }
+                    val known = shared.devices.count { it.id in localDeviceIds }
+                    Text("${shared.devices.size} devices with $outputs outputs ($known already here, ${shared.devices.size - known} new).")
+                    Text(
+                        "For these devices the names, rooms, icons and order from the other phone replace the ones here. " +
+                            "Devices only on this phone stay.",
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
                 if (setup.preferences != null) {
-                    Row(
-                        Modifier.toggleable(value = takePreferences, role = Role.Checkbox, onValueChange = { takePreferences = it }),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Checkbox(checked = takePreferences, onCheckedChange = null)
-                        Text("Also use the other phone's preferences (list view)", fontSize = 14.sp)
+                    if (shared != null) {
+                        CheckRow("Also use the other phone's preferences (list view)", takePreferences) { takePreferences = it }
+                    } else {
+                        Text("The other phone's preferences (list view) replace the ones here.")
                     }
                 }
             }
         },
-        confirmButton = { TextButton(onClick = { onConfirm(takePreferences && setup.preferences != null) }) { Text("Import") } },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(setup.preferences != null && (takePreferences || shared == null)) }) { Text("Import") }
+        },
         dismissButton = { TextButton(onClick = onCancel) { Text("Cancel") } },
     )
+}
+
+@Composable
+private fun CheckRow(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().toggleable(value = checked, role = Role.Checkbox, onValueChange = onChange),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Checkbox(checked = checked, onCheckedChange = null)
+        Text(label, fontSize = 14.sp, modifier = Modifier.padding(start = 8.dp))
+    }
 }
 
 fun copyToClipboard(context: Context, text: String) {

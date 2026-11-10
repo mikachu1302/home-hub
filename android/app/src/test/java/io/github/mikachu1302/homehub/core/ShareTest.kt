@@ -27,9 +27,13 @@ class ShareTest {
             val e = c.getJSONObject("expected")
             if (e.has("household")) {
                 val got = SetupShare.fromLink(c.getString("input"))
-                val want = SetupShare.fromJson(e.getJSONObject("household").toString()).household
-                assertEquals(name, want, got.household)
-                assertEquals(name, listOf(ceiling, lamp).sortedBy { it.id }, got.household.devices.sortedBy { it.id })
+                if (e.isNull("household")) {
+                    assertEquals(name, null, got.household)
+                } else {
+                    val want = SetupShare.fromJson(e.getJSONObject("household").toString()).household
+                    assertEquals(name, want, got.household)
+                    assertEquals(name, listOf(ceiling, lamp).sortedBy { it.id }, got.household!!.devices.sortedBy { it.id })
+                }
                 val prefs = if (e.isNull("preferences")) null else Preferences(SwitchView.valueOf(e.getJSONObject("preferences").getString("switchView")))
                 assertEquals(name, prefs, got.preferences)
             } else {
@@ -51,6 +55,11 @@ class ShareTest {
         assertTrue(link.startsWith(SetupShare.LINK_PREFIX))
         assertEquals(setup, SetupShare.fromLink(link))
         assertEquals(SharedSetup(h, null), SetupShare.fromLink(SetupShare.toLink(SharedSetup(h, null))))
+        val prefsOnly = SharedSetup(null, Preferences(SwitchView.ALL))
+        assertEquals(prefsOnly, SetupShare.fromLink(SetupShare.toLink(prefsOnly)))
+        // A household with no devices is still a household (an empty list), not "left out".
+        val empty = SharedSetup(Household(emptyList(), emptyList(), emptyList()), null)
+        assertEquals(empty, SetupShare.fromLink(SetupShare.toLink(empty)))
     }
 
     @Test

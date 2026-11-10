@@ -25,8 +25,11 @@ data class Household(
  */
 data class Preferences(val switchView: SwitchView)
 
-/** What a setup link carries: the household, and the sender's preferences (absent in links from older apps). */
-data class SharedSetup(val household: Household, val preferences: Preferences?)
+/**
+ * What a setup link carries. The sender chooses the parts, so either may be absent (but not both); links from
+ * the first app version always carry the household and never preferences.
+ */
+data class SharedSetup(val household: Household?, val preferences: Preferences?)
 
 class ShareException(message: String) : Exception(message)
 
@@ -42,10 +45,14 @@ object SetupShare {
 
     fun toJson(s: SharedSetup): String = JSONObject()
         .put("v", VERSION)
-        .put("devices", JSONArray(DeviceJson.encode(s.household.devices)))
-        .put("outputOrder", JSONArray(s.household.outputOrder))
-        .put("roomOrder", JSONArray(s.household.roomOrder))
-        .apply { s.preferences?.let { put("prefs", JSONObject().put("switchView", it.switchView.name)) } }
+        .apply {
+            s.household?.let { h ->
+                put("devices", JSONArray(DeviceJson.encode(h.devices)))
+                put("outputOrder", JSONArray(h.outputOrder))
+                put("roomOrder", JSONArray(h.roomOrder))
+            }
+            s.preferences?.let { put("prefs", JSONObject().put("switchView", it.switchView.name)) }
+        }
         .toString()
 
     fun fromJson(text: String): SharedSetup {
@@ -57,14 +64,19 @@ object SetupShare {
         val v = o.optInt("v", 0)
         if (v < 1) throw ShareException("This is not a Home Hub setup.")
         if (v > VERSION) throw ShareException("This setup comes from a newer Home Hub. Update the app first.")
-        val devices = DeviceJson.decode(o.optJSONArray("devices")?.toString())
-        val household = Household(devices, strings(o.optJSONArray("outputOrder")), strings(o.optJSONArray("roomOrder")))
+        // The household part is present exactly when "devices" is (the sender may leave it out).
+        val household = if (!o.has("devices")) null else Household(
+            DeviceJson.decode(o.optJSONArray("devices")?.toString()),
+            strings(o.optJSONArray("outputOrder")),
+            strings(o.optJSONArray("roomOrder")),
+        )
         // Unknown or missing values fall back to the default, so a newer sender's extra preferences do no harm.
         val prefs = o.optJSONObject("prefs")?.let { p ->
             Preferences(
                 switchView = runCatching { SwitchView.valueOf(p.optString("switchView")) }.getOrDefault(SwitchView.ROOMS),
             )
         }
+        if (household == null && prefs == null) throw ShareException("This setup is empty.")
         return SharedSetup(household, prefs)
     }
 

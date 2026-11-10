@@ -1,5 +1,5 @@
 {
-  "description": "Setup links (docs/SHARING.md) -> the household settings and the sender's preferences (null when the link has none), or the error the user sees. Links were made with Python's zlib (raw deflate, base64url without padding), not with the app, so they prove the format works across implementations. Made-up devices and addresses.",
+  "description": "Setup links (docs/SHARING.md) -> the household part and the sender's preferences, each null when the sender left it out, or the error the user sees. Links were made with Python's zlib (raw deflate, base64url without padding), not with the app, so they prove the format works across implementations. Made-up devices and addresses.",
   "cases": [
     {
       "name": "Two devices, rooms, icons and order",
@@ -219,6 +219,23 @@
         "preferences": {
           "switchView": "ROOMS"
         }
+      }
+    },
+    {
+      "name": "Only preferences (sender left the household out)",
+      "input": "homehub://import?d=q1YqU7Iy1FEqKEpNK1ayqlYqLs8sSc4Iy0wtV7JScvTxUaqtBQA",
+      "expected": {
+        "household": null,
+        "preferences": {
+          "switchView": "ALL"
+        }
+      }
+    },
+    {
+      "name": "Neither part",
+      "input": "homehub://import?d=q1YqU7IyrAUA",
+      "expected": {
+        "error": "This setup is empty."
       }
     },
     {
