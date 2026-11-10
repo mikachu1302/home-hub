@@ -9,6 +9,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import io.github.mikachu1302.homehub.core.OutputIcon
 import io.github.mikachu1302.homehub.core.OutputPrefs
 import io.github.mikachu1302.homehub.core.SavedDevice
 import io.github.mikachu1302.homehub.core.Section
@@ -33,6 +34,7 @@ data class OutputUi(
     val name: String,
     /** Blank when no room is set. */
     val room: String,
+    val icon: OutputIcon,
     val status: SwitchStatus?,
     val config: SwitchConfig?,
     val reachable: Boolean,
@@ -89,6 +91,7 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
                     channel = ch,
                     name = d.nameOf(ch),
                     room = d.roomOf(ch),
+                    icon = d.iconOf(ch),
                     status = statuses[d.id]?.firstOrNull { it.channel == ch },
                     config = configs[d.id to ch],
                     reachable = unreachable[d.id] != true,
@@ -168,12 +171,12 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** Saves name and room on this phone and the timers on the device, then reads the timers back. */
-    fun save(o: OutputUi, name: String, room: String, config: SwitchConfig?) {
+    fun save(o: OutputUi, name: String, room: String, icon: OutputIcon, config: SwitchConfig?) {
         // A room typed with other capitals or spaces joins the existing one.
         val cleanRoom = room.trim().let { r -> rooms.firstOrNull { it.equals(r, ignoreCase = true) } ?: r }
         devices = devices.map { d ->
             if (d.id != o.device.id) d
-            else d.withPrefs(o.channel, OutputPrefs(name = name.trim(), room = cleanRoom))
+            else d.withPrefs(o.channel, OutputPrefs(name = name.trim(), room = cleanRoom, icon = icon.id))
         }
         store.devices = devices
         if (config == null || config == o.config) return

@@ -19,6 +19,7 @@ object Dimens {
     val rowPadding = 16.dp
     val corner = 16.dp
     val toggleWidth = 84.dp
+    val iconBox = 44.dp
     val buttonHeight = 48.dp
     val bigKey = 72.dp
     val menuEntryHeight = 112.dp

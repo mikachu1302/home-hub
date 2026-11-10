@@ -12,7 +12,7 @@ class ModelTest {
 
     @Test
     fun storageRoundTrip() {
-        val list = listOf(plug, twoPm.withPrefs(1, OutputPrefs("Lamp", "Living room")))
+        val list = listOf(plug, twoPm.withPrefs(1, OutputPrefs("Lamp", "Living room", "lamp")))
         assertEquals(list, DeviceJson.decode(DeviceJson.encode(list)))
     }
 
@@ -50,6 +50,13 @@ class ModelTest {
     fun roomsInUseAreUniqueIgnoringCase() {
         val devices = listOf(plug, twoPm.withPrefs(0, OutputPrefs("", "kitchen")).withPrefs(1, OutputPrefs("", "Aisle")))
         assertEquals(listOf("Aisle", "Kitchen"), roomsInUse(devices))
+    }
+
+    @Test
+    fun unknownIconFallsBackToGeneric() {
+        assertEquals(OutputIcon.LAMP, twoPm.withPrefs(0, OutputPrefs(icon = "lamp")).iconOf(0))
+        assertEquals(OutputIcon.GENERIC, twoPm.withPrefs(0, OutputPrefs(icon = "spaceship")).iconOf(0))
+        assertEquals(OutputIcon.GENERIC, twoPm.iconOf(1))
     }
 
     @Test

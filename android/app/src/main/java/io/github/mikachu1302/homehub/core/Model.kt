@@ -10,8 +10,28 @@ enum class Section { MENU, SWITCHES, AMP, TV, DEVICES }
 /** How the Switches page lists the outputs. */
 enum class SwitchView { ROOMS, ALL }
 
-/** The user's settings for one output (channel). Blank means "not set". */
-data class OutputPrefs(val name: String = "", val room: String = "")
+/** The user's settings for one output (channel). Blank means "not set"; [icon] is an [OutputIcon] id. */
+data class OutputPrefs(val name: String = "", val room: String = "", val icon: String = "")
+
+/**
+ * The icons an output can have, to tell outputs apart at a glance (colour alone never carries meaning).
+ * The [id] is what is stored and shared; unknown ids fall back to [GENERIC].
+ */
+enum class OutputIcon(val id: String, val label: String) {
+    GENERIC("generic", "Switch"),
+    CEILING("ceiling", "Ceiling light"),
+    LAMP("lamp", "Lamp"),
+    STRIP("strip", "LED strip"),
+    SOCKET("socket", "Socket"),
+    FAN("fan", "Fan"),
+    HEATER("heater", "Heater"),
+    MEDIA("media", "TV / media"),
+    ;
+
+    companion object {
+        fun fromId(id: String): OutputIcon = entries.firstOrNull { it.id == id } ?: GENERIC
+    }
+}
 
 /**
  * A Shelly the user has found. [address] is kept so the device also works through the VPN, where mDNS
@@ -32,6 +52,8 @@ data class SavedDevice(
             ?: if (channels > 1) "$app · ${channel + 1}" else app
 
     fun roomOf(channel: Int): String = prefsOf(channel).room.trim()
+
+    fun iconOf(channel: Int): OutputIcon = OutputIcon.fromId(prefsOf(channel).icon)
 
     fun withPrefs(channel: Int, prefs: OutputPrefs): SavedDevice = copy(outputs = outputs + (channel to prefs))
 }
@@ -103,7 +125,7 @@ object DeviceJson {
                     .put(
                         "outputs",
                         JSONObject().apply {
-                            d.outputs.forEach { (ch, p) -> put(ch.toString(), JSONObject().put("name", p.name).put("room", p.room)) }
+                            d.outputs.forEach { (ch, p) -> put(ch.toString(), JSONObject().put("name", p.name).put("room", p.room).put("icon", p.icon)) }
                         },
                     ),
             )
@@ -135,7 +157,7 @@ object DeviceJson {
             return outs.keys().asSequence().mapNotNull { k ->
                 val ch = k.toIntOrNull() ?: return@mapNotNull null
                 val p = outs.optJSONObject(k) ?: return@mapNotNull null
-                ch to OutputPrefs(p.optString("name"), p.optString("room"))
+                ch to OutputPrefs(p.optString("name"), p.optString("room"), p.optString("icon"))
             }.toMap()
         }
         // First version stored only names: {"names": {"0": "Lamp"}}.

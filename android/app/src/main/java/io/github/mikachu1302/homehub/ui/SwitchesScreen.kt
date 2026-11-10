@@ -3,13 +3,16 @@
 package io.github.mikachu1302.homehub.ui
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -25,6 +28,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
@@ -54,6 +58,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
 import io.github.mikachu1302.homehub.core.DELAY_PRESETS
 import io.github.mikachu1302.homehub.core.Section
+import io.github.mikachu1302.homehub.core.OutputIcon
 import io.github.mikachu1302.homehub.core.SwitchConfig
 import io.github.mikachu1302.homehub.core.SwitchView
 import io.github.mikachu1302.homehub.core.groupByRoom
@@ -148,7 +153,7 @@ fun SwitchesScreen(vm: HomeViewModel) {
         if (outputs.isNotEmpty()) {
             item {
                 Text(
-                    "Tap a name for name, room and timers.",
+                    "Tap a name for name, room, icon and timers.",
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp),
@@ -163,8 +168,8 @@ fun SwitchesScreen(vm: HomeViewModel) {
             o = current,
             rooms = vm.rooms,
             onDismiss = { editing = null },
-            onSave = { name, room, config ->
-                vm.save(current, name, room, config)
+            onSave = { name, room, icon, config ->
+                vm.save(current, name, room, icon, config)
                 editing = null
             },
         )
@@ -190,8 +195,23 @@ private fun OutputRow(o: OutputUi, showRoom: Boolean, onToggle: () -> Unit, onEd
         color = MaterialTheme.colorScheme.surface,
     ) {
         Row(Modifier.fillMaxWidth().padding(Dimens.rowPadding), verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                Modifier.size(Dimens.iconBox).background(
+                    if (on) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
+                    RoundedCornerShape(12.dp),
+                ),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    o.icon.vector(),
+                    contentDescription = null, // the name says what it is; the button says on/off
+                    tint = if (on) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(26.dp),
+                )
+            }
+            Spacer(Modifier.width(Dimens.gap))
             Column(
-                Modifier.weight(1f).clickable(onClickLabel = "Name, room and timers", onClick = onEdit),
+                Modifier.weight(1f).clickable(onClickLabel = "Name, room, icon and timers", onClick = onEdit),
                 verticalArrangement = Arrangement.spacedBy(3.dp),
             ) {
                 Text(o.name, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
@@ -222,11 +242,12 @@ private fun TimerSheet(
     o: OutputUi,
     rooms: List<String>,
     onDismiss: () -> Unit,
-    onSave: (String, String, SwitchConfig?) -> Unit,
+    onSave: (String, String, OutputIcon, SwitchConfig?) -> Unit,
 ) {
     val state = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var name by remember { mutableStateOf(o.name) }
     var room by remember { mutableStateOf(o.room) }
+    var icon by remember { mutableStateOf(o.icon) }
     val start = o.config
     var autoOff by remember { mutableStateOf(start?.autoOff ?: false) }
     var offDelay by remember { mutableDoubleStateOf(start?.autoOffDelay ?: 420.0) }
@@ -251,6 +272,7 @@ private fun TimerSheet(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             RoomPicker(room = room, rooms = rooms, onRoom = { room = it })
+            IconPicker(icon = icon, onIcon = { icon = it })
             HorizontalDivider()
             if (start == null) {
                 Text("Timers not loaded yet (device not reachable).", color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -269,7 +291,7 @@ private fun TimerSheet(
                 Button(
                     onClick = {
                         val config = start?.copy(autoOff = autoOff, autoOffDelay = offDelay, autoOn = autoOn, autoOnDelay = onDelay)
-                        onSave(name, room, config)
+                        onSave(name, room, icon, config)
                     },
                     modifier = Modifier.weight(1f).height(52.dp),
                 ) { Text(if (start == null) "Save name" else "Save") }
@@ -378,6 +400,23 @@ private fun RoomPicker(room: String, rooms: List<String>, onRoom: (String) -> Un
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
             )
+        }
+    }
+}
+
+@Composable
+private fun IconPicker(icon: OutputIcon, onIcon: (OutputIcon) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("Icon", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutputIcon.entries.forEach { i ->
+                FilterChip(
+                    selected = i == icon,
+                    onClick = { onIcon(i) },
+                    leadingIcon = { Icon(i.vector(), contentDescription = null, modifier = Modifier.size(20.dp)) },
+                    label = { Text(i.label) },
+                )
+            }
         }
     }
 }
