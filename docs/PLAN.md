@@ -64,6 +64,33 @@ Status as of 2026-11-10. Keep this file current; it is the single source of trut
 - **IR bridge** = M5Stack ATOM Lite (ESP32) running ESPHome. Its built-in LED sends the Onkyo codes. An M5Stack Unit IR on the Grove port (its receiver, learning only) lets us capture codes from the original remote.
 - App talks to every backend through one small interface per device kind (`turnOn`, `turnOff`, `press(button)`), so a new device type is one new module and nothing else changes.
 
+## App layout (decided 2026-11-10)
+
+From a wireframe round (variants: one long list, tabs, tiles + amp bar, menu first). Chosen: **menu first**.
+
+- **Start screen = menu** with one large entry per section (Switches, Amplifier, TV later), each with a short
+  status line ("1 of 6 on · 7.6 W"). More sections later are more entries. Device settings behind a gear icon.
+- **Each section opens full screen.** No tab bar: the TV remote needs all the vertical space.
+- **Back to the menu: the system back only, the same on every page** (Android back button / back gesture, iOS
+  left-edge swipe). No header, no back button, no extra row anywhere, so every page keeps its full height and width.
+  A one-time hint explains it the first time a section opens.
+  - Rejected: a header (costs height the TV remote needs), a menu icon in a page's own top row (no horizontal room on
+    the TV remote, and different per page), a pull-down from the top (notification shade / Control Center), a custom
+    sideways swipe (the remote's pager), a bottom grab handle (the user's swipe-up gesture starts there).
+  - **To evaluate in daily use:** the user is usually not a fan of gesture-only navigation. If it does not work out,
+    add the fallback: **a small back button at the top left, on every page** (same place and look everywhere). It sits
+    in each page's own top row rather than a separate header; on the TV page that means making room in the remote's
+    top row.
+  - Watch while building: the remote's pager swipe must not trigger the back gesture; on iOS the edge swipe can stop
+    working when the navigation bar is hidden (known SwiftUI pitfall, needs the usual fix).
+- **The app reopens on the last page used**, not always on the menu.
+- **Switches page:** one row per output (name, watts, timer), On/Off button on the right; tapping the name opens a
+  sheet with rename + auto-off/auto-on.
+- **Amp page:** will grow (more keys than power/volume/mute/inputs); built like the TV remote, with a pager if the
+  keys stop fitting.
+- Look and feel (colours, fonts, styles) comes after the first slice, before the iOS port. The first slice uses plain
+  Material 3 with every colour and size taken from one theme file.
+
 ## Hardware
 
 | Item | Status | Notes |
