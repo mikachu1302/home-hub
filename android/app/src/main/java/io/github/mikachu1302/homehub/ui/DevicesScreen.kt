@@ -106,8 +106,8 @@ fun DevicesScreen(vm: HomeViewModel) {
             ) { Text("Paste link") }
         }
         Text(
-            "Shares devices, names, rooms, icons and order. Scan the code with the other phone's camera, " +
-                "or copy the link and send it. Each phone keeps its own view settings.",
+            "Shares devices, names, rooms, icons and order, plus your preferences (the other phone chooses whether " +
+                "to use them). Scan the code with the other phone's camera, or copy the link and send it.",
             fontSize = 12.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

@@ -4,15 +4,19 @@ import android.content.Context
 import androidx.core.content.edit
 import io.github.mikachu1302.homehub.core.DeviceJson
 import io.github.mikachu1302.homehub.core.Household
+import io.github.mikachu1302.homehub.core.Preferences
 import io.github.mikachu1302.homehub.core.SavedDevice
 import io.github.mikachu1302.homehub.core.Section
 import io.github.mikachu1302.homehub.core.SwitchView
 import org.json.JSONArray
 
 /**
- * Every stored setting, each classified as household (shared with the other phone by QR code) or personal
- * (this phone only). Rules: docs/SHARING.md. A new key must go into exactly one of the two sets;
- * SettingKeysTest fails otherwise. A new household key must also go into [Household] and SetupShare.
+ * Every stored setting, classified (rules: docs/SHARING.md):
+ * - HOUSEHOLD: always shared by the setup link ([Household]);
+ * - PREFERENCES: shared too, the receiving phone chooses whether to take them over ([Preferences]);
+ * - STATE: app state of this phone, never shared (which page was open, hints already shown).
+ * A new key must go into exactly one set; ShareTest fails otherwise. Credentials are none of these: they live in
+ * the Keystore and are only shared behind an explicit "include passwords" switch.
  */
 object SettingKeys {
     const val DEVICES = "devices"
@@ -23,7 +27,8 @@ object SettingKeys {
     const val SWITCH_VIEW = "switch_view"
 
     val HOUSEHOLD = setOf(DEVICES, OUTPUT_ORDER, ROOM_ORDER)
-    val PERSONAL = setOf(LAST_SECTION, BACK_HINT, SWITCH_VIEW)
+    val PREFERENCES = setOf(SWITCH_VIEW)
+    val STATE = setOf(LAST_SECTION, BACK_HINT)
 }
 
 /** Device list and settings (SharedPreferences, no backup). No secrets here: credentials, once needed, go to the Keystore. */
@@ -54,17 +59,25 @@ class Store(context: Context) {
             roomOrder = value.roomOrder
         }
 
-    // --- personal (this phone only) ---
-
-    /** The page the app reopens on (the last section used; Devices counts as the menu). */
-    var lastSection: Section
-        get() = prefs.getString(SettingKeys.LAST_SECTION, null)?.let { runCatching { Section.valueOf(it) }.getOrNull() } ?: Section.MENU
-        set(value) = prefs.edit { putString(SettingKeys.LAST_SECTION, (if (value == Section.DEVICES) Section.MENU else value).name) }
+    // --- preferences (shared, taken over on request) ---
 
     /** How the Switches page lists outputs. */
     var switchView: SwitchView
         get() = prefs.getString(SettingKeys.SWITCH_VIEW, null)?.let { runCatching { SwitchView.valueOf(it) }.getOrNull() } ?: SwitchView.ROOMS
         set(value) = prefs.edit { putString(SettingKeys.SWITCH_VIEW, value.name) }
+
+    var preferences: Preferences
+        get() = Preferences(switchView)
+        set(value) {
+            switchView = value.switchView
+        }
+
+    // --- state (this phone only, never shared) ---
+
+    /** The page the app reopens on (the last section used; Devices counts as the menu). */
+    var lastSection: Section
+        get() = prefs.getString(SettingKeys.LAST_SECTION, null)?.let { runCatching { Section.valueOf(it) }.getOrNull() } ?: Section.MENU
+        set(value) = prefs.edit { putString(SettingKeys.LAST_SECTION, (if (value == Section.DEVICES) Section.MENU else value).name) }
 
     /** Whether the one-time "swipe back to the menu" hint was shown. */
     var backHintShown: Boolean

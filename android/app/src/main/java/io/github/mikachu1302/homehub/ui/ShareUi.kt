@@ -31,7 +31,15 @@ import com.google.zxing.WriterException
 import com.google.zxing.common.BitMatrix
 import com.google.zxing.qrcode.QRCodeWriter
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
-import io.github.mikachu1302.homehub.core.Household
+import io.github.mikachu1302.homehub.core.SharedSetup
+import androidx.compose.foundation.layout.Row
+import androidx.compose.material3.Checkbox
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.semantics.Role
 
 /** The QR code for [link], or null when it does not fit into one code. */
 private fun qrMatrix(link: String): BitMatrix? = try {
@@ -71,8 +79,8 @@ fun ShareDialog(link: String, onDismiss: () -> Unit) {
                     }
                 }
                 Text(
-                    "Scan it with the other phone's camera. It shares devices, names, rooms, icons and order. " +
-                        "Each phone keeps its own view settings. No passwords are included.",
+                    "Scan it with the other phone's camera. It shares devices, names, rooms, icons and order, " +
+                        "and your preferences (the other phone chooses whether to use them). No passwords are included.",
                     fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -87,10 +95,12 @@ fun ShareDialog(link: String, onDismiss: () -> Unit) {
 
 /** Asks before a received setup changes anything. */
 @Composable
-fun ImportDialog(shared: Household, localDeviceIds: Set<String>, onConfirm: () -> Unit, onCancel: () -> Unit) {
+fun ImportDialog(setup: SharedSetup, localDeviceIds: Set<String>, onConfirm: (takePreferences: Boolean) -> Unit, onCancel: () -> Unit) {
+    val shared = setup.household
     val outputs = shared.devices.sumOf { it.channels }
     val known = shared.devices.count { it.id in localDeviceIds }
     val new = shared.devices.size - known
+    var takePreferences by remember { mutableStateOf(true) }
     AlertDialog(
         onDismissRequest = onCancel,
         title = { Text("Import setup?") },
@@ -99,13 +109,22 @@ fun ImportDialog(shared: Household, localDeviceIds: Set<String>, onConfirm: () -
                 Text("${shared.devices.size} devices with $outputs outputs ($known already here, $new new).")
                 Text(
                     "For these devices the names, rooms, icons and order from the other phone replace the ones here. " +
-                        "Devices only on this phone stay. Your own view settings stay as they are.",
+                        "Devices only on this phone stay.",
                     fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                if (setup.preferences != null) {
+                    Row(
+                        Modifier.toggleable(value = takePreferences, role = Role.Checkbox, onValueChange = { takePreferences = it }),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Checkbox(checked = takePreferences, onCheckedChange = null)
+                        Text("Also use the other phone's preferences (list view)", fontSize = 14.sp)
+                    }
+                }
             }
         },
-        confirmButton = { TextButton(onClick = onConfirm) { Text("Import") } },
+        confirmButton = { TextButton(onClick = { onConfirm(takePreferences && setup.preferences != null) }) { Text("Import") } },
         dismissButton = { TextButton(onClick = onCancel) { Text("Cancel") } },
     )
 }

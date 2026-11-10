@@ -26,10 +26,11 @@ and which settings are shared.
   you verified on real devices and what you could not.
 - **Credentials** (a Shelly password later, the bridge's web login) are stored encrypted (Android Keystore /
   iOS Keychain), never in plain preferences, files or logs. Don't log request URLs with credentials.
-- **Every stored setting is household (shared by QR code) or personal (this phone only)** – decide when you add it and
-  follow `docs/SHARING.md` in the same change: classify the key in `SettingKeys`, and for a household setting extend
-  `Household`, `SetupShare`, the payload table and `spec/fixtures/setup-share.json`. `ShareTest` fails for an
-  unclassified key. Credentials never go into the share payload.
+- **Every stored setting is household, preference or state** (shared always / shared on request / never) – decide
+  when you add it and follow `docs/SHARING.md` in the same change: classify the key in `SettingKeys`; for household
+  and preference settings extend `Household`/`Preferences`, `SetupShare`, the payload table and
+  `spec/fixtures/setup-share.json`. `ShareTest` fails for an unclassified key. Credentials go into the payload only
+  behind the explicit "Include passwords" switch (SHARING.md).
 - **Show real state, not assumed state.** After a command, read the device back and show what it reports. The IR
   bridge is one-way (the amplifier reports nothing): the UI must never claim a power or volume state it cannot
   know, unless it is derived from something measurable (for example the Plug S MG3's power draw).

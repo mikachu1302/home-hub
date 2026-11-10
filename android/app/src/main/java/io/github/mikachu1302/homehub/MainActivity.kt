@@ -91,7 +91,7 @@ private fun App(vm: HomeViewModel) {
 
     vm.pendingImport?.let { shared ->
         ImportDialog(
-            shared = shared,
+            setup = shared,
             localDeviceIds = vm.devices.map { it.id }.toSet(),
             onConfirm = vm::confirmImport,
             onCancel = vm::cancelImport,

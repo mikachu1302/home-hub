@@ -117,6 +117,7 @@ From a wireframe round (variants: one long list, tabs, tiles + amp bar, menu fir
 - [ ] Fill the real codes into `atom-lite-ir.yaml` (amp and TV buttons), re-flash (over Wi-Fi now)
 - [ ] Test each button with `scripts/press.sh`
 - [ ] Decide on power handling (see "Open questions")
+- [ ] Store the bridge login in the Keystore and add "Include passwords" to sharing (docs/SHARING.md)
 
 ### Phase 2 – the app (Android first)
 - [x] Decide: new separate app, port `tv-remote` features later (decided 2026-11-10)
@@ -147,10 +148,12 @@ classification of every setting: `docs/SHARING.md`** (every future setting must 
 
 - [x] Devices page → "Show QR code" (with "Copy link") and "Paste link"; `homehub://import?d=…` opens the app from the
       camera; an import dialog says what changes and nothing is applied before "Import".
-- [x] Shared: devices with address, names, rooms, icons, output and room order. Personal: last page, list view, hints.
-      No credentials in the code.
+- [x] Shared: all settings (2026-11-10, the user's call). Household (devices with address, names, rooms, icons,
+      output and room order) always; preferences (list view, later theme …) when the receiver ticks the box. Never:
+      app state (last page, hints). No credentials yet.
+- [ ] "Include passwords" switch, built with the IR bridge (its login): rules in docs/SHARING.md.
 - [x] Import: devices matched by id take the shared version; local-only devices stay.
-- [x] `SettingKeys` classifies every stored key; `ShareTest` fails for an unclassified one.
+- [x] `SettingKeys` classifies every stored key (household / preference / state); `ShareTest` fails for an unclassified one.
 - [ ] Check on the second phone: scan with its camera app (does that camera open `homehub://` links?) and import.
 - It is a copy, not a sync (see SHARING.md).
 

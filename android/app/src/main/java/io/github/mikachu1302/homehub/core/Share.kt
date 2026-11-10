@@ -10,14 +10,23 @@ import java.util.zip.Deflater
 import java.util.zip.Inflater
 
 /**
- * Everything two phones of the same household share (docs/SHARING.md). Personal settings (last page, list view,
- * hints) are deliberately not here. A new household setting must be added here, to [SetupShare] and to the doc.
+ * Everything two phones of the same household always share (docs/SHARING.md). A new household setting must be
+ * added here, to [SetupShare] and to the doc.
  */
 data class Household(
     val devices: List<SavedDevice>,
     val outputOrder: List<String>,
     val roomOrder: List<String>,
 )
+
+/**
+ * How a person likes to use the app (docs/SHARING.md). Shared too, but the receiving phone chooses whether to take
+ * them over. A new preference must be added here, to [SetupShare] and to the doc.
+ */
+data class Preferences(val switchView: SwitchView)
+
+/** What a setup link carries: the household, and the sender's preferences (absent in links from older apps). */
+data class SharedSetup(val household: Household, val preferences: Preferences?)
 
 class ShareException(message: String) : Exception(message)
 
@@ -31,14 +40,15 @@ object SetupShare {
     const val LINK_PREFIX = "homehub://import?d="
     private const val MAX_PAYLOAD = 64 * 1024
 
-    fun toJson(h: Household): String = JSONObject()
+    fun toJson(s: SharedSetup): String = JSONObject()
         .put("v", VERSION)
-        .put("devices", JSONArray(DeviceJson.encode(h.devices)))
-        .put("outputOrder", JSONArray(h.outputOrder))
-        .put("roomOrder", JSONArray(h.roomOrder))
+        .put("devices", JSONArray(DeviceJson.encode(s.household.devices)))
+        .put("outputOrder", JSONArray(s.household.outputOrder))
+        .put("roomOrder", JSONArray(s.household.roomOrder))
+        .apply { s.preferences?.let { put("prefs", JSONObject().put("switchView", it.switchView.name)) } }
         .toString()
 
-    fun fromJson(text: String): Household {
+    fun fromJson(text: String): SharedSetup {
         val o = try {
             JSONObject(text)
         } catch (_: JSONException) {
@@ -48,13 +58,20 @@ object SetupShare {
         if (v < 1) throw ShareException("This is not a Home Hub setup.")
         if (v > VERSION) throw ShareException("This setup comes from a newer Home Hub. Update the app first.")
         val devices = DeviceJson.decode(o.optJSONArray("devices")?.toString())
-        return Household(devices, strings(o.optJSONArray("outputOrder")), strings(o.optJSONArray("roomOrder")))
+        val household = Household(devices, strings(o.optJSONArray("outputOrder")), strings(o.optJSONArray("roomOrder")))
+        // Unknown or missing values fall back to the default, so a newer sender's extra preferences do no harm.
+        val prefs = o.optJSONObject("prefs")?.let { p ->
+            Preferences(
+                switchView = runCatching { SwitchView.valueOf(p.optString("switchView")) }.getOrDefault(SwitchView.ROOMS),
+            )
+        }
+        return SharedSetup(household, prefs)
     }
 
-    fun toLink(h: Household): String = LINK_PREFIX + Base64.getUrlEncoder().withoutPadding().encodeToString(deflate(toJson(h).toByteArray()))
+    fun toLink(s: SharedSetup): String = LINK_PREFIX + Base64.getUrlEncoder().withoutPadding().encodeToString(deflate(toJson(s).toByteArray()))
 
     /** Accepts the full link (also with spaces or line breaks around it, as pasted from a messenger). */
-    fun fromLink(link: String): Household {
+    fun fromLink(link: String): SharedSetup {
         val trimmed = link.trim()
         if (!trimmed.startsWith(LINK_PREFIX)) throw ShareException("This is not a Home Hub setup link.")
         val data = trimmed.removePrefix(LINK_PREFIX).substringBefore('&')

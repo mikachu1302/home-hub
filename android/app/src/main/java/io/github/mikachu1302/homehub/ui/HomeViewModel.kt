@@ -15,6 +15,7 @@ import io.github.mikachu1302.homehub.core.OutputPrefs
 import io.github.mikachu1302.homehub.core.SavedDevice
 import io.github.mikachu1302.homehub.core.Section
 import io.github.mikachu1302.homehub.core.SetupShare
+import io.github.mikachu1302.homehub.core.SharedSetup
 import io.github.mikachu1302.homehub.core.ShareException
 import io.github.mikachu1302.homehub.core.SwitchConfig
 import io.github.mikachu1302.homehub.core.SwitchStatus
@@ -186,11 +187,11 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     // --- sharing the setup (docs/SHARING.md) ---
 
     /** A received setup waiting for the user's confirmation. */
-    var pendingImport by mutableStateOf<Household?>(null)
+    var pendingImport by mutableStateOf<SharedSetup?>(null)
         private set
 
-    /** The link for the QR code: the household settings of this phone. */
-    fun shareLink(): String = SetupShare.toLink(store.household)
+    /** The link for the QR code: the household settings and the preferences of this phone. */
+    fun shareLink(): String = SetupShare.toLink(SharedSetup(store.household, store.preferences))
 
     /** A link from the camera, a messenger or the clipboard; parsed now, applied only after confirmation. */
     fun offerImport(link: String) {
@@ -205,10 +206,17 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         pendingImport = null
     }
 
-    fun confirmImport() {
+    /** [takePreferences]: also use the sender's preferences (list view, later theme …). */
+    fun confirmImport(takePreferences: Boolean) {
         val shared = pendingImport ?: return
         pendingImport = null
-        val merged = SetupShare.merge(store.household, shared)
+        if (takePreferences) {
+            shared.preferences?.let { p ->
+                store.preferences = p
+                switchView = p.switchView
+            }
+        }
+        val merged = SetupShare.merge(store.household, shared.household)
         store.household = merged
         devices = merged.devices
         outputOrder = merged.outputOrder

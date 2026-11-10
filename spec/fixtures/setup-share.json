@@ -1,5 +1,5 @@
 {
-  "description": "Setup links (docs/SHARING.md) -> the household settings, or the error the user sees. Links were made with Python's zlib (raw deflate, base64url without padding), not with the app, so they prove the format works across implementations. Made-up devices and addresses.",
+  "description": "Setup links (docs/SHARING.md) -> the household settings and the sender's preferences (null when the link has none), or the error the user sees. Links were made with Python's zlib (raw deflate, base64url without padding), not with the app, so they prove the format works across implementations. Made-up devices and addresses.",
   "cases": [
     {
       "name": "Two devices, rooms, icons and order",
@@ -51,7 +51,8 @@
             "Aisle",
             "Living room"
           ]
-        }
+        },
+        "preferences": null
       }
     },
     {
@@ -104,6 +105,119 @@
             "Aisle",
             "Living room"
           ]
+        },
+        "preferences": null
+      }
+    },
+    {
+      "name": "With the sender's preferences",
+      "input": "homehub://import?d=hVFBTsMwEPwK2rNJYyepRG6IaxCVkLigHoK9bSw5iWUnqVDkv7MOlBZBy8Xy7M6sZ9YzTFByBgonLdFD-TqDVlCCb9CYd2tGL2x7W6dvXAqVYb4rgEGtlENPbOB3IkkTkfA0lq2l0iZqNo-E99hBKRjIpu46NH4B_TjYcaD7DGk8urpFUlV1a0ni-r6NSE-6298siIGWPQ0CEymBAT-TPQ9O_6fzCyeEwH5l45SNcyGyLM-LYr3-Oxv_kY1fyMYvZntAbcjWyea99gZPBuVXnyxuj0OenEJH33HF7Cru_PI_rfj1dgrbT0PfTx1tnW-RONbhbsnkD3qQzYvGQ8xQVRDCBw",
+      "expected": {
+        "household": {
+          "v": 1,
+          "devices": [
+            {
+              "id": "shellyplus2pm-a0b1c2d3e4f5",
+              "address": "192.0.2.10",
+              "app": "Plus2PM",
+              "gen": 2,
+              "channels": 2,
+              "outputs": {
+                "0": {
+                  "name": "Lamp",
+                  "room": "Living room",
+                  "icon": "lamp"
+                },
+                "1": {
+                  "name": "Strip",
+                  "room": "Living room",
+                  "icon": "strip"
+                }
+              }
+            },
+            {
+              "id": "shellyplus1pm-112233445566",
+              "address": "192.0.2.11",
+              "app": "Plus1PM",
+              "gen": 2,
+              "channels": 1,
+              "outputs": {
+                "0": {
+                  "name": "Ceiling",
+                  "room": "Aisle",
+                  "icon": "ceiling"
+                }
+              }
+            }
+          ],
+          "outputOrder": [
+            "shellyplus1pm-112233445566/0",
+            "shellyplus2pm-a0b1c2d3e4f5/1",
+            "shellyplus2pm-a0b1c2d3e4f5/0"
+          ],
+          "roomOrder": [
+            "Aisle",
+            "Living room"
+          ]
+        },
+        "preferences": {
+          "switchView": "ALL"
+        }
+      }
+    },
+    {
+      "name": "Preferences from a newer app: unknown values fall back, unknown keys are ignored",
+      "input": "homehub://import?d=hZHbSsQwEIZfRea6dpu0XbB3IosK7gEUvZBFajK7DaRtaNouUvruTqp7EO16EzKHf_J_kw5aSJgHElsl0ELy2oGSkIDNUOsPoxvLTX6ZBu9McBlitInBg1TKCi11A7vifuBznwUubQylVk6zmlO8xQIS7oHI0qJAbYegbGrT1HTvIHBHkeZIqoc0NySpyjJ3kWpVsb0YIg-UKGkQaNfSe8BOZI91pf7T2aGn73vvFxsjNsY4D8MoiuPp9G829oONjbCxUbYbVJpsHW1eK6vxaFB818niej9kWUms6DvOmJ24nY__04SdLwew_jJ0eGpv63SL1GMq3AxMdqdqkT0r3LnNL-ezp7v7xe3bYvZCojrDAbZAYur7Tw",
+      "expected": {
+        "household": {
+          "v": 1,
+          "devices": [
+            {
+              "id": "shellyplus2pm-a0b1c2d3e4f5",
+              "address": "192.0.2.10",
+              "app": "Plus2PM",
+              "gen": 2,
+              "channels": 2,
+              "outputs": {
+                "0": {
+                  "name": "Lamp",
+                  "room": "Living room",
+                  "icon": "lamp"
+                },
+                "1": {
+                  "name": "Strip",
+                  "room": "Living room",
+                  "icon": "strip"
+                }
+              }
+            },
+            {
+              "id": "shellyplus1pm-112233445566",
+              "address": "192.0.2.11",
+              "app": "Plus1PM",
+              "gen": 2,
+              "channels": 1,
+              "outputs": {
+                "0": {
+                  "name": "Ceiling",
+                  "room": "Aisle",
+                  "icon": "ceiling"
+                }
+              }
+            }
+          ],
+          "outputOrder": [
+            "shellyplus1pm-112233445566/0",
+            "shellyplus2pm-a0b1c2d3e4f5/1",
+            "shellyplus2pm-a0b1c2d3e4f5/0"
+          ],
+          "roomOrder": [
+            "Aisle",
+            "Living room"
+          ]
+        },
+        "preferences": {
+          "switchView": "ROOMS"
         }
       }
     },

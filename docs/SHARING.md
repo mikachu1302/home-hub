@@ -1,28 +1,41 @@
 # Sharing the setup between phones
 
-Two people in the same household use the app. They share the **household setup** (which devices exist and how they
-are named, grouped and ordered) but each phone keeps its **personal settings**. The setup moves from one phone to the
-other as a QR code (or the same link sent as text). This file is the contract; read it before adding any setting.
+Two people in the same household use the app. Sharing copies **all settings** from one phone to the other as a QR
+code (or the same link sent as text): the household setup always, the sender's preferences if the receiver wants
+them. Only the app's own state stays on each phone. This file is the contract; read it before adding any setting.
 
 ## The rule for every new setting
 
-**Every setting the app stores is either household or personal. Decide which when you add it.**
+**Every setting the app stores belongs to exactly one class. Decide which when you add it.**
 
-| Ask | Household (shared) | Personal (this phone only) |
-|---|---|---|
-| Would the other person want the same value? | yes: it describes the home | no: it is how *I* like to use the app |
-| Examples | device list and addresses, output names, rooms, icons, output and room order; later the IR bridge address, its button list | last page, list view ("By room"/"All"), hints already shown; later theme, haptics |
+| Class | What | Shared? | Examples |
+|---|---|---|---|
+| **Household** | describes the home | always | device list and addresses, output names, rooms, icons, output and room order; later the IR bridge address and its button list |
+| **Preference** | how a person likes to use the app | yes; the receiver ticks "Also use the other phone's preferences" (on by default) | list view ("By room"/"All"); later theme, colours, haptics |
+| **State** | what the app remembers about itself | never: copying it would only do odd things | the page that was open last, hints already shown |
+| **Credential** | passwords, keys | only with "Include passwords" (see below) | later: the IR bridge login, a Shelly password |
 
 Then, in the same change:
 
 1. Add the key to `SettingKeys` in `android/app/src/main/java/io/github/mikachu1302/homehub/data/Store.kt`, in
-   `HOUSEHOLD` or `PERSONAL`. `ShareTest.everySettingIsClassifiedExactlyOnce` fails until you do.
-2. **Household:** add it to `Household` and `SetupShare` (`core/Share.kt`), decide how it merges on import (below),
-   add it to the payload table here, extend `spec/fixtures/setup-share.json`, and adjust the expected set in
-   `everySettingIsClassifiedExactlyOnce`. If an older app could misread the new payload, bump `SetupShare.VERSION`.
-3. **Personal:** nothing else; it must never appear in the payload.
-4. **Secrets** (passwords, keys, the bridge login) are neither: they are never in the payload, whatever the class.
-   If sharing them is ever wanted, only behind an explicit "include passwords" switch the user turns on each time.
+   `HOUSEHOLD`, `PREFERENCES` or `STATE`. `ShareTest.everySettingIsClassifiedExactlyOnce` fails until you do.
+   (Credentials are not in `SettingKeys`: they live in the Keystore.)
+2. **Household or preference:** add it to `Household` or `Preferences` and to `SetupShare` (`core/Share.kt`), decide
+   how it merges on import (below), add it to the payload table here, extend `spec/fixtures/setup-share.json`, and
+   adjust the expected sets in `everySettingIsClassifiedExactlyOnce`. A preference must fall back to its default
+   when the value is missing or unknown (a link from an older or newer app). If an older app could misread the new
+   payload, bump `SetupShare.VERSION`.
+3. **State:** nothing else; it must never appear in the payload.
+
+## Credentials ("Include passwords")
+
+Needed once the IR bridge exists: the other phone needs the bridge login to send amp commands, and typing it on
+every phone is tedious. Rules, to be built together with the bridge (docs/PLAN.md):
+
+- Off by default. The sender switches "Include passwords" on for this one QR code; it is not remembered.
+- While it is on, the dialog says plainly that anyone who sees or photographs the code can read the passwords.
+- The receiver's import dialog lists which passwords come with it; they go straight into the Keystore.
+- The payload gets an optional `secrets` object; links without it import exactly as before.
 
 Adding a field that older apps simply ignore (a new optional key) does not need a version bump. Removing or changing
 the meaning of a field does.
@@ -40,7 +53,8 @@ characters; a code at level M holds 2331 bytes, so there is plenty of room.
 
 Receiving: the phone's camera opens the link, Android starts Home Hub (`intent-filter` for scheme `homehub`, host
 `import`), or the user pastes the link (Devices → "Paste link"). Surrounding spaces and line breaks are ignored.
-**Nothing changes before the user confirms** the import dialog.
+**Nothing changes before the user confirms** the import dialog. The iPhone camera opens links of registered schemes
+the same way, so the iOS app only has to register `homehub`.
 
 ## Payload (version 1)
 
@@ -61,7 +75,8 @@ Receiving: the phone's camera opens the link, Android starts Home Hub (`intent-f
     }
   ],
   "outputOrder": ["shellyplus2pm-a0b1c2d3e4f5/1", "shellyplus2pm-a0b1c2d3e4f5/0"],
-  "roomOrder": ["Living room"]
+  "roomOrder": ["Living room"],
+  "prefs": {"switchView": "ROOMS"}
 }
 ```
 
@@ -72,8 +87,10 @@ Receiving: the phone's camera opens the link, Android starts Home Hub (`intent-f
 | `outputs` | per channel: `name`, `room`, `icon` (an `OutputIcon` id; unknown ids show the generic icon) | part of the device |
 | `outputOrder` | output keys `<device id>/<channel>` | shared order first, local-only keys after it |
 | `roomOrder` | room names | shared order first, local rooms not in it after (compared ignoring case) |
+| `prefs` | the sender's preferences; optional (older links have none) | replace this phone's preferences only if the receiver ticks the box |
+| `prefs.switchView` | `ROOMS` or `ALL` | unknown value → `ROOMS` |
 
-Not in the payload: everything in `SettingKeys.PERSONAL`, and any credential.
+Not in the payload: everything in `SettingKeys.STATE`, and credentials unless "Include passwords" was on.
 
 ## It is a copy, not a sync
 
