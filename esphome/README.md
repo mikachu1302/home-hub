@@ -4,6 +4,8 @@ Firmware and setup for the IR bridge that sends the Onkyo A-9050 (and later TV) 
 
 ## 1. Plug in the receiver (learning only, no soldering)
 
+*Skip this until the Unit IR arrives: step 4 works with the ATOM Lite alone.*
+
 The ATOM Lite has an IR LED to send but no receiver, so we add the M5Stack **Unit IR (U002)**:
 plug its Grove cable into the ATOM Lite's Grove port. The Unit has an emitter and a receiver; the
 receiver is what captures codes from the original remotes.
@@ -34,7 +36,20 @@ cp secrets.example.yaml secrets.yaml   # then edit: Wi-Fi, passwords
 
 After the first flash, updates and logs go over Wi-Fi (`esphome run` lists the device).
 
-## 4. Capture the Onkyo codes
+## 4. Test the database codes (no receiver needed)
+
+The config already carries the Onkyo codes from a public IR database (docs/PROTOCOLS.md). Put the ATOM Lite within about
+1–2 m of the amp, LED pointed at its front, open `http://<bridge address>/` (login: `web_username` / `web_password`
+from `secrets.yaml`) and press:
+
+1. **Amp Volume Up / Down** – the volume knob should turn. If nothing happens, try **Test Alt Address Volume Up**.
+2. **Amp Mute**, then **Amp Power** (power is a toggle).
+3. Every **Test Input …** button – note which input the amp switches to.
+
+Then keep the input buttons that work, rename them to the real input (for example `Amp Input CD`), delete the other test
+buttons, and re-flash over Wi-Fi (`esphome run atom-lite-ir.yaml`, pick the network device).
+
+## 5. Capture codes from the remote (once the Unit IR is here)
 
 With `esphome logs atom-lite-ir.yaml` running, point the original remote at the Unit IR's
 receiver and press every button you want. Lines like `Received NEC: address=0x..., command=0x...`
@@ -42,7 +57,7 @@ are expected. Put the values into the matching buttons in `atom-lite-ir.yaml`, r
 entries, and re-flash. If the log shows a different protocol name, use the matching
 `remote_transmitter.transmit_*` action for those buttons (ESPHome has no Onkyo-specific one).
 
-## 5. Test
+## 6. Test from the shell
 
 ```sh
 export IR_HOST=ir-bridge.local IR_USER=<web_username> IR_PASS=<web_password>

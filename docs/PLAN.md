@@ -116,7 +116,11 @@ From a wireframe round (variants: one long list, tabs, tiles + amp bar, menu fir
 - [ ] Plug the Unit IR into the Grove port; find the receiver pin by trying (GPIO32 first, else GPIO26)
 - [ ] Install ESPHome, copy `secrets.example.yaml` to `secrets.yaml`, flash over USB
 - [ ] Reserve fixed IPs in the FRITZ!Box for the bridge and all five Shellys (`*.local` names do not work through WireGuard)
-- [ ] Capture every needed button from the original remote (watch the log)
+- [x] Candidate Onkyo codes from Flipper-IRDB put into the config (amp keys + test buttons for inputs); compiles
+- [x] ESPHome installed on the laptop (`~/.venvs/esphome`), `esphome/secrets.yaml` created with random passwords
+- [ ] User: join the `dialout` group (USB flashing), fill in the Wi-Fi lines in `secrets.yaml` (2.4 GHz network)
+- [ ] Flash the ATOM Lite over USB; test volume/mute/power and the test input buttons against the amp
+- [ ] Capture every needed button from the original remote (watch the log) once the Unit IR arrives
 - [ ] Also capture the Hisense remote (power off, inputs); if it prints nothing, it is probably Bluetooth/RF, so use a code database
 - [ ] Fill the real codes into `atom-lite-ir.yaml` (amp and TV buttons), re-flash (over Wi-Fi now)
 - [ ] Test each button with `scripts/press.sh`

@@ -7,11 +7,13 @@
 # tried first; if the log stays silent, swap GPIO32 and GPIO26 below.
 #
 # Flow:
-#   1. Flash this file as is. Open the log, point the ORIGINAL Onkyo remote at
-#      the IR receiver and press every button. The log prints the protocol,
-#      address and command of each one.
-#   2. Fill the codes into the buttons below (replace the TODO values).
-#   3. Re-flash (over Wi-Fi from now on). The buttons are now usable over HTTP.
+#   1. Flash this file. The amp buttons already carry codes from a public IR
+#      database (see below); press them in the bridge's web page and watch the amp.
+#   2. Press the "Test" buttons to find which code switches which input; keep the
+#      ones that work, rename them, delete the rest, re-flash (over Wi-Fi).
+#   3. Once the Unit IR is here: point the ORIGINAL remote at it and compare the
+#      log ("Received NEC: address=…, command=…") with the codes below; add any
+#      keys the database lacks (for example separate on/off).
 
 esphome:
   name: ir-bridge
@@ -51,8 +53,10 @@ web_server:
 remote_transmitter:
   pin: GPIO12
   carrier_duty_percent: 50%
+  non_blocking: true
 
 # --- IR in (Unit IR receiver on the Grove port) - for learning only -----------
+# Harmless while the Unit IR is not plugged in (the pull-up keeps the pin idle).
 remote_receiver:
   pin:
     number: GPIO32
@@ -63,37 +67,72 @@ remote_receiver:
   dump: all
   tolerance: 25%
 
-# --- Buttons: one per remote function ----------------------------------------
-# Onkyo remotes are expected to decode as NEC in the log ("Received NEC:
-# address=0x…, command=0x…"). Replace every TODO value. If the log shows another
-# protocol, use the matching remote_transmitter.transmit_* action instead.
+# --- Onkyo codes ---------------------------------------------------------------
+# From the Flipper-IRDB "Onkyo / Amplifier" set (NECext, address D2 6D), the classic
+# Onkyo amplifier code set; NOT yet confirmed on the A-9050 (docs/PROTOCOLS.md).
+# ESPHome sends address and command low byte first, so Flipper "D2 6D" is
+# 0x6DD2, and command c is (~c << 8) | c: Volume+ 0x02 -> 0xFD02.
+substitutions:
+  onkyo: "0x6DD2"
+  onkyo_alt: "0x6CD2"   # the second Onkyo amplifier address in the database
+
 # The HTTP path uses the button NAME (URL-encoded), as of ESPHome 2026.10:
 #   "Amp Volume Up" -> POST /button/Amp%20Volume%20Up/press
-# If you rename a button, the URL changes with it.
+# If you rename a button, the URL changes with it (and the app's key list too).
 button:
   - platform: template
-    name: "Amp Power"
+    name: "Amp Power"           # 0x04, a toggle on most Onkyo amps
     on_press:
-      - remote_transmitter.transmit_nec:
-          address: 0x0000   # TODO
-          command: 0x0000   # TODO
+      - remote_transmitter.transmit_nec: {address: "${onkyo}", command: 0xFB04}
   - platform: template
-    name: "Amp Volume Up"
+    name: "Amp Volume Up"       # 0x02
     on_press:
-      - remote_transmitter.transmit_nec:
-          address: 0x0000   # TODO
-          command: 0x0000   # TODO
+      - remote_transmitter.transmit_nec: {address: "${onkyo}", command: 0xFD02}
   - platform: template
-    name: "Amp Volume Down"
+    name: "Amp Volume Down"     # 0x03
     on_press:
-      - remote_transmitter.transmit_nec:
-          address: 0x0000   # TODO
-          command: 0x0000   # TODO
+      - remote_transmitter.transmit_nec: {address: "${onkyo}", command: 0xFC03}
   - platform: template
-    name: "Amp Mute"
+    name: "Amp Mute"            # 0x05
     on_press:
-      - remote_transmitter.transmit_nec:
-          address: 0x0000   # TODO
-          command: 0x0000   # TODO
-  # Inputs (CD, Tuner, Phono, Line...): add one block per input once we have seen
-  # which buttons your remote actually has.
+      - remote_transmitter.transmit_nec: {address: "${onkyo}", command: 0xFA05}
+
+  # --- Test buttons: find the inputs, then rename the ones that work and delete the rest.
+  # Names are the database's labels; your A-9050's inputs may be named differently.
+  - platform: template
+    name: "Test Input 06 AUX"
+    on_press:
+      - remote_transmitter.transmit_nec: {address: "${onkyo}", command: 0xF906}
+  - platform: template
+    name: "Test Input 07 Tape 2"
+    on_press:
+      - remote_transmitter.transmit_nec: {address: "${onkyo}", command: 0xF807}
+  - platform: template
+    name: "Test Input 08 Tape 1"
+    on_press:
+      - remote_transmitter.transmit_nec: {address: "${onkyo}", command: 0xF708}
+  - platform: template
+    name: "Test Input 09 CD"
+    on_press:
+      - remote_transmitter.transmit_nec: {address: "${onkyo}", command: 0xF609}
+  - platform: template
+    name: "Test Input 0A Phono"
+    on_press:
+      - remote_transmitter.transmit_nec: {address: "${onkyo}", command: 0xF50A}
+  - platform: template
+    name: "Test Input 0B Tuner"
+    on_press:
+      - remote_transmitter.transmit_nec: {address: "${onkyo}", command: 0xF40B}
+  - platform: template
+    name: "Test Input 0E Video 2"
+    on_press:
+      - remote_transmitter.transmit_nec: {address: "${onkyo}", command: 0xF10E}
+  - platform: template
+    name: "Test Input 0F Video 1"
+    on_press:
+      - remote_transmitter.transmit_nec: {address: "${onkyo}", command: 0xF00F}
+  # Only if Volume Up above does nothing: the same key on the other address.
+  - platform: template
+    name: "Test Alt Address Volume Up"
+    on_press:
+      - remote_transmitter.transmit_nec: {address: "${onkyo_alt}", command: 0xFD02}

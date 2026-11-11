@@ -72,9 +72,21 @@ Config and setup: `esphome/`. The bridge's host name is `ir-bridge.local` unless
 - One-way: the amplifier reports nothing, so the bridge cannot tell the app the volume, input or power state.
 
 ### Onkyo A-9050 codes
-Onkyo remotes use a NEC-style protocol (ESPHome is expected to decode it as `nec`; it has no Onkyo-specific protocol). The real address and command values
-are captured from the user's remote once the hardware is here and are kept in `esphome/atom-lite-ir.yaml`
-(they are not secrets, but they are not needed anywhere else).
+Candidate codes (2026-11-11) from the Flipper-IRDB "Onkyo / Amplifier" set: NEC extended, address bytes `D2 6D`, the classic
+Onkyo amplifier code set (an independent Onkyo/Integra project uses the same address). **Not yet confirmed on the A-9050**:
+test by pressing the bridge's buttons and watching the amp, later compare with the original remote through the Unit IR.
+
+| Key | Database command | ESPHome `transmit_nec` |
+|---|---|---|
+| Power (toggle) | 0x04 | address `0x6DD2`, command `0xFB04` |
+| Volume + | 0x02 | `0x6DD2`, `0xFD02` |
+| Volume − | 0x03 | `0x6DD2`, `0xFC03` |
+| Mute | 0x05 | `0x6DD2`, `0xFA05` |
+| Inputs (database labels) | AUX 0x06, Tape 2 0x07, Tape 1 0x08, CD 0x09, Phono 0x0A, Tuner 0x0B, Video 2 0x0E, Video 1 0x0F | same address, `(~c << 8) \| c` |
+
+ESPHome sends NEC low byte first: the database's first address byte (`D2`) is the low byte, so `0x6DD2`; the command word is
+the command plus its inverse in the high byte. A second Onkyo amplifier address in the database is `D2 6C` (`0x6CD2`); the
+config has one test button for it. The codes live in `esphome/atom-lite-ir.yaml`.
 
 ## Hisense TV (58A6FG, VIDAA)
 
