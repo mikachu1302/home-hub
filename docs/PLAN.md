@@ -125,7 +125,7 @@ From a wireframe round (variants: one long list, tabs, tiles + amp bar, menu fir
 - [ ] Fill the real codes into `atom-lite-ir.yaml` (amp and TV buttons), re-flash (over Wi-Fi now)
 - [ ] Test each button with `scripts/press.sh`
 - [ ] Decide on power handling (see "Open questions")
-- [ ] Store the bridge login in the Keystore and add "Include passwords" to sharing (docs/SHARING.md)
+- [x] Store the bridge login in the Keystore and add "Include passwords" to sharing (docs/SHARING.md)
 
 ### Phase 2 – the app (Android first)
 - [x] Decide: new separate app, port `tv-remote` features later (decided 2026-11-10)
@@ -135,8 +135,8 @@ From a wireframe round (variants: one long list, tabs, tiles + amp bar, menu fir
 - [x] Shelly client: discovery by probing the /24 (found all 5 devices on the real network; mDNS not added, not needed so far), list devices+channels, switch, show power
 - [x] Device list storage (names per output, stored on the phone only, no backup)
 - [x] Timers per output: show and edit auto-off and auto-on (on/off + delay), written to the device (`Switch.SetConfig`). Two outputs use auto-off today, one for a light after 7 min. Part of the minimum for the Shelly side.
-- [ ] IR client: buttons for the amp via HTTP to the bridge (after the bridge works)
-- [x] Menu + Switches + Settings pages (Settings holds devices, IR bridge, sharing); Amp and TV pages as placeholders (Amp keys disabled until the bridge works)
+- [x] IR client: amp keys via HTTP with digest login (`IrBridgeClient`); bridge address and login in Settings, "Check" without sending IR
+- [x] Menu + Switches + Settings pages (Settings holds devices, IR bridge, sharing); Amp page with power, mute and volume (inputs after capture); TV page as placeholder
 - [ ] Test through WireGuard from outside
 - [ ] First slice done = Shelly outputs (switch, power, timers) and amp buttons work on the real phone
 
@@ -203,7 +203,7 @@ only reaches them once the iOS app exists.
 - **IR is one-way.** No state feedback from the amp.
 - **Plain HTTP.** The bridge and Shelly traffic is unencrypted. Acceptable on the LAN and inside WireGuard. Do not expose either to the internet directly.
 - **Fixed addresses.** Use DHCP reservations in the FRITZ!Box (or mDNS names) so the app does not break when addresses change.
-- **ESPHome URL scheme and login.** In ESPHome 2026.10 the web server addresses entities by *name* (`/button/Amp%20Volume%20Up/press`). Renaming a button changes its URL. If ESPHome is upgraded much later, re-check this. The web login uses HTTP digest authentication (set explicitly), so the app needs a small digest implementation; Shelly authentication is digest too.
+- **ESPHome URL scheme and login.** In ESPHome 2026.10 the web server addresses entities by *name* (`/button/Amp%20Volume%20Up/press`). Renaming a button changes its URL. If ESPHome is upgraded much later, re-check this. The web login uses HTTP digest authentication (set explicitly), implemented in `core/Digest.kt` (MD5 and SHA-256, so Shelly authentication can use it too).
 - **Receiver pin.** IR LED GPIO12 and Grove GPIO26/GPIO32 are confirmed in M5Stack's docs; which of the two Grove pins carries the Unit IR's receiver is not, so it is found by trying. The Unit IR's signal voltage is also undocumented (expected fine, since M5Stack builds Units for these ports).
 - **mDNS does not cross the VPN.** Away from home, `*.local` names and discovery do not work. The app stores each device's address (found at home) and uses that; give every Shelly and the bridge a fixed address in the FRITZ!Box. Discovery is a home-only action.
 - **No private data in this repo.** No real IP addresses, Wi-Fi names, passwords or device IDs. Secrets live in `esphome/secrets.yaml` (git-ignored). `scripts/press.sh` reads credentials from environment variables.

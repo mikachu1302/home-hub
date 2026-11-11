@@ -76,16 +76,17 @@ Android layout, under `android/app/src/main/java/io/github/mikachu1302/homehub/`
 
 - `core/` – pure, JVM-tested against `spec/fixtures`: `Shelly.kt` (parsing, request bodies), `Model.kt` (saved devices,
   output settings, icons, rooms, ordering, formatting, merge, storage JSON), `Share.kt` (setup link, import rules),
-  `Lan.kt` (`isLanAddress`), `IrBridge.kt` (amp keys, placeholder)
-- `net/` – `LanHttp` (the one HTTP client), `ShellyClient`, `Discovery` (/24 probe, user action only)
-- `data/Store.kt` – `SettingKeys` (every key, classified household/personal) and `Store` (SharedPreferences; backup disabled)
+  `Lan.kt` (`isLanAddress`), `IrBridge.kt` (amp keys, bridge login), `Digest.kt` (HTTP digest login)
+- `net/` – `LanHttp` (the one HTTP client), `ShellyClient`, `IrBridgeClient` (digest login, key presses), `Discovery` (/24 probe, user action only)
+- `data/Store.kt` – `SettingKeys` (every key, classified household/preference/state) and `Store` (SharedPreferences; backup disabled);
+  `data/SecretStore.kt` – credentials, encrypted with a Keystore key
 - `ui/` – `HomeViewModel`, `Theme` (all colours/sizes), `Icons` (drawn output icons), `Reorderable` (drag list),
   `MenuScreen`, `SwitchesScreen` (+ output sheet, arrange mode), `SettingsScreen` (devices, IR bridge, sharing), `ShareUi` (QR and import dialogs),
-  `PlaceholderScreens` (Amp, TV)
+  `PlaceholderScreens` (Amp page, TV placeholder)
 - `MainActivity.kt` – permission gate, system back to the menu, page switch, `homehub://import` links
 
-Tests: `./gradlew test` runs `FixtureTest` and `ShareTest` (the cases in `spec/fixtures`), `ModelTest` and `LanHttpTest`
-(the HTTP client against a fake device on loopback).
+Tests: `./gradlew test` runs `FixtureTest` and `ShareTest` (the cases in `spec/fixtures`), `ModelTest`, `LanHttpTest`
+(the HTTP client against a fake device on loopback) and `IrBridgeClientTest` (a fake ESPHome bridge with digest login).
 
 ## Android and iOS
 

@@ -18,6 +18,11 @@ import kotlin.coroutines.resumeWithException
 /** Thrown when a host resolves to anything outside the local network. */
 class NotLanException(host: String) : IOException("$host is not on the local network")
 
+/** Status, headers (names in lower case) and body of an answer. */
+class HttpAnswer(val code: Int, val headers: Map<String, List<String>>, val body: String) {
+    fun header(name: String): String? = headers[name.lowercase()]?.firstOrNull()
+}
+
 /**
  * The only HTTP client in the app (AGENTS.md, hard rules): resolves the host, refuses it unless every
  * address it resolves to is on the LAN, then connects to that checked address itself (not the name again),
@@ -29,17 +34,27 @@ class NotLanException(host: String) : IOException("$host is not on the local net
  */
 class LanHttp(private val timeoutMs: Int = 3000, private val port: Int = 80) {
 
-    suspend fun get(host: String, path: String): String = request(host, path, "GET", null)
+    suspend fun get(host: String, path: String): String = checked(send(host, path, "GET", null))
 
-    suspend fun post(host: String, path: String, body: String): String = request(host, path, "POST", body)
+    suspend fun post(host: String, path: String, body: String): String = checked(send(host, path, "POST", body))
 
-    private suspend fun request(host: String, path: String, method: String, body: String?): String {
+    /**
+     * A request whose status the caller handles itself (the bridge login answers 401 with a challenge). A POST with
+     * an empty [body] still sends `Content-Length: 0`: the bridge refuses a POST without it (HTTP 411).
+     */
+    suspend fun send(host: String, path: String, method: String, body: String?, headers: Map<String, String> = emptyMap()): HttpAnswer {
         val deadline = timeoutMs * 2L + 500
-        return withTimeoutOrNull(deadline) { exchange(host, path, method, body) }
+        return withTimeoutOrNull(deadline) { exchange(host, path, method, body, headers) }
             ?: throw IOException("$host did not answer in time")
     }
 
-    private suspend fun exchange(host: String, path: String, method: String, body: String?): String {
+    // A JSON body is passed on even with an error status: Shelly reports RPC errors that way.
+    private fun checked(a: HttpAnswer): String {
+        if (a.code !in 200..299 && !a.body.trimStart().startsWith("{")) throw IOException("HTTP ${a.code}")
+        return a.body
+    }
+
+    private suspend fun exchange(host: String, path: String, method: String, body: String?, headers: Map<String, String>): HttpAnswer {
         val address = withContext(Dispatchers.IO) { resolveLan(host) }
         val literal = if (address is Inet6Address) "[${address.hostAddress?.substringBefore('%')}]" else address.hostAddress
         val conn = URL("http", literal, port, path).openConnection() as HttpURLConnection
@@ -48,6 +63,7 @@ class LanHttp(private val timeoutMs: Int = 3000, private val port: Int = 80) {
         conn.instanceFollowRedirects = false
         conn.requestMethod = method
         conn.useCaches = false
+        headers.forEach { (k, v) -> conn.setRequestProperty(k, v) }
         return suspendCancellableCoroutine { cont ->
             // Closing the connection is what unblocks a thread stuck in connect or read.
             cont.invokeOnCancellation { conn.disconnect() }
@@ -60,18 +76,19 @@ class LanHttp(private val timeoutMs: Int = 3000, private val port: Int = 80) {
         }
     }
 
-    private fun blockingExchange(conn: HttpURLConnection, body: String?): String {
+    private fun blockingExchange(conn: HttpURLConnection, body: String?): HttpAnswer {
         if (body != null) {
+            val bytes = body.toByteArray()
             conn.doOutput = true
-            conn.setRequestProperty("Content-Type", "application/json")
-            conn.outputStream.use { it.write(body.toByteArray()) }
+            conn.setFixedLengthStreamingMode(bytes.size)
+            if (bytes.isNotEmpty()) conn.setRequestProperty("Content-Type", "application/json")
+            conn.outputStream.use { it.write(bytes) }
         }
         val code = conn.responseCode
         val stream = if (code in 200..299) conn.inputStream else conn.errorStream
         val text = stream?.bufferedReader()?.use { it.readText() } ?: ""
-        // A JSON body is passed on even with an error status: Shelly reports RPC errors that way.
-        if (code !in 200..299 && !text.trimStart().startsWith("{")) throw IOException("HTTP $code")
-        return text
+        val headers = conn.headerFields.filterKeys { it != null }.mapKeys { it.key.lowercase() }
+        return HttpAnswer(code, headers, text)
     }
 
     companion object {

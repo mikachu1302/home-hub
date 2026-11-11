@@ -1,5 +1,5 @@
 {
-  "description": "Setup links (docs/SHARING.md) -> the household part and the sender's preferences, each null when the sender left it out, or the error the user sees. Links were made with Python's zlib (raw deflate, base64url without padding), not with the app, so they prove the format works across implementations. Made-up devices and addresses.",
+  "description": "Setup links (docs/SHARING.md) -> the household part, the sender's preferences and the passwords (\"secrets\", absent = none), each null when the sender left it out, or the error the user sees. Links were made with Python's zlib (raw deflate, base64url without padding), not with the app, so they prove the format works across implementations. Made-up devices and addresses.",
   "cases": [
     {
       "name": "Two devices, rooms, icons and order",
@@ -246,6 +246,81 @@
           "menuNames": {
             "SWITCHES": "Lights",
             "AMP": "Hi-Fi"
+          }
+        }
+      }
+    },
+    {
+      "name": "Household with the IR bridge address and its login (\"Include passwords\" on)",
+      "input": "homehub://import?d=hVFBboMwEPxKtWdDsIFI5db22qqReqxycPA2WDJg2UBVIf-9NmkCVUtysTzrmd2Z9QgDFJSAwEGWaKF4H0EKKMBWqNSXVr1luo54cqAlEylmHzkQ4EIYtJ4N9J7FScximoSy1r60C5rdi8dHbKBgBMqKNw0qO4G273Tf-fsISTgaXqNXPfNae4lp2zogOcjmeDchArJsfSNQgeII0IXsrTPyls5OHOcc-ZON-myUMpamWZbn2-3_2eivbHQlG13N9oRSeVuzzQdpFc4Gy593b3F_bvJqBBr_HVfMbsLO1_9pQ68_J7A_GbqMOttabtFzpHk0UhxxsRI2jcbS4CntTBmht6EbHKZCNCECmlv72Zqw_abtoq7CyCBX0aXunPsG",
+      "expected": {
+        "household": {
+          "v": 1,
+          "devices": [
+            {
+              "id": "shellyplus2pm-a0b1c2d3e4f5",
+              "address": "192.0.2.10",
+              "app": "Plus2PM",
+              "gen": 2,
+              "channels": 2,
+              "outputs": {
+                "0": {
+                  "name": "Lamp",
+                  "room": "Living room",
+                  "icon": "lamp"
+                },
+                "1": {
+                  "name": "Strip",
+                  "room": "Living room",
+                  "icon": "strip"
+                }
+              }
+            },
+            {
+              "id": "shellyplus1pm-112233445566",
+              "address": "192.0.2.11",
+              "app": "Plus1PM",
+              "gen": 2,
+              "channels": 1,
+              "outputs": {
+                "0": {
+                  "name": "Ceiling",
+                  "room": "Aisle",
+                  "icon": "ceiling"
+                }
+              }
+            }
+          ],
+          "outputOrder": [
+            "shellyplus1pm-112233445566/0",
+            "shellyplus2pm-a0b1c2d3e4f5/1",
+            "shellyplus2pm-a0b1c2d3e4f5/0"
+          ],
+          "roomOrder": [
+            "Aisle",
+            "Living room"
+          ],
+          "irBridge": "192.0.2.20"
+        },
+        "preferences": null,
+        "secrets": {
+          "irBridge": {
+            "user": "bridge-user",
+            "password": "not-the-real-password"
+          }
+        }
+      }
+    },
+    {
+      "name": "Passwords only",
+      "input": "homehub://import?d=q1YqU7Iy1FEqTk0uSi0pVrKqVsoscirKTElPBbFLi1OLlKyUksACumCejlJBYnFxeX5RClAiL79EtyQjVbcoNTFHFy5eW1sLAA",
+      "expected": {
+        "household": null,
+        "preferences": null,
+        "secrets": {
+          "irBridge": {
+            "user": "bridge-user",
+            "password": "not-the-real-password"
           }
         }
       }

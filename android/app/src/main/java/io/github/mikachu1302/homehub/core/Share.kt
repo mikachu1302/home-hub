@@ -17,6 +17,8 @@ data class Household(
     val devices: List<SavedDevice>,
     val outputOrder: List<String>,
     val roomOrder: List<String>,
+    /** The IR bridge's address; blank = not set up. */
+    val irBridge: String = "",
 )
 
 /**
@@ -35,7 +37,10 @@ data class Preferences(
  * What a setup link carries. The sender chooses the parts, so either may be absent (but not both); links from
  * the first app version always carry the household and never preferences.
  */
-data class SharedSetup(val household: Household?, val preferences: Preferences?)
+data class SharedSetup(val household: Household?, val preferences: Preferences?, val secrets: Secrets? = null)
+
+/** Passwords, only in a link when the sender switched on "Include passwords" for it (docs/SHARING.md). */
+data class Secrets(val irBridge: BridgeLogin? = null)
 
 class ShareException(message: String) : Exception(message)
 
@@ -56,6 +61,7 @@ object SetupShare {
                 put("devices", JSONArray(DeviceJson.encode(h.devices)))
                 put("outputOrder", JSONArray(h.outputOrder))
                 put("roomOrder", JSONArray(h.roomOrder))
+                if (h.irBridge.isNotBlank()) put("irBridge", h.irBridge)
             }
             s.preferences?.let { p ->
                 put(
@@ -65,6 +71,11 @@ object SetupShare {
                         .put("menuOrder", JSONArray(p.menuOrder))
                         .put("menuNames", JSONObject(p.menuNames)),
                 )
+            }
+            s.secrets?.let { x ->
+                put("secrets", JSONObject().apply {
+                    x.irBridge?.let { put("irBridge", JSONObject().put("user", it.user).put("password", it.password)) }
+                })
             }
         }
         .toString()
@@ -83,6 +94,7 @@ object SetupShare {
             DeviceJson.decode(o.optJSONArray("devices")?.toString()),
             strings(o.optJSONArray("outputOrder")),
             strings(o.optJSONArray("roomOrder")),
+            o.optString("irBridge").trim(),
         )
         // Unknown or missing values fall back to the default, so a newer sender's extra preferences do no harm.
         val prefs = o.optJSONObject("prefs")?.let { p ->
@@ -92,8 +104,15 @@ object SetupShare {
                 menuNames = p.optJSONObject("menuNames")?.let { n -> n.keys().asSequence().associateWith { n.optString(it) } } ?: emptyMap(),
             )
         }
-        if (household == null && prefs == null) throw ShareException("This setup is empty.")
-        return SharedSetup(household, prefs)
+        val secrets = o.optJSONObject("secrets")?.let { x ->
+            Secrets(
+                irBridge = x.optJSONObject("irBridge")
+                    ?.let { BridgeLogin(it.optString("user"), it.optString("password")) }
+                    ?.takeIf { it.user.isNotEmpty() },
+            )
+        }?.takeIf { it.irBridge != null }
+        if (household == null && prefs == null && secrets == null) throw ShareException("This setup is empty.")
+        return SharedSetup(household, prefs, secrets)
     }
 
     fun toLink(s: SharedSetup): String = LINK_PREFIX + Base64.getUrlEncoder().withoutPadding().encodeToString(deflate(toJson(s).toByteArray()))
@@ -114,6 +133,7 @@ object SetupShare {
     /**
      * Applies a received setup: devices are matched by id and take the shared version (address, outputs with name,
      * room, icon); devices only on this phone stay. The shared orders come first, local-only entries keep theirs after.
+ * A shared bridge address replaces the local one; none shared keeps it.
      */
     fun merge(local: Household, shared: Household): Household {
         val sharedIds = shared.devices.map { it.id }.toSet()
@@ -123,6 +143,7 @@ object SetupShare {
             devices = devices,
             outputOrder = shared.outputOrder + local.outputOrder.filter { it !in shared.outputOrder },
             roomOrder = shared.roomOrder + local.roomOrder.filter { r -> shared.roomOrder.none { it.equals(r, ignoreCase = true) } },
+            irBridge = shared.irBridge.ifBlank { local.irBridge },
         )
     }
 

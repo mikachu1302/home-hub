@@ -42,6 +42,9 @@ class ShareTest {
                     )
                 }
                 assertEquals(name, prefs, got.preferences)
+                val secrets = e.optJSONObject("secrets")?.optJSONObject("irBridge")
+                    ?.let { Secrets(BridgeLogin(it.getString("user"), it.getString("password"))) }
+                assertEquals(name, secrets, got.secrets)
             } else {
                 try {
                     SetupShare.fromLink(c.getString("input"))
@@ -66,6 +69,8 @@ class ShareTest {
         // A household with no devices is still a household (an empty list), not "left out".
         val empty = SharedSetup(Household(emptyList(), emptyList(), emptyList()), null)
         assertEquals(empty, SetupShare.fromLink(SetupShare.toLink(empty)))
+        val withBridge = SharedSetup(h.copy(irBridge = "192.0.2.20"), null, Secrets(BridgeLogin("bridge-user", "made-up")))
+        assertEquals(withBridge, SetupShare.fromLink(SetupShare.toLink(withBridge)))
     }
 
     @Test
@@ -97,6 +102,9 @@ class ShareTest {
         assertEquals(listOf(outputKey(ceiling.id, 0), outputKey(localOnly.id, 0)), merged.outputOrder)
         // "Kitchen" is already in the shared order (other capitals), so it is not added twice.
         assertEquals(listOf("aisle", "kitchen"), merged.roomOrder)
+        // A shared bridge address replaces the local one; none shared keeps it.
+        assertEquals("192.0.2.21", SetupShare.merge(local.copy(irBridge = "192.0.2.20"), shared.copy(irBridge = "192.0.2.21")).irBridge)
+        assertEquals("192.0.2.20", SetupShare.merge(local.copy(irBridge = "192.0.2.20"), shared).irBridge)
     }
 
     /**
@@ -118,7 +126,7 @@ class ShareTest {
         val unclassified = keys - sets.flatten().toSet()
         assertTrue("not classified (see docs/SHARING.md): $unclassified", unclassified.isEmpty())
         // What SetupShare carries today; change together with Household/Preferences, SetupShare and docs/SHARING.md.
-        assertEquals(setOf(SettingKeys.DEVICES, SettingKeys.OUTPUT_ORDER, SettingKeys.ROOM_ORDER), SettingKeys.HOUSEHOLD)
+        assertEquals(setOf(SettingKeys.DEVICES, SettingKeys.OUTPUT_ORDER, SettingKeys.ROOM_ORDER, SettingKeys.IR_BRIDGE), SettingKeys.HOUSEHOLD)
         assertEquals(setOf(SettingKeys.SWITCH_VIEW, SettingKeys.MENU_ORDER, SettingKeys.MENU_NAMES), SettingKeys.PREFERENCES)
     }
 }

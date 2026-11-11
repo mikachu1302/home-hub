@@ -34,6 +34,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import io.github.mikachu1302.homehub.core.Section
 import io.github.mikachu1302.homehub.core.defaultTitle
 
@@ -43,6 +46,7 @@ fun SettingsScreen(vm: HomeViewModel) {
     val context = LocalContext.current
     var sharing by remember { mutableStateOf(false) }
     var renaming by remember { mutableStateOf<Section?>(null) }
+    var editingBridge by remember { mutableStateOf(false) }
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState())
             .padding(horizontal = Dimens.screenPadding, vertical = Dimens.topPadding),
@@ -99,14 +103,32 @@ fun SettingsScreen(vm: HomeViewModel) {
             }
         }
 
-        Text(
-            "IR bridge",
-            fontSize = 13.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = 8.dp),
-        )
-        Notice("Not set up yet. It is added here once the ATOM Lite runs (esphome/README.md).")
+        Heading("IR bridge")
+        if (vm.irBridge.isBlank()) {
+            Text(
+                "Sends the amplifier's remote codes. Enter its address and the login from its firmware.",
+                fontSize = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        } else {
+            Text(
+                vm.irBridge + " · " + (vm.bridgeLogin?.let { "login: ${it.user}" } ?: "no login"),
+                fontSize = 14.sp,
+            )
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(Dimens.gap)) {
+            OutlinedButton(onClick = { editingBridge = true }, modifier = Modifier.weight(1f).height(52.dp)) {
+                Text(if (vm.irBridge.isBlank()) "Set up" else "Change")
+            }
+            if (vm.irBridge.isNotBlank()) {
+                OutlinedButton(
+                    onClick = vm::checkBridge,
+                    enabled = !vm.checkingBridge,
+                    modifier = Modifier.weight(1f).height(52.dp),
+                ) { Text(if (vm.checkingBridge) "Checking…" else "Check") }
+            }
+        }
+        vm.bridgeCheck?.let { Text(it, fontSize = 13.sp) }
 
         Heading("Menu")
         ReorderableList(
@@ -134,7 +156,7 @@ fun SettingsScreen(vm: HomeViewModel) {
         Row(horizontalArrangement = Arrangement.spacedBy(Dimens.gap)) {
             Button(
                 onClick = { sharing = true },
-                enabled = vm.devices.isNotEmpty(),
+                enabled = vm.devices.isNotEmpty() || vm.irBridge.isNotBlank(),
                 modifier = Modifier.weight(1f).height(52.dp),
             ) { Text("Show QR code") }
             OutlinedButton(
@@ -147,7 +169,8 @@ fun SettingsScreen(vm: HomeViewModel) {
             ) { Text("Paste link") }
         }
         Text(
-            "Choose what to share: devices, names, rooms, icons and order, and your preferences. Scan the code with " +
+            "Choose what to share: devices, names, rooms, icons, order and the bridge address, your preferences, and " +
+                "if you want the bridge login. Scan the code with " +
                 "the other phone's camera, or copy the link and send it.",
             fontSize = 12.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -161,7 +184,16 @@ fun SettingsScreen(vm: HomeViewModel) {
             onDismiss = { renaming = null },
         )
     }
-    if (sharing) ShareDialog(linkFor = vm::shareLink, onDismiss = { sharing = false })
+    if (sharing) ShareDialog(linkFor = vm::shareLink, hasPasswords = vm.bridgeLogin != null, onDismiss = { sharing = false })
+    if (editingBridge) {
+        BridgeDialog(
+            address = vm.irBridge,
+            user = vm.bridgeLogin?.user ?: "",
+            password = vm.bridgeLogin?.password ?: "",
+            onSave = { a, u, p -> vm.saveBridge(a, u, p); editingBridge = false },
+            onDismiss = { editingBridge = false },
+        )
+    }
 }
 
 @Composable
@@ -192,5 +224,52 @@ private fun RenameDialog(current: String, default: String, onSave: (String) -> U
                 TextButton(onClick = onDismiss) { Text("Cancel") }
             }
         },
+    )
+}
+
+/** Address and login of the IR bridge. The password is hidden; the login goes to the Keystore. */
+@Composable
+private fun BridgeDialog(
+    address: String,
+    user: String,
+    password: String,
+    onSave: (String, String, String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var a by remember { mutableStateOf(address) }
+    var u by remember { mutableStateOf(user) }
+    var p by remember { mutableStateOf(password) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("IR bridge") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = a,
+                    onValueChange = { a = it },
+                    label = { Text("Address") },
+                    placeholder = { Text("192.168.x.x") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
+                )
+                OutlinedTextField(value = u, onValueChange = { u = it }, label = { Text("User") }, singleLine = true)
+                OutlinedTextField(
+                    value = p,
+                    onValueChange = { p = it },
+                    label = { Text("Password") },
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                )
+                Text(
+                    "The address the router gave the bridge (fixed). User and password are web_username and " +
+                        "web_password from its firmware settings.",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        },
+        confirmButton = { TextButton(onClick = { onSave(a, u, p) }) { Text("Save") } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
 }

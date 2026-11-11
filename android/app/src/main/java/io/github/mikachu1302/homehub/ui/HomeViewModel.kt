@@ -9,7 +9,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import io.github.mikachu1302.homehub.core.Household
+import io.github.mikachu1302.homehub.core.AmpKeys
+import io.github.mikachu1302.homehub.core.BridgeLogin
+import io.github.mikachu1302.homehub.core.IrKey
+import io.github.mikachu1302.homehub.core.Secrets
 import io.github.mikachu1302.homehub.core.OutputIcon
 import io.github.mikachu1302.homehub.core.OutputPrefs
 import io.github.mikachu1302.homehub.core.SavedDevice
@@ -29,7 +32,10 @@ import io.github.mikachu1302.homehub.core.moved
 import io.github.mikachu1302.homehub.core.outputKey
 import io.github.mikachu1302.homehub.core.sortByOrder
 import io.github.mikachu1302.homehub.core.roomsInUse
+import io.github.mikachu1302.homehub.data.SecretStore
 import io.github.mikachu1302.homehub.data.Store
+import io.github.mikachu1302.homehub.net.BridgeException
+import io.github.mikachu1302.homehub.net.IrBridgeClient
 import io.github.mikachu1302.homehub.net.ShellyClient
 import io.github.mikachu1302.homehub.net.findShellys
 import kotlinx.coroutines.CancellationException
@@ -57,6 +63,8 @@ data class OutputUi(
 class HomeViewModel(app: Application) : AndroidViewModel(app) {
     private val store = Store(app)
     private val shelly = ShellyClient()
+    private val secrets = SecretStore(app)
+    private val bridge = IrBridgeClient()
 
     var devices by mutableStateOf(store.devices)
         private set
@@ -71,6 +79,16 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     var menuOrder by mutableStateOf(store.menuOrder)
         private set
     var menuNames by mutableStateOf(store.menuNames)
+        private set
+    /** The IR bridge's address (blank = not set up) and its login (from the Keystore). */
+    var irBridge by mutableStateOf(store.irBridge)
+        private set
+    var bridgeLogin by mutableStateOf(secrets.bridgeLogin)
+        private set
+    /** The result of "Check" in Settings; null = not checked since the last change. */
+    var bridgeCheck by mutableStateOf<String?>(null)
+        private set
+    var checkingBridge by mutableStateOf(false)
         private set
     private var outputOrder by mutableStateOf(store.outputOrder)
     private var roomOrder by mutableStateOf(store.roomOrder)
@@ -215,10 +233,11 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         private set
 
     /** The link for the QR code with the parts the sender ticked; null when nothing is ticked. */
-    fun shareLink(household: Boolean, preferences: Boolean): String? {
-        if (!household && !preferences) return null
+    fun shareLink(household: Boolean, preferences: Boolean, passwords: Boolean): String? {
+        val secret = if (passwords) bridgeLogin?.let { Secrets(irBridge = it) } else null
+        if (!household && !preferences && secret == null) return null
         return SetupShare.toLink(
-            SharedSetup(if (household) store.household else null, if (preferences) store.preferences else null),
+            SharedSetup(if (household) store.household else null, if (preferences) store.preferences else null, secret),
         )
     }
 
@@ -247,12 +266,19 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
                 menuNames = p.menuNames
             }
         }
+        shared.secrets?.irBridge?.let { login ->
+            secrets.bridgeLogin = login
+            bridgeLogin = login
+            bridgeCheck = null
+        }
         shared.household?.let { h ->
             val merged = SetupShare.merge(store.household, h)
             store.household = merged
             devices = merged.devices
             outputOrder = merged.outputOrder
             roomOrder = merged.roomOrder
+            if (merged.irBridge != irBridge) bridgeCheck = null
+            irBridge = merged.irBridge
             viewModelScope.launch { refresh(withConfig = true) }
         }
         message = "Setup imported"
@@ -303,6 +329,54 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
                 throw e
             } catch (e: Exception) {
                 message = "Timer not saved: ${e.message ?: "device not reachable"}"
+            }
+        }
+    }
+
+    // --- IR bridge (docs/PROTOCOLS.md) ---
+
+    /** Saves address and login; a blank user removes the login. */
+    fun saveBridge(address: String, user: String, password: String) {
+        irBridge = address.trim()
+        store.irBridge = irBridge
+        bridgeLogin = if (user.isBlank()) null else BridgeLogin(user.trim(), password)
+        secrets.bridgeLogin = bridgeLogin
+        bridgeCheck = null
+        if (irBridge.isNotEmpty()) checkBridge()
+    }
+
+    /** Reaches the bridge with the login and looks up one key; sends nothing to the amp. */
+    fun checkBridge() {
+        if (checkingBridge || irBridge.isBlank()) return
+        checkingBridge = true
+        viewModelScope.launch {
+            bridgeCheck = try {
+                bridge.check(irBridge, bridgeLogin, AmpKeys.volumeUp)
+                "Connected. The login works."
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: BridgeException) {
+                e.message
+            } catch (e: Exception) {
+                "Not reachable: ${e.message ?: "no answer"}"
+            } finally {
+                checkingBridge = false
+            }
+        }
+    }
+
+    /** Sends one IR key. The amp reports nothing back, so a success shows nothing; a failure says why. */
+    fun press(key: IrKey) {
+        if (irBridge.isBlank()) return
+        viewModelScope.launch {
+            try {
+                bridge.press(irBridge, bridgeLogin, key)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: BridgeException) {
+                message = e.message
+            } catch (_: Exception) {
+                message = "Could not reach the IR bridge"
             }
         }
     }

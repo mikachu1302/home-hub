@@ -112,4 +112,37 @@ class FixtureTest {
         dir.listFiles { f -> f.extension == "json" }!!.forEach { JSONObject(it.readText()) }
         JSONArray("[]")
     }
+
+    @Test
+    fun digestChallenges() {
+        val dir = System.getProperty("fixtures") ?: error("fixtures system property not set")
+        val all = JSONObject(File(dir, "digest-auth.json").readText())
+        val challenges = all.getJSONArray("challenges")
+        for (i in 0 until challenges.length()) {
+            val c = challenges.getJSONObject(i)
+            val name = c.getString("name")
+            val got = Digest.parseChallenge(c.getString("input"))
+            if (c.isNull("expected")) {
+                assertNull(name, got)
+            } else {
+                val e = c.getJSONObject("expected")
+                val want = DigestChallenge(
+                    e.getString("realm"),
+                    e.getString("nonce"),
+                    if (e.isNull("qop")) null else e.getString("qop"),
+                    if (e.isNull("opaque")) null else e.getString("opaque"),
+                    e.getString("algorithm"),
+                )
+                assertEquals(name, want, got)
+            }
+        }
+        val responses = all.getJSONArray("responses")
+        for (i in 0 until responses.length()) {
+            val c = responses.getJSONObject(i)
+            fun opt(k: String) = if (c.isNull(k)) null else c.getString(k)
+            val ch = DigestChallenge(c.getString("realm"), c.getString("nonce"), opt("qop"), null, c.getString("algorithm"))
+            val got = Digest.response(ch, c.getString("user"), c.getString("password"), c.getString("method"), c.getString("uri"), opt("nc"), opt("cnonce"))
+            assertEquals(c.getString("name"), c.getString("expected"), got)
+        }
+    }
 }

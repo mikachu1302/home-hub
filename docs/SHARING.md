@@ -2,7 +2,7 @@
 
 Two people in the same household use the app. Sharing copies settings from one phone to the other as a QR code (or
 the same link sent as text). **Both sides choose:** the sender ticks which parts go into the code (household,
-preferences, later passwords), and the receiver confirms, with a separate choice for the preferences. Only the app's
+preferences, passwords), and the receiver confirms, with a separate choice for the preferences. Only the app's
 own state never travels. This file is the contract; read it before adding any setting.
 
 ## The rule for every new setting
@@ -11,10 +11,10 @@ own state never travels. This file is the contract; read it before adding any se
 
 | Class | What | Shared? | Examples |
 |---|---|---|---|
-| **Household** | describes the home | when the sender ticks it (on by default) | device list and addresses, output names, rooms, icons, output and room order; later the IR bridge address and its button list |
+| **Household** | describes the home | when the sender ticks it (on by default) | device list and addresses, output names, rooms, icons, output and room order, the IR bridge address |
 | **Preference** | how a person likes to use the app | when the sender ticks it (on by default); the receiver can still decline | list view ("By room"/"All"), menu order and menu names; later theme, colours, haptics |
 | **State** | what the app remembers about itself | never: copying it would only do odd things | the page that was open last, hints already shown |
-| **Credential** | passwords, keys | only with "Include passwords" (see below) | later: the IR bridge login, a Shelly password |
+| **Credential** | passwords, keys | only with "Include passwords" (see below) | the IR bridge login; later a Shelly password |
 
 Then, in the same change:
 
@@ -30,13 +30,15 @@ Then, in the same change:
 
 ## Credentials ("Include passwords")
 
-Needed once the IR bridge exists: the other phone needs the bridge login to send amp commands, and typing it on
-every phone is tedious. Rules, to be built together with the bridge (docs/PLAN.md):
+The other phone needs the bridge login to send amp commands, and typing it on every phone is tedious. Rules:
 
 - Off by default. The sender switches "Include passwords" on for this one QR code; it is not remembered.
 - While it is on, the dialog says plainly that anyone who sees or photographs the code can read the passwords.
-- The receiver's import dialog lists which passwords come with it; they go straight into the Keystore.
-- The payload gets an optional `secrets` object; links without it import exactly as before.
+- The checkbox only appears when this phone has a password to share.
+- The receiver's import dialog lists which passwords come with it; they are stored encrypted (`SecretStore`: an AES
+  key in the Android Keystore) and replace the ones on that phone.
+- The payload gets an optional `secrets` object; links without it import exactly as before. A link may carry only
+  passwords.
 
 Adding a field that older apps simply ignore (a new optional key) does not need a version bump. Removing or changing
 the meaning of a field does.
@@ -44,7 +46,7 @@ the meaning of a field does.
 ## Choosing what to share
 
 - **Sender** (Settings → "Show QR code"): one checkbox per part – "Devices, names, rooms, icons, order" and
-  "My preferences"; later "Include passwords". The QR code and "Copy link" follow the ticks; with nothing ticked
+  "My preferences", and "Include passwords" (off each time). The QR code and "Copy link" follow the ticks; with nothing ticked
   there is no code. The choice is per sharing and not remembered.
 - **Receiver**: the import dialog lists only the parts the code carries. With household and preferences it offers
   "Also use the other phone's preferences"; with preferences only, importing applies them.
@@ -98,12 +100,15 @@ the same way, so the iOS app only has to register `homehub`.
 | `outputs` | per channel: `name`, `room`, `icon` (an `OutputIcon` id; unknown ids show the generic icon) | part of the device |
 | `outputOrder` | output keys `<device id>/<channel>` | shared order first, local-only keys after it |
 | `roomOrder` | room names | shared order first, local rooms not in it after (compared ignoring case) |
+| `irBridge` | the IR bridge's address (household part; left out when not set up) | replaces this phone's bridge address; absent → kept |
 | `prefs` | the sender's preferences; optional (left out by the sender, or a link from the first version) | replace this phone's preferences only if the receiver agrees |
 
-A payload with neither part is refused ("This setup is empty.").
 | `prefs.switchView` | `ROOMS` or `ALL` | unknown value → `ROOMS` |
 | `prefs.menuOrder` | menu sections as `Section` names (`SWITCHES`, `AMP`, `TV`) | unknown ids are ignored; sections not listed come last; missing → default order |
 | `prefs.menuNames` | the user's titles, keyed by `Section` name | blank or missing → the default title |
+| `secrets` | only with "Include passwords": `{"irBridge": {"user": …, "password": …}}` | stored encrypted, replaces this phone's bridge login; an entry with an empty user is ignored |
+
+A payload with none of the parts (household, `prefs`, `secrets`) is refused ("This setup is empty.").
 
 Not in the payload: everything in `SettingKeys.STATE`, and credentials unless "Include passwords" was on.
 

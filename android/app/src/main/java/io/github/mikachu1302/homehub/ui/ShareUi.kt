@@ -62,11 +62,17 @@ private fun qrMatrix(link: String): BitMatrix? = try {
  * Dark on white even in dark mode: scanners need that contrast.
  */
 @Composable
-fun ShareDialog(linkFor: (household: Boolean, preferences: Boolean) -> String?, onDismiss: () -> Unit) {
+fun ShareDialog(
+    linkFor: (household: Boolean, preferences: Boolean, passwords: Boolean) -> String?,
+    hasPasswords: Boolean,
+    onDismiss: () -> Unit,
+) {
     val context = LocalContext.current
     var household by remember { mutableStateOf(true) }
     var preferences by remember { mutableStateOf(true) }
-    val link = remember(household, preferences) { linkFor(household, preferences) }
+    // Off every time the dialog opens; never remembered (docs/SHARING.md).
+    var passwords by remember { mutableStateOf(false) }
+    val link = remember(household, preferences, passwords) { linkFor(household, preferences, passwords) }
     val matrix = remember(link) { link?.let(::qrMatrix) }
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -74,7 +80,17 @@ fun ShareDialog(linkFor: (household: Boolean, preferences: Boolean) -> String?, 
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 CheckRow("Devices, names, rooms, icons, order", household) { household = it }
-                CheckRow("My preferences (list view)", preferences) { preferences = it }
+                CheckRow("My preferences (list view, menu)", preferences) { preferences = it }
+                if (hasPasswords) {
+                    CheckRow("Include passwords (IR bridge login)", passwords) { passwords = it }
+                    if (passwords) {
+                        Text(
+                            "Anyone who sees or photographs this code can read the passwords. Show it only to the other phone.",
+                            fontSize = 13.sp,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                }
                 when {
                     link == null -> Text("Tick at least one part to share.", color = MaterialTheme.colorScheme.onSurfaceVariant)
                     matrix == null -> Text("The setup is too large for one QR code. Use \"Copy link\" and send it instead.")
@@ -90,8 +106,8 @@ fun ShareDialog(linkFor: (household: Boolean, preferences: Boolean) -> String?, 
                     }
                 }
                 Text(
-                    "Scan it with the other phone's camera. The other phone confirms before anything changes. " +
-                        "No passwords are included.",
+                    "Scan it with the other phone's camera. The other phone confirms before anything changes." +
+                        if (passwords) "" else " No passwords are included.",
                     fontSize = 13.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -124,6 +140,12 @@ fun ImportDialog(setup: SharedSetup, localDeviceIds: Set<String>, onConfirm: (ta
                         fontSize = 13.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                }
+                if (shared != null && shared.irBridge.isNotBlank()) {
+                    Text("The IR bridge address: ${shared.irBridge}.", fontSize = 13.sp)
+                }
+                setup.secrets?.irBridge?.let {
+                    Text("Passwords: the IR bridge login. It is stored encrypted on this phone.")
                 }
                 if (setup.preferences != null) {
                     if (shared != null) {

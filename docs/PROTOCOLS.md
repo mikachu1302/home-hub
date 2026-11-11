@@ -67,6 +67,10 @@ Config and setup: `esphome/`. The bridge's host name is `ir-bridge.local` unless
 - Press a button: `POST /button/<name>/press`, where `<name>` is the button's **name** (not an id), percent-encoded:
   `POST /button/Amp%20Volume%20Up/press` → HTTP 200 with an empty body. Unknown name → 404.
 - State of a button: `GET /button/<name>` → JSON; buttons have no state, so this only proves they exist.
+- Digest details (ESPHome 2026.10 source, `web_server_idf.cpp`): challenge `Digest realm="Login Required", qop="auth",
+  nonce=…, opaque=…`, MD5. The bridge does not remember its nonces, so a client may reuse one challenge for every
+  request (counting `nc` up) and only fetch a new one on a 401; the app does that, so a key press is one request.
+  Parsing and responses: `core/Digest.kt`, cases in `spec/fixtures/digest-auth.json`.
 - A `POST` needs a `Content-Length` header (an empty body is fine, `curl -d ''`); without one the bridge answers 411.
 - Verified on the real ATOM Lite (ESPHome 2026.10.2, 2026-11-11): the URL scheme, digest login (401 without, 200 with),
   presses arriving as IR. Not yet verified: the Unit IR's receiver pin.

@@ -16,24 +16,25 @@ import org.json.JSONArray
  * - PREFERENCES: shared too, the receiving phone chooses whether to take them over ([Preferences]);
  * - STATE: app state of this phone, never shared (which page was open, hints already shown).
  * A new key must go into exactly one set; ShareTest fails otherwise. Credentials are none of these: they live in
- * the Keystore and are only shared behind an explicit "include passwords" switch.
+ * the Keystore ([SecretStore]) and are only shared behind an explicit "Include passwords" switch.
  */
 object SettingKeys {
     const val DEVICES = "devices"
     const val OUTPUT_ORDER = "output_order"
     const val ROOM_ORDER = "room_order"
+    const val IR_BRIDGE = "ir_bridge"
     const val LAST_SECTION = "last_section"
     const val BACK_HINT = "back_hint_shown"
     const val SWITCH_VIEW = "switch_view"
     const val MENU_ORDER = "menu_order"
     const val MENU_NAMES = "menu_names"
 
-    val HOUSEHOLD = setOf(DEVICES, OUTPUT_ORDER, ROOM_ORDER)
+    val HOUSEHOLD = setOf(DEVICES, OUTPUT_ORDER, ROOM_ORDER, IR_BRIDGE)
     val PREFERENCES = setOf(SWITCH_VIEW, MENU_ORDER, MENU_NAMES)
     val STATE = setOf(LAST_SECTION, BACK_HINT)
 }
 
-/** Device list and settings (SharedPreferences, no backup). No secrets here: credentials, once needed, go to the Keystore. */
+/** Device list and settings (SharedPreferences, no backup). No secrets here: credentials go to [SecretStore]. */
 class Store(context: Context) {
     private val prefs = context.getSharedPreferences("home-hub", Context.MODE_PRIVATE)
 
@@ -52,13 +53,19 @@ class Store(context: Context) {
         get() = readList(SettingKeys.ROOM_ORDER)
         set(value) = writeList(SettingKeys.ROOM_ORDER, value)
 
+    /** The IR bridge's address (IP or host name); blank = not set up. Its login is in [SecretStore]. */
+    var irBridge: String
+        get() = prefs.getString(SettingKeys.IR_BRIDGE, "") ?: ""
+        set(value) = prefs.edit { putString(SettingKeys.IR_BRIDGE, value) }
+
     /** All household settings at once, for sharing and importing. */
     var household: Household
-        get() = Household(devices, outputOrder, roomOrder)
+        get() = Household(devices, outputOrder, roomOrder, irBridge)
         set(value) {
             devices = value.devices
             outputOrder = value.outputOrder
             roomOrder = value.roomOrder
+            irBridge = value.irBridge
         }
 
     // --- preferences (shared, taken over on request) ---

@@ -6,9 +6,14 @@ package io.github.mikachu1302.homehub.core
  */
 data class IrKey(val label: String, val bridgeName: String)
 
+/** The bridge's web login (a credential: Keystore only, shared only behind "Include passwords"). */
+data class BridgeLogin(val user: String, val password: String) {
+    override fun toString() = "BridgeLogin($user, ***)"
+}
+
 /**
- * Placeholder until the bridge is set up (docs/PLAN.md, phase 1): the amp keys the config already defines.
- * Inputs and further keys are added once the real remote has been captured.
+ * The amp keys the bridge defines (esphome/atom-lite-ir.yaml; volume, mute and power confirmed on the A-9050).
+ * Inputs are added once the real remote has been captured.
  */
 object AmpKeys {
     val power = IrKey("Power", "Amp Power")
@@ -19,5 +24,8 @@ object AmpKeys {
 }
 
 /** `POST` path that presses [key] on the bridge; the name is percent-encoded (spaces as %20). */
-fun irPressPath(key: IrKey): String =
-    "/button/" + java.net.URLEncoder.encode(key.bridgeName, "UTF-8").replace("+", "%20") + "/press"
+fun irPressPath(key: IrKey): String = irButtonPath(key) + "/press"
+
+/** `GET` path of [key]'s state: proves the button exists (and the login works) without sending anything. */
+fun irButtonPath(key: IrKey): String =
+    "/button/" + java.net.URLEncoder.encode(key.bridgeName, "UTF-8").replace("+", "%20")
