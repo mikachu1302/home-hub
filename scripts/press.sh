@@ -6,4 +6,4 @@
 set -euo pipefail
 btn="${1:?usage: press.sh \"<button name>\"}"
 : "${IR_HOST:?set IR_HOST to the bridge address}"
-curl -fsS -X POST ${IR_USER:+--anyauth -u "$IR_USER:${IR_PASS:-}"} "http://${IR_HOST}/button/${btn// /%20}/press" && echo "sent: ${btn}"
+curl -fsS -d "" ${IR_USER:+--anyauth -u "$IR_USER:${IR_PASS:-}"} "http://${IR_HOST}/button/${btn// /%20}/press" && echo "sent: ${btn}"

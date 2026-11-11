@@ -36,25 +36,19 @@ cp secrets.example.yaml secrets.yaml   # then edit: Wi-Fi, passwords
 
 After the first flash, updates and logs go over Wi-Fi (`esphome run` lists the device).
 
-## 4. Test the database codes (no receiver needed)
+## 4. Test (no receiver needed)
 
-The config already carries the Onkyo codes from a public IR database (docs/PROTOCOLS.md). Put the ATOM Lite within about
-1–2 m of the amp, LED pointed at its front, open `http://<bridge address>/` (login: `web_username` / `web_password`
-from `secrets.yaml`) and press:
+Open `http://<bridge address>/` (login: `web_username` / `web_password` from `secrets.yaml`). The IR LED sits behind
+the **top** cover, not next to the USB port; its range is short, so hold or place the ATOM close to the amp with the top
+facing the amp's IR window. **Test IR LED** makes it glow for 3 s, visible through a phone camera.
 
-1. **Amp Volume Up / Down** – the volume knob should turn. If nothing happens, try **Test Alt Address Volume Up**.
-2. **Amp Mute**, then **Amp Power** (power is a toggle).
-3. Every **Test Input …** button – note which input the amp switches to.
-
-Then keep the input buttons that work, rename them to the real input (for example `Amp Input CD`), delete the other test
-buttons, and re-flash over Wi-Fi (`esphome run atom-lite-ir.yaml`, pick the network device).
+Volume, mute and power are confirmed on the A-9050 (codes: docs/PROTOCOLS.md). The inputs still need the receiver (step 5).
 
 ## 5. Capture codes from the remote (once the Unit IR is here)
 
 With `esphome logs atom-lite-ir.yaml` running, point the original remote at the Unit IR's
 receiver and press every button you want. Lines like `Received NEC: address=0x..., command=0x...`
-are expected. Put the values into the matching buttons in `atom-lite-ir.yaml`, replacing the `TODO`
-entries, and re-flash. If the log shows a different protocol name, use the matching
+are expected. Add a button per key to `atom-lite-ir.yaml` and re-flash. If the log shows a different protocol name, use the matching
 `remote_transmitter.transmit_*` action for those buttons (ESPHome has no Onkyo-specific one).
 
 ## 6. Test from the shell

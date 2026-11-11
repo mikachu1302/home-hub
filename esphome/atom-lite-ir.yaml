@@ -1,19 +1,17 @@
 # IR bridge for M5Stack ATOM Lite (ESP32) -> Onkyo A-9050 (and later more IR gear)
 #
 # Pins (confirmed on M5Stack's ATOM Lite docs page, 2026-11-10):
-#   IR LED (built in)        GPIO12
+#   IR LED (built in)        GPIO12, behind the top cover (not next to the USB port)
 #   Grove port signal pins   GPIO32 and GPIO26
 # Which Grove pin carries the Unit IR's receiver is NOT documented: GPIO32 is
 # tried first; if the log stays silent, swap GPIO32 and GPIO26 below.
 #
 # Flow:
-#   1. Flash this file. The amp buttons already carry codes from a public IR
-#      database (see below); press them in the bridge's web page and watch the amp.
-#   2. Press the "Test" buttons to find which code switches which input; keep the
-#      ones that work, rename them, delete the rest, re-flash (over Wi-Fi).
-#   3. Once the Unit IR is here: point the ORIGINAL remote at it and compare the
+#   1. Flashed; volume, mute and power confirmed on the A-9050 (2026-11-11).
+#      Range is short (well under 1 m): place the ATOM close to the amp, top facing it.
+#   2. Once the Unit IR is here: point the ORIGINAL remote at it and compare the
 #      log ("Received NEC: address=…, command=…") with the codes below; add any
-#      keys the database lacks (for example separate on/off).
+#      keys the database lacks.
 
 esphome:
   name: ir-bridge
@@ -68,71 +66,46 @@ remote_receiver:
   tolerance: 25%
 
 # --- Onkyo codes ---------------------------------------------------------------
-# From the Flipper-IRDB "Onkyo / Amplifier" set (NECext, address D2 6D), the classic
-# Onkyo amplifier code set; NOT yet confirmed on the A-9050 (docs/PROTOCOLS.md).
-# ESPHome sends address and command low byte first, so Flipper "D2 6D" is
-# 0x6DD2, and command c is (~c << 8) | c: Volume+ 0x02 -> 0xFD02.
+# Onkyo NEC codes are "D2 <device id>" + a key number. The classic amplifier id 6D
+# (most databases) does NOT work on the A-9050; id 03 does (found with a sweep over
+# all ids, 2026-11-11), matching Flipper-IRDB's "ONKYO/A-Serie.ir" (integrated amps),
+# which also uses id 04 for some keys. ESPHome sends low byte first, so "D2 03" is
+# 0x03D2, and key k is the command (~k << 8) | k: Volume Down 0x03 -> 0xFC03.
 substitutions:
-  onkyo: "0x6DD2"
-  onkyo_alt: "0x6CD2"   # the second Onkyo amplifier address in the database
+  onkyo: "0x03D2"
+  onkyo4: "0x04D2"
 
 # The HTTP path uses the button NAME (URL-encoded), as of ESPHome 2026.10:
-#   "Amp Volume Up" -> POST /button/Amp%20Volume%20Up/press
+#   "Amp Volume Up" -> POST /button/Amp%20Volume%20Up/press  (send an empty body:
+#   the bridge rejects a POST without Content-Length)
 # If you rename a button, the URL changes with it (and the app's key list too).
 button:
   - platform: template
-    name: "Amp Power"           # 0x04, a toggle on most Onkyo amps
-    on_press:
-      - remote_transmitter.transmit_nec: {address: "${onkyo}", command: 0xFB04}
-  - platform: template
-    name: "Amp Volume Up"       # 0x02
+    name: "Amp Volume Up"       # 03/02, confirmed
     on_press:
       - remote_transmitter.transmit_nec: {address: "${onkyo}", command: 0xFD02}
   - platform: template
-    name: "Amp Volume Down"     # 0x03
+    name: "Amp Volume Down"     # 03/03, confirmed
     on_press:
       - remote_transmitter.transmit_nec: {address: "${onkyo}", command: 0xFC03}
+
   - platform: template
-    name: "Amp Mute"            # 0x05
+    name: "Amp Mute"            # 03/05, confirmed (toggle)
     on_press:
       - remote_transmitter.transmit_nec: {address: "${onkyo}", command: 0xFA05}
+  - platform: template
+    name: "Amp Power"           # 04/CB, confirmed (toggle; 03/04 and 04/47 "OFF" do nothing)
+    on_press:
+      - remote_transmitter.transmit_nec: {address: "${onkyo4}", command: 0x34CB}
+  # Inputs: none of the A-Serie input codes (03/1B, 03/15, 03/46, 04/1E, 04/1F) work on
+  # the A-9050; capture them from the original remote with the Unit IR.
 
-  # --- Test buttons: find the inputs, then rename the ones that work and delete the rest.
-  # Names are the database's labels; your A-9050's inputs may be named differently.
+  # Makes the IR LED glow for ~3 s so a phone camera can see it; no valid code, no device reacts.
+  # The LED sits on the top, not next to the USB port.
   - platform: template
-    name: "Test Input 06 AUX"
+    name: "Test IR LED"
     on_press:
-      - remote_transmitter.transmit_nec: {address: "${onkyo}", command: 0xF906}
-  - platform: template
-    name: "Test Input 07 Tape 2"
-    on_press:
-      - remote_transmitter.transmit_nec: {address: "${onkyo}", command: 0xF807}
-  - platform: template
-    name: "Test Input 08 Tape 1"
-    on_press:
-      - remote_transmitter.transmit_nec: {address: "${onkyo}", command: 0xF708}
-  - platform: template
-    name: "Test Input 09 CD"
-    on_press:
-      - remote_transmitter.transmit_nec: {address: "${onkyo}", command: 0xF609}
-  - platform: template
-    name: "Test Input 0A Phono"
-    on_press:
-      - remote_transmitter.transmit_nec: {address: "${onkyo}", command: 0xF50A}
-  - platform: template
-    name: "Test Input 0B Tuner"
-    on_press:
-      - remote_transmitter.transmit_nec: {address: "${onkyo}", command: 0xF40B}
-  - platform: template
-    name: "Test Input 0E Video 2"
-    on_press:
-      - remote_transmitter.transmit_nec: {address: "${onkyo}", command: 0xF10E}
-  - platform: template
-    name: "Test Input 0F Video 1"
-    on_press:
-      - remote_transmitter.transmit_nec: {address: "${onkyo}", command: 0xF00F}
-  # Only if Volume Up above does nothing: the same key on the other address.
-  - platform: template
-    name: "Test Alt Address Volume Up"
-    on_press:
-      - remote_transmitter.transmit_nec: {address: "${onkyo_alt}", command: 0xFD02}
+      - remote_transmitter.transmit_raw:
+          carrier_frequency: 38kHz
+          code: [200000, -100000]
+          repeat: {times: 10, wait_time: 100ms}

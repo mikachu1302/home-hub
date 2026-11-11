@@ -67,26 +67,33 @@ Config and setup: `esphome/`. The bridge's host name is `ir-bridge.local` unless
 - Press a button: `POST /button/<name>/press`, where `<name>` is the button's **name** (not an id), percent-encoded:
   `POST /button/Amp%20Volume%20Up/press` → HTTP 200 with an empty body. Unknown name → 404.
 - State of a button: `GET /button/<name>` → JSON; buttons have no state, so this only proves they exist.
-- Verified: the URL scheme, name matching, `%20` decoding and the login type (by reading the ESPHome 2026.10 source); the firmware compiles. **Not verified on hardware**
-  (not yet delivered): the real round trip, the IR range, the pin assignment of the Unit IR's receiver.
+- A `POST` needs a `Content-Length` header (an empty body is fine, `curl -d ''`); without one the bridge answers 411.
+- Verified on the real ATOM Lite (ESPHome 2026.10.2, 2026-11-11): the URL scheme, digest login (401 without, 200 with),
+  presses arriving as IR. Not yet verified: the Unit IR's receiver pin.
 - One-way: the amplifier reports nothing, so the bridge cannot tell the app the volume, input or power state.
 
 ### Onkyo A-9050 codes
-Candidate codes (2026-11-11) from the Flipper-IRDB "Onkyo / Amplifier" set: NEC extended, address bytes `D2 6D`, the classic
-Onkyo amplifier code set (an independent Onkyo/Integra project uses the same address). **Not yet confirmed on the A-9050**:
-test by pressing the bridge's buttons and watching the amp, later compare with the original remote through the Unit IR.
+Onkyo codes are NEC with address bytes `D2 <device id>`: `D2` is Onkyo, the second byte selects the device. The classic
+Onkyo amplifier id `6D` (most databases, including Flipper-IRDB's "Onkyo / Amplifier") **does nothing on the A-9050**.
+A sweep over all 256 ids with Volume Down found id `03`, which matches Flipper-IRDB's `_Converted_/IR_Plus/O/ONKYO/A-Serie.ir`
+(Onkyo's A-series integrated amps; it uses ids `03` and `04`). Confirmed on the A-9050, 2026-11-11:
 
-| Key | Database command | ESPHome `transmit_nec` |
+| Key | Id / key | ESPHome `transmit_nec` |
 |---|---|---|
-| Power (toggle) | 0x04 | address `0x6DD2`, command `0xFB04` |
-| Volume + | 0x02 | `0x6DD2`, `0xFD02` |
-| Volume − | 0x03 | `0x6DD2`, `0xFC03` |
-| Mute | 0x05 | `0x6DD2`, `0xFA05` |
-| Inputs (database labels) | AUX 0x06, Tape 2 0x07, Tape 1 0x08, CD 0x09, Phono 0x0A, Tuner 0x0B, Video 2 0x0E, Video 1 0x0F | same address, `(~c << 8) \| c` |
+| Volume + | 03 / 0x02 | address `0x03D2`, command `0xFD02` |
+| Volume − | 03 / 0x03 | `0x03D2`, `0xFC03` |
+| Mute (toggle) | 03 / 0x05 | `0x03D2`, `0xFA05` |
+| Power (toggle) | 04 / 0xCB | `0x04D2`, `0x34CB` |
 
-ESPHome sends NEC low byte first: the database's first address byte (`D2`) is the low byte, so `0x6DD2`; the command word is
-the command plus its inverse in the high byte. A second Onkyo amplifier address in the database is `D2 6C` (`0x6CD2`); the
-config has one test button for it. The codes live in `esphome/atom-lite-ir.yaml`.
+Tried and **not working**: power 03/0x04 and "OFF" 04/0x47 (so no discrete on/off is known), and the file's input codes
+(03/0x1B CD, 03/0x15 tape, 03/0x46 FM, 04/0x1E and 04/0x1F input +/−). The inputs are to be captured from the original
+remote with the Unit IR.
+
+ESPHome sends NEC low byte first: address `D2 03` is `0x03D2`, and the command word is the key plus its inverse in the high
+byte, `(~k << 8) | k`. The codes live in `esphome/atom-lite-ir.yaml`.
+
+**Range:** the ATOM Lite's built-in LED reaches only a short distance (it worked from close up, not across the room).
+Place the bridge near the amp with its top facing the amp's IR window.
 
 ## Hisense TV (58A6FG, VIDAA)
 
