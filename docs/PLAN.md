@@ -115,7 +115,7 @@ From a wireframe round (variants: one long list, tabs, tiles + amp bar, menu fir
 ### Phase 1 – IR bridge (in progress)
 - [ ] Plug the Unit IR into the Grove port; find the receiver pin by trying (GPIO32 first, else GPIO26)
 - [x] Install ESPHome, copy `secrets.example.yaml` to `secrets.yaml`, flash over USB
-- [ ] Reserve fixed IPs in the FRITZ!Box for the bridge (done) and all five Shellys (`*.local` names do not work through WireGuard)
+- [x] Reserve fixed IPs in the FRITZ!Box for the bridge and all five Shellys (`*.local` names do not work through WireGuard)
 - [x] Candidate Onkyo codes from Flipper-IRDB put into the config (amp keys + test buttons for inputs); compiles
 - [x] ESPHome installed on the laptop (`~/.venvs/esphome`), `esphome/secrets.yaml` created with random passwords
 - [x] User: join the `dialout` group (USB flashing), fill in the Wi-Fi lines in `secrets.yaml` (2.4 GHz network)
@@ -137,7 +137,7 @@ From a wireframe round (variants: one long list, tabs, tiles + amp bar, menu fir
 - [x] Timers per output: show and edit auto-off and auto-on (on/off + delay), written to the device (`Switch.SetConfig`). Two outputs use auto-off today, one for a light after 7 min. Part of the minimum for the Shelly side.
 - [x] IR client: amp keys via HTTP with digest login (`IrBridgeClient`); bridge address and login in Settings, "Check" without sending IR
 - [x] Menu + Switches + Settings pages (Settings holds devices, IR bridge, sharing); Amp page with power, mute and volume (inputs after capture); TV page as placeholder
-- [ ] Test through WireGuard from outside
+- [x] Test through WireGuard from outside (switches and amp, 2026-11-11)
 - [ ] First slice done = Shelly outputs (switch, power, timers) and amp buttons work on the real phone
 
 ### Phase 2b – organise the switches (requested 2026-11-10)

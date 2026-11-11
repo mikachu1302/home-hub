@@ -24,6 +24,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
 import io.github.mikachu1302.homehub.core.AmpKeys
 import io.github.mikachu1302.homehub.core.IrKey
 
@@ -32,7 +40,7 @@ import io.github.mikachu1302.homehub.core.IrKey
  * volume or mute state (AGENTS.md); a failed send shows a message. Disabled until the bridge is set up.
  */
 @Composable
-fun AmpScreen(title: String, ready: Boolean, onPress: (IrKey) -> Unit) {
+fun AmpScreen(title: String, ready: Boolean, onPress: (IrKey, Boolean) -> Unit) {
     Column(
         Modifier.fillMaxSize().padding(horizontal = Dimens.screenPadding, vertical = Dimens.topPadding),
         verticalArrangement = Arrangement.spacedBy(20.dp),
@@ -48,13 +56,13 @@ fun AmpScreen(title: String, ready: Boolean, onPress: (IrKey) -> Unit) {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(Dimens.gap, Alignment.CenterVertically),
         ) {
-            AmpKey(AmpKeys.volumeUp, ready, onPress, Modifier.size(160.dp, 120.dp), text = "+")
+            AmpKey(AmpKeys.volumeUp, ready, onPress, Modifier.size(160.dp, 120.dp), text = "+", repeats = true)
             Text("Volume", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            AmpKey(AmpKeys.volumeDown, ready, onPress, Modifier.size(160.dp, 120.dp), text = "−")
+            AmpKey(AmpKeys.volumeDown, ready, onPress, Modifier.size(160.dp, 120.dp), text = "−", repeats = true)
         }
         Text(
-            "Power and mute switch back and forth; the amp does not report its state. Inputs follow once the " +
-                "remote's codes are captured.",
+            "Hold + or − to keep turning. Power and mute switch back and forth; the amp does not report its " +
+                "state. Inputs follow once the remote's codes are captured.",
             fontSize = 12.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -62,8 +70,38 @@ fun AmpScreen(title: String, ready: Boolean, onPress: (IrKey) -> Unit) {
 }
 
 @Composable
-private fun AmpKey(key: IrKey, enabled: Boolean, onPress: (IrKey) -> Unit, modifier: Modifier, text: String = key.label) {
-    OutlinedButton(onClick = { onPress(key) }, enabled = enabled, modifier = modifier.height(Dimens.bigKey)) {
+private fun AmpKey(
+    key: IrKey,
+    enabled: Boolean,
+    onPress: (IrKey, Boolean) -> Unit,
+    modifier: Modifier,
+    text: String = key.label,
+    repeats: Boolean = false,
+) {
+    // A tap sends one step (onClick, which TalkBack also uses). A held [repeats] key sends one step at once and then
+    // keeps sending; the click that ends the hold is then skipped.
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    var held by remember { mutableStateOf(false) }
+    if (repeats) {
+        LaunchedEffect(pressed) {
+            if (!pressed) return@LaunchedEffect
+            held = false
+            delay(400)
+            held = true
+            onPress(key, false)
+            while (true) {
+                delay(200)
+                onPress(key, true)
+            }
+        }
+    }
+    OutlinedButton(
+        onClick = { if (held) held = false else onPress(key, false) },
+        enabled = enabled,
+        interactionSource = interaction,
+        modifier = modifier.height(Dimens.bigKey),
+    ) {
         Text(
             text,
             fontSize = if (text.length == 1) 32.sp else 16.sp,

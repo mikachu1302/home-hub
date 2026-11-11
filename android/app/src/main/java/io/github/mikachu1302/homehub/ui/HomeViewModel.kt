@@ -380,9 +380,16 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** Sends one IR key. The amp reports nothing back, so a success shows nothing; a failure says why. */
-    fun press(key: IrKey) {
-        if (irBridge.isBlank()) return
+    private var pressesInFlight = 0
+
+    /**
+     * Sends one IR key. The amp reports nothing back, so a success shows nothing; a failure says why.
+     * [repeat]: a repeat while the key is held; dropped while a press is still on its way, so a slow network never
+     * queues up steps that keep the volume moving after the key is let go.
+     */
+    fun press(key: IrKey, repeat: Boolean = false) {
+        if (irBridge.isBlank() || (repeat && pressesInFlight > 0)) return
+        pressesInFlight++
         viewModelScope.launch {
             try {
                 bridge.press(irBridge, bridgeLogin, key)
@@ -392,6 +399,8 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
                 message = e.message
             } catch (_: Exception) {
                 message = "Could not reach the IR bridge"
+            } finally {
+                pressesInFlight--
             }
         }
     }
