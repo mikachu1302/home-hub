@@ -50,7 +50,7 @@ class IrBridgeClient(private val http: LanHttp = LanHttp()) {
                 a.code in 200..299 -> return@withLock
                 a.code == 401 -> {
                     if (login == null) throw BridgeException("The bridge asks for a login. Enter it in Settings.")
-                    if (fresh) throw BridgeException("The bridge did not accept the login.")
+                    if (fresh) throw BridgeException("User or password is wrong.")
                     val next = a.header("WWW-Authenticate")?.let(Digest::parseChallenge)
                         ?: throw BridgeException("The bridge asks for a login type this app does not support.")
                     challenge = host to next

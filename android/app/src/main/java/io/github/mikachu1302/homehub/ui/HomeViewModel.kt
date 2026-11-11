@@ -36,6 +36,7 @@ import io.github.mikachu1302.homehub.data.SecretStore
 import io.github.mikachu1302.homehub.data.Store
 import io.github.mikachu1302.homehub.net.BridgeException
 import io.github.mikachu1302.homehub.net.IrBridgeClient
+import io.github.mikachu1302.homehub.net.NotLanException
 import io.github.mikachu1302.homehub.net.ShellyClient
 import io.github.mikachu1302.homehub.net.findShellys
 import kotlinx.coroutines.CancellationException
@@ -85,8 +86,8 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         private set
     var bridgeLogin by mutableStateOf(secrets.bridgeLogin)
         private set
-    /** The result of "Check" in Settings; null = not checked since the last change. */
-    var bridgeCheck by mutableStateOf<String?>(null)
+    /** The result of the last check (true = it works) and its text; null = not checked since the last change. */
+    var bridgeCheck by mutableStateOf<Pair<Boolean, String>?>(null)
         private set
     var checkingBridge by mutableStateOf(false)
         private set
@@ -345,20 +346,34 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         if (irBridge.isNotEmpty()) checkBridge()
     }
 
+    /** Checks the saved address and login. */
+    fun checkBridge() = checkBridge(irBridge, bridgeLogin)
+
+    /** Checks typed values before saving them (the setup dialog). */
+    fun checkBridge(address: String, user: String, password: String) =
+        checkBridge(address.trim(), if (user.isBlank()) null else BridgeLogin(user.trim(), password))
+
     /** Reaches the bridge with the login and looks up one key; sends nothing to the amp. */
-    fun checkBridge() {
-        if (checkingBridge || irBridge.isBlank()) return
+    private fun checkBridge(address: String, login: BridgeLogin?) {
+        if (checkingBridge) return
+        if (address.isBlank()) {
+            bridgeCheck = false to "Enter the bridge's address."
+            return
+        }
         checkingBridge = true
+        bridgeCheck = null
         viewModelScope.launch {
             bridgeCheck = try {
-                bridge.check(irBridge, bridgeLogin, AmpKeys.volumeUp)
-                "Connected. The login works."
+                bridge.check(address, login, AmpKeys.volumeUp)
+                true to "Connected. The login works."
             } catch (e: CancellationException) {
                 throw e
             } catch (e: BridgeException) {
-                e.message
-            } catch (e: Exception) {
-                "Not reachable: ${e.message ?: "no answer"}"
+                false to (e.message ?: "The bridge refused the request.")
+            } catch (_: NotLanException) {
+                false to "$address is not an address on your home network."
+            } catch (_: Exception) {
+                false to "Can't reach the bridge at $address. Is it plugged in and on the Wi-Fi? Away from home, is the VPN on?"
             } finally {
                 checkingBridge = false
             }

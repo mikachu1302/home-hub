@@ -102,7 +102,7 @@ class IrBridgeClientTest {
 
     @Test
     fun wrongPassword() = runBlocking {
-        expect("The bridge did not accept the login.") { client().press("127.0.0.1", login.copy(password = "wrong"), AmpKeys.mute) }
+        expect("User or password is wrong.") { client().press("127.0.0.1", login.copy(password = "wrong"), AmpKeys.mute) }
         assertEquals("one challenge, one failed answer", 2, requests)
     }
 

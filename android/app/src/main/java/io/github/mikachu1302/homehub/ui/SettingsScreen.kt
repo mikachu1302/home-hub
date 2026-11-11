@@ -37,6 +37,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import io.github.mikachu1302.homehub.core.Section
 import io.github.mikachu1302.homehub.core.defaultTitle
 
@@ -128,7 +129,7 @@ fun SettingsScreen(vm: HomeViewModel) {
                 ) { Text(if (vm.checkingBridge) "Checking…" else "Check") }
             }
         }
-        vm.bridgeCheck?.let { Text(it, fontSize = 13.sp) }
+        if (!editingBridge) vm.bridgeCheck?.let { CheckResult(it) }
 
         Heading("Menu")
         ReorderableList(
@@ -190,6 +191,9 @@ fun SettingsScreen(vm: HomeViewModel) {
             address = vm.irBridge,
             user = vm.bridgeLogin?.user ?: "",
             password = vm.bridgeLogin?.password ?: "",
+            checking = vm.checkingBridge,
+            result = vm.bridgeCheck,
+            onCheck = vm::checkBridge,
             onSave = { a, u, p -> vm.saveBridge(a, u, p); editingBridge = false },
             onDismiss = { editingBridge = false },
         )
@@ -233,12 +237,16 @@ private fun BridgeDialog(
     address: String,
     user: String,
     password: String,
+    checking: Boolean,
+    result: Pair<Boolean, String>?,
+    onCheck: (String, String, String) -> Unit,
     onSave: (String, String, String) -> Unit,
     onDismiss: () -> Unit,
 ) {
     var a by remember { mutableStateOf(address) }
     var u by remember { mutableStateOf(user) }
     var p by remember { mutableStateOf(password) }
+    var showPassword by remember { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("IR bridge") },
@@ -258,9 +266,18 @@ private fun BridgeDialog(
                     onValueChange = { p = it },
                     label = { Text("Password") },
                     singleLine = true,
-                    visualTransformation = PasswordVisualTransformation(),
+                    visualTransformation = if (showPassword) VisualTransformation.None else PasswordVisualTransformation(),
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    trailingIcon = {
+                        TextButton(onClick = { showPassword = !showPassword }) { Text(if (showPassword) "Hide" else "Show") }
+                    },
                 )
+                OutlinedButton(
+                    onClick = { onCheck(a, u, p) },
+                    enabled = !checking,
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text(if (checking) "Checking…" else "Check") }
+                result?.let { CheckResult(it) }
                 Text(
                     "The address the router gave the bridge (fixed). User and password are web_username and " +
                         "web_password from its firmware settings.",
@@ -271,5 +288,16 @@ private fun BridgeDialog(
         },
         confirmButton = { TextButton(onClick = { onSave(a, u, p) }) { Text("Save") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
+}
+
+/** A check result with a mark, so it does not rely on colour alone. */
+@Composable
+private fun CheckResult(result: Pair<Boolean, String>) {
+    val (ok, text) = result
+    Text(
+        (if (ok) "✓ " else "✗ ") + text,
+        fontSize = 13.sp,
+        color = if (ok) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
     )
 }
