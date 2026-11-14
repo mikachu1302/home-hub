@@ -88,16 +88,24 @@ A sweep over all 256 ids with Volume Down found id `03`, which matches Flipper-I
 | Volume − | 03 / 0x03 | `0x03D2`, `0xFC03` |
 | Mute (toggle) | 03 / 0x05 | `0x03D2`, `0xFA05` |
 | Power (toggle) | 04 / 0xCB | `0x04D2`, `0x34CB` |
+| Input next | 04 / 0x1E **+ repeat codes** | raw, see below |
+| Input previous | 04 / 0x1F **+ repeat codes** | raw, see below |
 
-Tried and **not working**: power 03/0x04 and "OFF" 04/0x47 (so no discrete on/off is known), and the file's input codes
-(03/0x1B CD, 03/0x15 tape, 03/0x46 FM, 04/0x1E and 04/0x1F input +/−). The inputs are to be captured from the original
-remote with the Unit IR.
+The input keys were captured from the original remote with the Unit IR (2026-11-14). The remote sends them like a short
+hold: the NEC frame, then NEC repeat codes (9 ms mark, 2.25 ms space, 560 µs mark) 108 ms apart. The A-9050 ignores a
+bare input frame (that is why the database codes seemed not to work), so the config sends them with `transmit_raw`:
+frame, then two repeat codes. Volume, mute and power need no repeats. The remote has no key per input, only
+next/previous.
+
+Tried and **not working**: power 03/0x04 and "OFF" 04/0x47 (so no discrete on/off is known), and the database's
+per-input codes (03/0x1B CD, 03/0x15 tape, 03/0x46 FM).
 
 ESPHome sends NEC low byte first: address `D2 03` is `0x03D2`, and the command word is the key plus its inverse in the high
 byte, `(~k << 8) | k`. The codes live in `esphome/atom-lite-ir.yaml`.
 
-**Range:** the ATOM Lite's built-in LED reaches only a short distance (it worked from close up, not across the room).
-Place the bridge near the amp with its top facing the amp's IR window.
+**Range:** the ATOM Lite's built-in LED and the Unit IR's LED (Grove yellow wire, GPIO26; receiver on white, GPIO32)
+both reach only a short distance. Raising the pin drive from 20 to 40 mA made no real difference (tested, reverted).
+So the firmware sends everything through the Unit IR, which sits right at the amp's IR window on a Grove cable.
 
 ## Hisense TV (58A6FG, VIDAA)
 

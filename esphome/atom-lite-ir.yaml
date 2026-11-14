@@ -1,10 +1,9 @@
 # IR bridge for M5Stack ATOM Lite (ESP32) -> Onkyo A-9050 (and later more IR gear)
 #
-# Pins (confirmed on M5Stack's ATOM Lite docs page, 2026-11-10):
-#   IR LED (built in)        GPIO12, behind the top cover (not next to the USB port)
+# Pins (M5Stack's ATOM Lite and Unit IR docs; confirmed on the hardware 2026-11-14):
+#   IR LED (built in)        GPIO12, behind the top cover (not used: too weak)
 #   Grove port signal pins   GPIO32 and GPIO26
-# Which Grove pin carries the Unit IR's receiver is NOT documented: GPIO32 is
-# tried first; if the log stays silent, swap GPIO32 and GPIO26 below.
+#   Unit IR: LED on GPIO26 (yellow wire), receiver on GPIO32 (white wire)
 #
 # Flow:
 #   1. Flashed; volume, mute and power confirmed on the A-9050 (2026-11-11).
@@ -48,8 +47,11 @@ web_server:
     password: !secret web_password
 
 # --- IR out (built-in LED) ---------------------------------------------------
+# Everything is sent through the Unit IR's LED (Grove yellow wire), which can sit right at the
+# amp's IR window on a Grove cable. The ATOM's built-in LED (GPIO12) is not used: it is too weak
+# to reach the amp from a hidden spot, and so is the Unit's, hence the cable.
 remote_transmitter:
-  pin: GPIO12
+  pin: GPIO26
   carrier_duty_percent: 50%
   non_blocking: true
 
@@ -97,11 +99,24 @@ button:
     name: "Amp Power"           # 04/CB, confirmed (toggle; 03/04 and 04/47 "OFF" do nothing)
     on_press:
       - remote_transmitter.transmit_nec: {address: "${onkyo4}", command: 0x34CB}
-  # Inputs: none of the A-Serie input codes (03/1B, 03/15, 03/46, 04/1E, 04/1F) work on
-  # the A-9050; capture them from the original remote with the Unit IR.
+  # Inputs (captured from the original remote, 2026-11-14): 04/1E and 04/1F, but the remote
+  # sends them as a short hold (frame + NEC repeat codes) and the amp ignores a bare frame.
+  # So these are raw: the NEC frame, then two repeat codes 108 ms apart.
+  - platform: template
+    name: "Amp Input Next"      # 04/1E + repeats
+    on_press:
+      - remote_transmitter.transmit_raw:
+          carrier_frequency: 38kHz
+          code: [9000, -4500, 560, -560, 560, -1690, 560, -560, 560, -560, 560, -1690, 560, -560, 560, -1690, 560, -1690, 560, -560, 560, -560, 560, -1690, 560, -560, 560, -560, 560, -560, 560, -560, 560, -560, 560, -560, 560, -1690, 560, -1690, 560, -1690, 560, -1690, 560, -560, 560, -560, 560, -560, 560, -1690, 560, -560, 560, -560, 560, -560, 560, -560, 560, -1690, 560, -1690, 560, -1690, 560, -43410, 9000, -2250, 560, -96190, 9000, -2250, 560]
+  - platform: template
+    name: "Amp Input Previous"  # 04/1F + repeats
+    on_press:
+      - remote_transmitter.transmit_raw:
+          carrier_frequency: 38kHz
+          code: [9000, -4500, 560, -560, 560, -1690, 560, -560, 560, -560, 560, -1690, 560, -560, 560, -1690, 560, -1690, 560, -560, 560, -560, 560, -1690, 560, -560, 560, -560, 560, -560, 560, -560, 560, -560, 560, -1690, 560, -1690, 560, -1690, 560, -1690, 560, -1690, 560, -560, 560, -560, 560, -560, 560, -560, 560, -560, 560, -560, 560, -560, 560, -560, 560, -1690, 560, -1690, 560, -1690, 560, -43410, 9000, -2250, 560, -96190, 9000, -2250, 560]
 
-  # Makes the IR LED glow for ~3 s so a phone camera can see it; no valid code, no device reacts.
-  # The LED sits on the top, not next to the USB port.
+  # Makes the Unit IR's LED glow for ~3 s so a phone camera can see it (for aiming); no valid
+  # code, no device reacts.
   - platform: template
     name: "Test IR LED"
     on_press:

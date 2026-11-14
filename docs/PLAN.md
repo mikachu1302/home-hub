@@ -61,7 +61,7 @@ Status as of 2026-11-10. Keep this file current; it is the single source of trut
               Onkyo A-9050
 ```
 
-- **IR bridge** = M5Stack ATOM Lite (ESP32) running ESPHome. Its built-in LED sends the Onkyo codes. An M5Stack Unit IR on the Grove port (its receiver, learning only) lets us capture codes from the original remote.
+- **IR bridge** = M5Stack ATOM Lite (ESP32) running ESPHome. An M5Stack Unit IR on the Grove port sends the Onkyo codes with its LED (it can sit right at the amp's IR window on a Grove cable) and captures codes from original remotes with its receiver. The ATOM's built-in LED is not used (too weak).
 - App talks to every backend through one small interface per device kind (`turnOn`, `turnOff`, `press(button)`), so a new device type is one new module and nothing else changes.
 
 ## App layout (decided 2026-11-10)
@@ -100,7 +100,7 @@ From a wireframe round (variants: one long list, tabs, tiles + amp bar, menu fir
 | Item | Status | Notes |
 |---|---|---|
 | M5Stack ATOM Lite | **running since 2026-11-11** | built-in IR LED (GPIO12, behind the top cover), short range: place it close to the amp, top facing it |
-| M5Stack **Unit IR (U002)** (plugs into the Grove port, no soldering) | **ordered 2026-11-10** | receiver to learn codes, plus a second IR emitter (unused for now). A bare TSOP38238 would also work but needs wiring: power it from 3V3, never 5V |
+| M5Stack **Unit IR (U002)** (plugs into the Grove port, no soldering) | **running since 2026-11-14** | receiver (captured the amp remote) and a second IR emitter, about as weak as the ATOM's; on a longer Grove cable it can sit right at the amp's IR window. A bare TSOP38238 would also work but needs wiring: power it from 3V3, never 5V |
 | USB-C cable + USB charger | have? | permanent power for the bridge |
 | External IR LED + transistor | *later, only if range is bad* | |
 
@@ -113,14 +113,14 @@ From a wireframe round (variants: one long list, tabs, tiles + amp bar, menu fir
 - [x] Prepare ESPHome config and docs (this repo)
 
 ### Phase 1 – IR bridge (in progress)
-- [ ] Plug the Unit IR into the Grove port; find the receiver pin by trying (GPIO32 first, else GPIO26)
+- [x] Plug the Unit IR into the Grove port: receiver GPIO32 (white), LED GPIO26 (yellow)
 - [x] Install ESPHome, copy `secrets.example.yaml` to `secrets.yaml`, flash over USB
 - [x] Reserve fixed IPs in the FRITZ!Box for the bridge and all five Shellys (`*.local` names do not work through WireGuard)
 - [x] Candidate Onkyo codes from Flipper-IRDB put into the config (amp keys + test buttons for inputs); compiles
 - [x] ESPHome installed on the laptop (`~/.venvs/esphome`), `esphome/secrets.yaml` created with random passwords
 - [x] User: join the `dialout` group (USB flashing), fill in the Wi-Fi lines in `secrets.yaml` (2.4 GHz network)
 - [x] Flash the ATOM Lite over USB; volume, mute, power work (device id `03`/`04`, found by sweeping all ids); the database inputs do not
-- [ ] Capture every needed button from the original remote (watch the log) once the Unit IR arrives
+- [x] Capture the amp remote: volume matches, input next/previous need NEC repeat codes (now in the config and the app)
 - [ ] Also capture the Hisense remote (power off, inputs); if it prints nothing, it is probably Bluetooth/RF, so use a code database
 - [ ] Fill the real codes into `atom-lite-ir.yaml` (amp and TV buttons), re-flash (over Wi-Fi now)
 - [ ] Test each button with `scripts/press.sh`
@@ -199,11 +199,10 @@ only reaches them once the iOS app exists.
 
 ## Risks and notes
 
-- **IR range.** The ATOM Lite LED is a single weak LED: in the first test it only worked from close up. Place it near the amp's IR window, top facing it; if that is not practical, try the Unit IR's emitter on its cable, then an external LED.
+- **IR range.** The ATOM Lite LED is a single weak LED: in the first test it only worked from close up. Place it near the amp's IR window, top facing it; the Unit IR's LED is about as weak. 40 mA pin drive did not help. Next options: the Unit IR on a longer Grove cable right at the IR window, or a stick-on emitter.
 - **IR is one-way.** No state feedback from the amp.
 - **Plain HTTP.** The bridge and Shelly traffic is unencrypted. Acceptable on the LAN and inside WireGuard. Do not expose either to the internet directly.
 - **Fixed addresses.** Use DHCP reservations in the FRITZ!Box (or mDNS names) so the app does not break when addresses change.
 - **ESPHome URL scheme and login.** In ESPHome 2026.10 the web server addresses entities by *name* (`/button/Amp%20Volume%20Up/press`). Renaming a button changes its URL. If ESPHome is upgraded much later, re-check this. The web login uses HTTP digest authentication (set explicitly), implemented in `core/Digest.kt` (MD5 and SHA-256, so Shelly authentication can use it too).
-- **Receiver pin.** IR LED GPIO12 and Grove GPIO26/GPIO32 are confirmed in M5Stack's docs; which of the two Grove pins carries the Unit IR's receiver is not, so it is found by trying. The Unit IR's signal voltage is also undocumented (expected fine, since M5Stack builds Units for these ports).
 - **mDNS does not cross the VPN.** Away from home, `*.local` names and discovery do not work. The app stores each device's address (found at home) and uses that; give every Shelly and the bridge a fixed address in the FRITZ!Box. Discovery is a home-only action.
 - **No private data in this repo.** No real IP addresses, Wi-Fi names, passwords or device IDs. Secrets live in `esphome/secrets.yaml` (git-ignored). `scripts/press.sh` reads credentials from environment variables.

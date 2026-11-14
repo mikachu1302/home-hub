@@ -11,16 +11,15 @@ data class BridgeLogin(val user: String, val password: String) {
     override fun toString() = "BridgeLogin($user, ***)"
 }
 
-/**
- * The amp keys the bridge defines (esphome/atom-lite-ir.yaml; volume, mute and power confirmed on the A-9050).
- * Inputs are added once the real remote has been captured.
- */
+/** The amp keys the bridge defines (esphome/atom-lite-ir.yaml); all confirmed on the A-9050. */
 object AmpKeys {
     val power = IrKey("Power", "Amp Power")
     val mute = IrKey("Mute", "Amp Mute")
     val volumeUp = IrKey("Volume up", "Amp Volume Up")
     val volumeDown = IrKey("Volume down", "Amp Volume Down")
-    val inputs: List<IrKey> = emptyList()
+    /** The remote has no key per input, only next/previous (the amp steps through its inputs). */
+    val inputNext = IrKey("Next input", "Amp Input Next")
+    val inputPrevious = IrKey("Previous input", "Amp Input Previous")
 }
 
 /** `POST` path that presses [key] on the bridge; the name is percent-encoded (spaces as %20). */

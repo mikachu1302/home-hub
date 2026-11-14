@@ -21,7 +21,8 @@ its own Grove ports, so this is expected to work, but it is not documented.)
 ## 2. Install ESPHome (Fedora)
 
 ```sh
-python3 -m venv ~/.venvs/esphome
+# ESPHome 2026.x needs Python <= 3.14 (Fedora 45's default is 3.15: sudo dnf install python3.14)
+python3.14 -m venv ~/.venvs/esphome
 ~/.venvs/esphome/bin/pip install esphome
 # serial port access for flashing; log out and in again afterwards
 sudo usermod -aG dialout "$USER"
@@ -36,13 +37,14 @@ cp secrets.example.yaml secrets.yaml   # then edit: Wi-Fi, passwords
 
 After the first flash, updates and logs go over Wi-Fi (`esphome run` lists the device).
 
-## 4. Test (no receiver needed)
+## 4. Place and test
 
-Open `http://<bridge address>/` (login: `web_username` / `web_password` from `secrets.yaml`). The IR LED sits behind
-the **top** cover, not next to the USB port; its range is short, so hold or place the ATOM close to the amp with the top
-facing the amp's IR window. **Test IR LED** makes it glow for 3 s, visible through a phone camera.
+Everything is sent through the **Unit IR's LED** (the ATOM's built-in one is not used). Its range is short, so put the
+Unit IR right at the amp's IR window (a longer Grove cable lets the ATOM hide elsewhere). Open `http://<bridge address>/`
+(login: `web_username` / `web_password` from `secrets.yaml`); **Test IR LED** makes the Unit's LED glow for 3 s, visible
+through a phone camera, for aiming.
 
-Volume, mute and power are confirmed on the A-9050 (codes: docs/PROTOCOLS.md). The inputs still need the receiver (step 5).
+All amp keys are confirmed on the A-9050 (codes: docs/PROTOCOLS.md).
 
 ## 5. Capture codes from the remote (once the Unit IR is here)
 

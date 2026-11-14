@@ -51,6 +51,10 @@ fun AmpScreen(title: String, ready: Boolean, onPress: (IrKey, Boolean) -> Unit) 
             AmpKey(AmpKeys.power, ready, onPress, Modifier.weight(1f))
             AmpKey(AmpKeys.mute, ready, onPress, Modifier.weight(1f))
         }
+        Row(horizontalArrangement = Arrangement.spacedBy(Dimens.gap)) {
+            AmpKey(AmpKeys.inputPrevious, ready, onPress, Modifier.weight(1f), text = "‹ Input")
+            AmpKey(AmpKeys.inputNext, ready, onPress, Modifier.weight(1f), text = "Input ›")
+        }
         Column(
             Modifier.weight(1f).fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -61,8 +65,8 @@ fun AmpScreen(title: String, ready: Boolean, onPress: (IrKey, Boolean) -> Unit) 
             AmpKey(AmpKeys.volumeDown, ready, onPress, Modifier.size(160.dp, 120.dp), text = "−", repeats = true)
         }
         Text(
-            "Hold + or − to keep turning. Power and mute switch back and forth; the amp does not report its " +
-                "state. Inputs follow once the remote's codes are captured.",
+            "Hold + or − to keep turning. Power, mute and input step on from wherever the amp is; it does not " +
+                "report its state.",
             fontSize = 12.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
