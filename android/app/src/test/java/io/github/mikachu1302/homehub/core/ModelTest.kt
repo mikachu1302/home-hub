@@ -78,7 +78,7 @@ class ModelTest {
     fun menuFollowsOrderAndNames() {
         assertEquals(MENU_SECTIONS, menuSections(emptyList()))
         // Saved order first; unknown ids ignored; a section missing from the order (added later) comes last.
-        assertEquals(listOf(Section.TV, Section.SWITCHES, Section.AMP), menuSections(listOf("TV", "GONE", "SWITCHES")))
+        assertEquals(listOf(Section.TV, Section.SWITCHES, Section.AMP, Section.TV_IR), menuSections(listOf("TV", "GONE", "SWITCHES")))
         assertEquals("Lights", sectionTitle(Section.SWITCHES, mapOf("SWITCHES" to " Lights ")))
         assertEquals("Amplifier", sectionTitle(Section.AMP, mapOf("AMP" to "  ")))
     }

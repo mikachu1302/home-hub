@@ -115,6 +115,46 @@ button:
           carrier_frequency: 38kHz
           code: [9000, -4500, 560, -560, 560, -1690, 560, -560, 560, -560, 560, -1690, 560, -560, 560, -1690, 560, -1690, 560, -560, 560, -560, 560, -1690, 560, -560, 560, -560, 560, -560, 560, -560, 560, -560, 560, -1690, 560, -1690, 560, -1690, 560, -1690, 560, -1690, 560, -560, 560, -560, 560, -560, 560, -560, 560, -560, 560, -560, 560, -560, 560, -560, 560, -1690, 560, -1690, 560, -1690, 560, -43410, 9000, -2250, 560, -96190, 9000, -2250, 560]
 
+  # --- Hisense TV (58A6FG, VIDAA). Its remote is Bluetooth only, but the TV accepts IR (Mute and
+  # Volume Down confirmed 2026-11-14). Codes: Flipper-IRDB's VIDAA sets (Hisense_32A4HAU, _55E7KQ,
+  # identical): NECext address 00 BF (0xBF00), key k as (~k << 8) | k.
+  - platform: template
+    name: "TV Power"        # toggle, like the remote's power key
+    on_press:
+      - remote_transmitter.transmit_nec: {address: 0xBF00, command: 0xF20D}
+  - platform: template
+    name: "TV Source"        # opens the input menu
+    on_press:
+      - remote_transmitter.transmit_nec: {address: 0xBF00, command: 0xED12}
+  - platform: template
+    name: "TV Up"
+    on_press:
+      - remote_transmitter.transmit_nec: {address: 0xBF00, command: 0xE916}
+  - platform: template
+    name: "TV Down"
+    on_press:
+      - remote_transmitter.transmit_nec: {address: 0xBF00, command: 0xE817}
+  - platform: template
+    name: "TV Left"
+    on_press:
+      - remote_transmitter.transmit_nec: {address: 0xBF00, command: 0xE619}
+  - platform: template
+    name: "TV Right"
+    on_press:
+      - remote_transmitter.transmit_nec: {address: 0xBF00, command: 0xE718}
+  - platform: template
+    name: "TV OK"
+    on_press:
+      - remote_transmitter.transmit_nec: {address: 0xBF00, command: 0xEA15}
+  - platform: template
+    name: "TV Back"
+    on_press:
+      - remote_transmitter.transmit_nec: {address: 0xBF00, command: 0xB748}
+  - platform: template
+    name: "TV Mute"        # confirmed 2026-11-14
+    on_press:
+      - remote_transmitter.transmit_nec: {address: 0xBF00, command: 0xF10E}
+
   # Makes the Unit IR's LED glow for ~3 s so a phone camera can see it (for aiming); no valid
   # code, no device reacts.
   - platform: template

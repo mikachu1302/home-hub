@@ -111,9 +111,21 @@ So the firmware sends everything through the Unit IR, which sits right at the am
 
 Documented in `tv-remote` (`AGENTS.md`, "The TV itself"): volume and mute over UPnP RenderingControl (port 38400,
 plain HTTP + SOAP, no pairing), power on by Wake-on-LAN. Power off and input switching are not possible over the
-network and go through the IR bridge. **Unverified:** that the TV accepts IR commands at all (the voice remote shows
-no IR flash with a phone camera, so it is probably Bluetooth only); the TV's IR codes would come from a code database
-and are tested once the bridge is here.
+network and go through the IR bridge.
+
+Its remote is Bluetooth only (nothing to capture), but the TV itself **accepts IR**: verified 2026-11-14 with codes from
+Flipper-IRDB's VIDAA sets (`TVs/Hisense/Hisense_32A4HAU.ir` and `Hisense_55E7KQ.ir`, identical): NEC extended, address
+`00 BF` (ESPHome `0xBF00`), key `k` sent as `(~k << 8) | k`. Hisense's Google TV models use other codes (NEC `04 00`).
+
+| Key | k | Verified |
+|---|---|---|
+| Power (toggle) | 0x0D | yes, switches off |
+| Source (input menu) | 0x12 | yes |
+| Up / Down / Left / Right | 0x16 / 0x17 / 0x19 / 0x18 | yes (menu navigation) |
+| OK | 0x15 | yes |
+| Back | 0x48 | yes |
+| Mute | 0x0E | yes |
+| Volume − / + | 0x43 / 0x44 | − yes; + from the database (the app uses UPnP for volume anyway) |
 
 ## Android TV stick (waipu.tv 4K)
 

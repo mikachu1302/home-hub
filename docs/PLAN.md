@@ -38,7 +38,7 @@ Status as of 2026-11-10. Keep this file current; it is the single source of trut
 - **Not possible over the network:** power off and input switching. VIDAA's own remote protocol needs a Hisense-issued client certificate, and a phone as Bluetooth remote was tried and dropped. The notes conclude these need a Wi-Fi IR bridge, which is what the ATOM Lite is.
 - So the IR bridge also carries the TV's *power off*, *input* (and any other key) buttons. Volume and power on stay with UPnP / Wake-on-LAN.
 - **Remote (model 58A6FG, voice remote):** phone-camera test on 2026-11-10: the **Onkyo remote shows an IR flash** (so the camera can see IR and the amp is capturable), the **Hisense remote shows nothing**, so it is most likely Bluetooth/RF only. The remote's `ERF…` code (inside the battery compartment) is not yet known.
-- **Unverified:** whether the TV accepts IR at all. A Bluetooth-only remote says nothing about the TV's own IR receiver, which very likely exists. Since there is nothing to capture, the TV codes must come from a code database (Hisense). Test with the bridge once it arrives: send the power code and see if the TV reacts. If it does not, the TV stays on Wake-on-LAN plus the Hisense app for power off.
+- **The TV accepts IR** (verified 2026-11-14): VIDAA database codes (NEC `00 BF`) for power, source, arrows, OK, back and mute work through the bridge (docs/PROTOCOLS.md). So power off and input switching go over IR, the rest over the network.
 - One bridge may cover both TV and amp if they are side by side and the LED beam reaches both; otherwise a second bridge or an external LED.
 
 ### Remote access
@@ -121,7 +121,7 @@ From a wireframe round (variants: one long list, tabs, tiles + amp bar, menu fir
 - [x] User: join the `dialout` group (USB flashing), fill in the Wi-Fi lines in `secrets.yaml` (2.4 GHz network)
 - [x] Flash the ATOM Lite over USB; volume, mute, power work (device id `03`/`04`, found by sweeping all ids); the database inputs do not
 - [x] Capture the amp remote: volume matches, input next/previous need NEC repeat codes (now in the config and the app)
-- [ ] Also capture the Hisense remote (power off, inputs); if it prints nothing, it is probably Bluetooth/RF, so use a code database
+- [x] Hisense remote is Bluetooth only (nothing to capture); database VIDAA codes work: power, source, arrows, OK, back, mute (2026-11-14)
 - [ ] Fill the real codes into `atom-lite-ir.yaml` (amp and TV buttons), re-flash (over Wi-Fi now)
 - [ ] Test each button with `scripts/press.sh`
 - [ ] Decide on power handling (see "Open questions")
@@ -136,7 +136,7 @@ From a wireframe round (variants: one long list, tabs, tiles + amp bar, menu fir
 - [x] Device list storage (names per output, stored on the phone only, no backup)
 - [x] Timers per output: show and edit auto-off and auto-on (on/off + delay), written to the device (`Switch.SetConfig`). Two outputs use auto-off today, one for a light after 7 min. Part of the minimum for the Shelly side.
 - [x] IR client: amp keys via HTTP with digest login (`IrBridgeClient`); bridge address and login in Settings, "Check" without sending IR
-- [x] Menu + Switches + Settings pages (Settings holds devices, IR bridge, sharing); Amp page with power, mute and volume (inputs after capture); TV page as placeholder
+- [x] Menu + Switches + Settings pages (Settings holds devices, IR bridge, sharing); Amp page with power, mute, volume and inputs; "TV (IR)" page with power, mute and the input menu (until tv-remote moves into the TV page)
 - [x] Test through WireGuard from outside (switches and amp, 2026-11-11)
 - [ ] First slice done = Shelly outputs (switch, power, timers) and amp buttons work on the real phone
 

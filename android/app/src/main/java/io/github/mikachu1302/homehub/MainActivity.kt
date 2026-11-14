@@ -36,6 +36,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import io.github.mikachu1302.homehub.core.Section
 import io.github.mikachu1302.homehub.ui.AmpScreen
+import io.github.mikachu1302.homehub.ui.TvIrScreen
 import io.github.mikachu1302.homehub.ui.Dimens
 import io.github.mikachu1302.homehub.ui.HomeHubTheme
 import io.github.mikachu1302.homehub.ui.HomeViewModel
@@ -109,6 +110,7 @@ private fun App(vm: HomeViewModel) {
                     Section.SWITCHES -> SwitchesScreen(vm)
                     Section.AMP -> AmpScreen(vm.title(Section.AMP), vm.irBridge.isNotBlank(), vm::press)
                     Section.TV -> TvScreen(vm.title(Section.TV))
+                    Section.TV_IR -> TvIrScreen(vm.title(Section.TV_IR), vm.irBridge.isNotBlank(), vm::press)
                     Section.SETTINGS -> SettingsScreen(vm)
                 }
             }

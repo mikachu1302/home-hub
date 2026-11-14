@@ -104,7 +104,7 @@ the same way, so the iOS app only has to register `homehub`.
 | `prefs` | the sender's preferences; optional (left out by the sender, or a link from the first version) | replace this phone's preferences only if the receiver agrees |
 
 | `prefs.switchView` | `ROOMS` or `ALL` | unknown value → `ROOMS` |
-| `prefs.menuOrder` | menu sections as `Section` names (`SWITCHES`, `AMP`, `TV`) | unknown ids are ignored; sections not listed come last; missing → default order |
+| `prefs.menuOrder` | menu sections as `Section` names (`SWITCHES`, `AMP`, `TV`, `TV_IR`) | unknown ids are ignored; sections not listed come last; missing → default order |
 | `prefs.menuNames` | the user's titles, keyed by `Section` name | blank or missing → the default title |
 | `secrets` | only with "Include passwords": `{"irBridge": {"user": …, "password": …}}` | stored encrypted, replaces this phone's bridge login; an entry with an empty user is ignored |
 

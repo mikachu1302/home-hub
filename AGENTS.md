@@ -82,7 +82,7 @@ Android layout, under `android/app/src/main/java/io/github/mikachu1302/homehub/`
   `data/SecretStore.kt` – credentials, encrypted with a Keystore key
 - `ui/` – `HomeViewModel`, `Theme` (all colours/sizes), `Icons` (drawn output icons), `Reorderable` (drag list),
   `MenuScreen`, `SwitchesScreen` (+ output sheet, arrange mode), `SettingsScreen` (devices, IR bridge, sharing), `ShareUi` (QR and import dialogs),
-  `PlaceholderScreens` (Amp page, TV placeholder)
+  `PlaceholderScreens` (Amp page, TV (IR) page, TV placeholder)
 - `MainActivity.kt` – permission gate, system back to the menu, page switch, `homehub://import` links
 
 Tests: `./gradlew test` runs `FixtureTest` and `ShareTest` (the cases in `spec/fixtures`), `ModelTest`, `LanHttpTest`

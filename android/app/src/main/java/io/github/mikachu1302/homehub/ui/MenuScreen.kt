@@ -49,7 +49,7 @@ fun MenuScreen(vm: HomeViewModel) {
         vm.menu.forEach { section ->
             val line = when (section) {
                 Section.SWITCHES -> switchesLine
-                Section.AMP -> "IR bridge not set up yet"
+                Section.AMP, Section.TV_IR -> if (vm.irBridge.isBlank()) "IR bridge not set up yet" else "Through the IR bridge"
                 Section.TV -> "Coming later from tv-remote"
                 else -> ""
             }

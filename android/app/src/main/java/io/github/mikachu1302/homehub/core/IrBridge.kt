@@ -22,6 +22,22 @@ object AmpKeys {
     val inputPrevious = IrKey("Previous input", "Amp Input Previous")
 }
 
+/**
+ * The Hisense TV's IR keys on the bridge (VIDAA codes, docs/PROTOCOLS.md). Only what the network cannot do on this TV
+ * (power off, inputs) plus navigation for the input menu and mute. A separate page until tv-remote moves in.
+ */
+object TvIrKeys {
+    val power = IrKey("Power", "TV Power")
+    val mute = IrKey("Mute", "TV Mute")
+    val source = IrKey("Source", "TV Source")
+    val up = IrKey("Up", "TV Up")
+    val down = IrKey("Down", "TV Down")
+    val left = IrKey("Left", "TV Left")
+    val right = IrKey("Right", "TV Right")
+    val ok = IrKey("OK", "TV OK")
+    val back = IrKey("Back", "TV Back")
+}
+
 /** `POST` path that presses [key] on the bridge; the name is percent-encoded (spaces as %20). */
 fun irPressPath(key: IrKey): String = irButtonPath(key) + "/press"
 
