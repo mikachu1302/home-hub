@@ -55,17 +55,18 @@ remote_transmitter:
   carrier_duty_percent: 50%
   non_blocking: true
 
-# --- IR in (Unit IR receiver on the Grove port) - for learning only -----------
-# Harmless while the Unit IR is not plugged in (the pull-up keeps the pin idle).
-remote_receiver:
-  pin:
-    number: GPIO32
-    inverted: true
-    mode:
-      input: true
-      pullup: true
-  dump: all
-  tolerance: 25%
+# --- IR in (Unit IR receiver, GPIO32) - off: only needed to capture a remote. It also hears
+# every code the bridge sends itself and logs it in many formats, which costs time. To capture,
+# uncomment, flash, and read the log (web page or `esphome logs`).
+# remote_receiver:
+#   pin:
+#     number: GPIO32
+#     inverted: true
+#     mode:
+#       input: true
+#       pullup: true
+#   dump: all
+#   tolerance: 25%
 
 # --- Onkyo codes ---------------------------------------------------------------
 # Onkyo NEC codes are "D2 <device id>" + a key number. The classic amplifier id 6D
