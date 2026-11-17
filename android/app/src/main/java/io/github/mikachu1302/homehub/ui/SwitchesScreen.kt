@@ -5,6 +5,18 @@ package io.github.mikachu1302.homehub.ui
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.disabled
+import androidx.compose.ui.semantics.role
+import io.github.mikachu1302.homehub.core.SwitchLayout
 import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.text.TextStyle
@@ -100,6 +112,7 @@ fun SwitchesScreen(vm: HomeViewModel) {
     var arranging by remember { mutableStateOf(false) }
     BackHandler(enabled = arranging) { arranging = false }
     val outputs = vm.outputs
+    val grid = vm.switchLayout == SwitchLayout.GRID
 
     LazyColumn(
         Modifier.fillMaxSize(),
@@ -113,7 +126,7 @@ fun SwitchesScreen(vm: HomeViewModel) {
             PageHeader(
                 vm.title(Section.SWITCHES), line, color,
                 trailing = if (outputs.isEmpty()) null else ({
-                    HeaderTextKey(if (arranging) "Done arranging" else "Arrange the outputs", if (arranging) "Done" else "Arrange") { arranging = !arranging }
+                    HeaderTextKey(if (arranging) "Done editing" else "Edit the order of the outputs", if (arranging) "Done" else "Edit") { arranging = !arranging }
                 }),
             )
         }
@@ -145,6 +158,12 @@ fun SwitchesScreen(vm: HomeViewModel) {
                         onClick = { vm.showView(SwitchView.ALL) },
                         label = { Text("All") },
                     )
+                    Spacer(Modifier.weight(1f))
+                    FilterChip(
+                        selected = vm.switchLayout == SwitchLayout.GRID,
+                        onClick = { vm.showLayout(if (vm.switchLayout == SwitchLayout.GRID) SwitchLayout.LIST else SwitchLayout.GRID) },
+                        label = { Text("Grid") },
+                    )
                 }
             }
         }
@@ -161,19 +180,15 @@ fun SwitchesScreen(vm: HomeViewModel) {
                         modifier = Modifier.padding(start = 4.dp, top = 12.dp, bottom = 2.dp).semantics { heading() },
                     )
                 }
-                items(g.items, key = { "${it.device.id}/${it.channel}" }) { o ->
-                    OutputRow(o, showRoom = false, onToggle = { vm.toggle(o) }, onEdit = { editing = o.device.id to o.channel })
-                }
+                outputItems(g.items, showRoom = false, grid, vm) { editing = it }
             }
         } else {
-            items(outputs, key = { "${it.device.id}/${it.channel}" }) { o ->
-                OutputRow(o, showRoom = true, onToggle = { vm.toggle(o) }, onEdit = { editing = o.device.id to o.channel })
-            }
+            outputItems(outputs, showRoom = true, grid, vm) { editing = it }
         }
         if (outputs.isNotEmpty() && !arranging) {
             item {
                 Text(
-                    "Tap a name for name, room, icon and timers.",
+                    if (grid) "Tap to switch. Hold for name, room, icon and timers." else "Tap a name for name, room, icon and timers.",
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp),
@@ -193,6 +208,110 @@ fun SwitchesScreen(vm: HomeViewModel) {
                 editing = null
             },
         )
+    }
+}
+
+/** The outputs as full-width rows, or as compact cards two to a row ([grid]). */
+private fun LazyListScope.outputItems(
+    list: List<OutputUi>,
+    showRoom: Boolean,
+    grid: Boolean,
+    vm: HomeViewModel,
+    onEdit: (Pair<String, Int>) -> Unit,
+) {
+    if (!grid) {
+        items(list, key = { it.key }) { o ->
+            OutputRow(o, showRoom, onToggle = { vm.toggle(o) }, onEdit = { onEdit(o.device.id to o.channel) })
+        }
+        return
+    }
+    items(list.chunked(2), key = { pair -> pair.joinToString("+") { it.key } }) { pair ->
+        Row(Modifier.fillMaxWidth().height(IntrinsicSize.Max), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            pair.forEach { o ->
+                OutputCard(o, showRoom, onToggle = { vm.toggle(o) }, onEdit = { onEdit(o.device.id to o.channel) }, Modifier.weight(1f).fillMaxHeight())
+            }
+            if (pair.size == 1) Spacer(Modifier.weight(1f))
+        }
+    }
+}
+
+/**
+ * An output as a compact card: the whole card is the switch (on release, so a scroll that starts on it switches
+ * nothing); holding it opens name, room, icon and timers. On glows in the "alive" colour and says so in words.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun OutputCard(o: OutputUi, showRoom: Boolean, onToggle: () -> Unit, onEdit: () -> Unit, modifier: Modifier) {
+    val term = LocalTerm.current
+    val p = term.palette
+    val haptic = LocalHapticFeedback.current
+    val on = o.reachable && o.status?.on == true
+    val known = o.reachable && o.status != null
+    val canSwitch = !o.busy && o.reachable
+    val state = when {
+        o.busy -> "…"
+        !known -> "–"
+        on -> "On"
+        else -> "Off"
+    }
+    val detail = when {
+        !o.reachable -> "No connection"
+        // Watts first: a long room name is cut off, never the reading.
+        else -> listOfNotNull(o.status?.watts?.let(::formatWatts), o.room.takeIf { showRoom && it.isNotEmpty() }).joinToString(" · ")
+    }
+    Column(
+        modifier
+            .pane(glowColor = if (on) p.primary.copy(alpha = 0.6f) else null)
+            .clip(term.controlShape)
+            .semantics(mergeDescendants = true) {
+                contentDescription = "${o.name}: ${if (!known) "state unknown" else if (on) "on" else "off"}"
+                role = Role.Switch
+                if (!canSwitch) disabled()
+            }
+            .combinedClickable(
+                onClickLabel = "Switch",
+                onLongClickLabel = "Name, room, icon and timers",
+                onLongClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onEdit()
+                },
+                onClick = {
+                    if (canSwitch) {
+                        haptic.performHapticFeedback(HapticFeedbackType.VirtualKey)
+                        onToggle()
+                    }
+                },
+            )
+            .padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            val iconShape = if (term.crt) term.controlShape else CircleShape
+            Box(
+                Modifier.size(36.dp)
+                    .background(if (on) p.primary.copy(alpha = 0.16f) else p.bg, iconShape)
+                    .border(1.dp, if (on) p.primary else p.border, iconShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(o.icon.vector(), contentDescription = null, tint = if (on) p.primary else p.dim, modifier = Modifier.size(20.dp))
+            }
+            Spacer(Modifier.weight(1f))
+            Text(
+                if (term.crt) state.uppercase() else state,
+                color = if (on) p.primary else p.dim,
+                fontSize = if (term.crt) 18.sp else 14.sp,
+                fontWeight = if (term.crt) FontWeight.Normal else FontWeight.Bold,
+                style = glowIf(on && term.crt, p.primary),
+            )
+        }
+        Text(
+            o.name, color = p.text, fontSize = if (term.crt) 18.sp else 15.sp,
+            fontWeight = if (term.crt) FontWeight.Normal else FontWeight.SemiBold,
+            // Every card the same height, whatever its name or details: the name always takes two lines, the detail
+            // line is always there.
+            minLines = 2, maxLines = 2, overflow = TextOverflow.Ellipsis,
+        )
+        Text(detail.ifEmpty { " " }, fontSize = 12.sp, color = if (!o.reachable) p.warn else p.dim, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 

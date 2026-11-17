@@ -31,6 +31,9 @@ fun sectionTitle(section: Section, names: Map<String, String>): String =
 /** How the Switches page lists the outputs. */
 enum class SwitchView { ROOMS, ALL }
 
+/** How big the Switches page draws an output: a full-width row, or a compact card two to a row. */
+enum class SwitchLayout { LIST, GRID }
+
 /**
  * The two looks, taken over from tv-remote (docs/DESIGN.md). Layout stays the same; shapes, borders, fonts and glow
  * differ. Entry names are stored and shared (`prefs.style`), so they never change.

@@ -7,6 +7,7 @@ import io.github.mikachu1302.homehub.core.Household
 import io.github.mikachu1302.homehub.core.Appearance
 import io.github.mikachu1302.homehub.core.CustomPage
 import io.github.mikachu1302.homehub.core.PagesJson
+import io.github.mikachu1302.homehub.core.SwitchLayout
 import io.github.mikachu1302.homehub.core.Preferences
 import io.github.mikachu1302.homehub.core.UiStyle
 import io.github.mikachu1302.homehub.core.SavedDevice
@@ -36,10 +37,11 @@ object SettingKeys {
     const val PALETTE = "palette"
     const val SCANLINES = "scanlines"
     const val PAGES = "pages"
+    const val SWITCH_LAYOUT = "switch_layout"
     const val LAST_PAGE = "last_page"
 
     val HOUSEHOLD = setOf(DEVICES, OUTPUT_ORDER, ROOM_ORDER, IR_BRIDGE)
-    val PREFERENCES = setOf(SWITCH_VIEW, MENU_ORDER, MENU_NAMES, STYLE, PALETTE, SCANLINES, PAGES)
+    val PREFERENCES = setOf(SWITCH_VIEW, MENU_ORDER, MENU_NAMES, STYLE, PALETTE, SCANLINES, PAGES, SWITCH_LAYOUT)
     val STATE = setOf(LAST_SECTION, BACK_HINT, LAST_PAGE)
 }
 
@@ -112,19 +114,24 @@ class Store(context: Context) {
             putBoolean(SettingKeys.SCANLINES, value.scanlines)
         }
 
+    var switchLayout: SwitchLayout
+        get() = prefs.getString(SettingKeys.SWITCH_LAYOUT, null)?.let { runCatching { SwitchLayout.valueOf(it) }.getOrNull() } ?: SwitchLayout.LIST
+        set(value) = prefs.edit { putString(SettingKeys.SWITCH_LAYOUT, value.name) }
+
     /** The user's own pages. */
     var pages: List<CustomPage>
         get() = PagesJson.decode(prefs.getString(SettingKeys.PAGES, null))
         set(value) = prefs.edit { putString(SettingKeys.PAGES, PagesJson.encode(value)) }
 
     var preferences: Preferences
-        get() = Preferences(switchView, menuOrder, menuNames, appearance, pages)
+        get() = Preferences(switchView, menuOrder, menuNames, appearance, pages, switchLayout)
         set(value) {
             switchView = value.switchView
             menuOrder = value.menuOrder
             menuNames = value.menuNames
             appearance = value.appearance
             pages = value.pages
+            switchLayout = value.switchLayout
         }
 
     // --- state (this phone only, never shared) ---

@@ -45,6 +45,7 @@ class ShareTest {
                             p.optBoolean("scanlines", Appearance().scanlines),
                         ),
                         PagesJson.fromJson(p.optJSONArray("pages")),
+                        p.optString("switchLayout").takeIf { it.isNotEmpty() }?.let { SwitchLayout.valueOf(it) } ?: SwitchLayout.LIST,
                     )
                 }
                 assertEquals(name, prefs, got.preferences)
@@ -65,7 +66,7 @@ class ShareTest {
     @Test
     fun roundTrip() {
         val h = Household(listOf(lamp, ceiling), listOf(outputKey(ceiling.id, 0), outputKey(lamp.id, 1)), listOf("Aisle"))
-        val setup = SharedSetup(h, Preferences(SwitchView.ALL, listOf("TV", "SWITCHES"), mapOf("SWITCHES" to "Lights"), Appearance(UiStyle.Glass, "nord", false), listOf(CustomPage("k3", "Movie night", listOf(Block(BlockKind.HDMI), Block(BlockKind.SWITCH, "shellyplus1pm-112233445566/0"))))))
+        val setup = SharedSetup(h, Preferences(SwitchView.ALL, listOf("TV", "SWITCHES"), mapOf("SWITCHES" to "Lights"), Appearance(UiStyle.Glass, "nord", false), listOf(CustomPage("k3", "Movie night", listOf(PageSection(listOf(Block(BlockKind.HDMI))), PageSection(listOf(Block(BlockKind.SWITCH, "shellyplus1pm-112233445566/0")))))), SwitchLayout.GRID))
         val link = SetupShare.toLink(setup)
         assertTrue(link.startsWith(SetupShare.LINK_PREFIX))
         assertEquals(setup, SetupShare.fromLink(link))
@@ -134,7 +135,7 @@ class ShareTest {
         // What SetupShare carries today; change together with Household/Preferences, SetupShare and docs/SHARING.md.
         assertEquals(setOf(SettingKeys.DEVICES, SettingKeys.OUTPUT_ORDER, SettingKeys.ROOM_ORDER, SettingKeys.IR_BRIDGE), SettingKeys.HOUSEHOLD)
         assertEquals(
-            setOf(SettingKeys.SWITCH_VIEW, SettingKeys.MENU_ORDER, SettingKeys.MENU_NAMES, SettingKeys.STYLE, SettingKeys.PALETTE, SettingKeys.SCANLINES, SettingKeys.PAGES),
+            setOf(SettingKeys.SWITCH_VIEW, SettingKeys.MENU_ORDER, SettingKeys.MENU_NAMES, SettingKeys.STYLE, SettingKeys.PALETTE, SettingKeys.SCANLINES, SettingKeys.PAGES, SettingKeys.SWITCH_LAYOUT),
             SettingKeys.PREFERENCES,
         )
     }

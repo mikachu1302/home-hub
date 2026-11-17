@@ -6,8 +6,14 @@ import org.junit.Test
 
 /** Custom pages: menu order, storage JSON, ids. Made-up output keys. */
 class PagesTest {
-    private val movie = CustomPage("k3", "Movie night", listOf(Block(BlockKind.HDMI), Block(BlockKind.SWITCH, "shellyplus1pm-112233445566/0")))
-    private val radio = CustomPage("z9", "Radio", listOf(Block(BlockKind.AMP_VOLUME)))
+    private fun page(id: String, title: String, vararg sections: List<Block>) = CustomPage(id, title, sections.map { PageSection(it) })
+
+    private val movie = page(
+        "k3", "Movie night",
+        listOf(Block(BlockKind.HDMI), Block(BlockKind.SWITCH, "shellyplus1pm-112233445566/0")),
+        listOf(Block(BlockKind.AMP_VOLUME), Block(BlockKind.HDMI)),
+    )
+    private val radio = page("z9", "Radio", listOf(Block(BlockKind.AMP_VOLUME)))
 
     @Test
     fun menuListsSectionsThenPagesInTheUsersOrder() {
@@ -27,9 +33,22 @@ class PagesTest {
     @Test
     fun readingIsForgiving() {
         val text = """[{"id":"a","blocks":[{"kind":"nope"},{"kind":"hdmi","output":"ignored"}]},{"title":"x"},{"id":"a","title":"dup"}]"""
-        assertEquals(listOf(CustomPage("a", "Page", listOf(Block(BlockKind.HDMI)))), PagesJson.decode(text))
+        assertEquals(listOf(page("a", "Page", listOf(Block(BlockKind.HDMI)))), PagesJson.decode(text))
         assertEquals(emptyList<CustomPage>(), PagesJson.decode("not json"))
         assertEquals(emptyList<CustomPage>(), PagesJson.decode(null))
+    }
+
+    @Test
+    fun aPageFromBeforeSectionsIsOneSection() {
+        val old = """[{"id":"k3","title":"Old","blocks":[{"kind":"hdmi"},{"kind":"amp_keys"}]}]"""
+        assertEquals(listOf(page("k3", "Old", listOf(Block(BlockKind.HDMI), Block(BlockKind.AMP_KEYS)))), PagesJson.decode(old))
+        // No sections at all: one empty section, so the editor always has one to fill.
+        assertEquals(listOf(CustomPage("e", "Empty")), PagesJson.decode("""[{"id":"e","title":"Empty","sections":[]}]"""))
+    }
+
+    @Test
+    fun blocksListsEverySection() {
+        assertEquals(4, movie.blocks.size)
     }
 
     @Test
@@ -44,7 +63,7 @@ class PagesTest {
     fun blockIdsNeverChange() {
         // Stored and shared: renaming one would drop it from every saved page.
         assertEquals(
-            listOf("amp_volume", "amp_keys", "tv_ir_pad", "tv_ir_keys", "hdmi", "switch"),
+            listOf("amp_volume", "amp_keys", "tv_ir_pad", "tv_ir_keys", "tv_ir_volume", "hdmi", "switch"),
             BlockKind.entries.map { it.id },
         )
     }

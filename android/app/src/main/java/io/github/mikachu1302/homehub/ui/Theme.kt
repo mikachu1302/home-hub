@@ -6,6 +6,9 @@ import io.github.mikachu1302.homehub.core.UiStyle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
@@ -270,8 +273,27 @@ fun Modifier.crtOverlay(): Modifier = drawWithContent {
 fun Modifier.termBackground(): Modifier {
     val t = LocalTerm.current
     val p = t.palette
+    val stripes = p.stripes
     return if (t.crt) {
         background(p.bg)
+    } else if (stripes != null) {
+        // Home Hub addition (decided 2026-11-17): a palette with a flag glows in all its colours ("aurora").
+        background(p.bg).drawBehind {
+            listOf(
+                Triple(0, Offset(size.width * 0.95f, 0f), 0.22f),
+                Triple(2, Offset(size.width * 0.55f, -size.height * 0.03f), 0.14f),
+                Triple(3, Offset(0f, size.height * 0.4f), 0.13f),
+                Triple(4, Offset(size.width, size.height * 0.7f), 0.19f),
+                Triple(5, Offset(size.width * 0.1f, size.height * 1.03f), 0.23f),
+            ).forEach { (i, center, alpha) ->
+                drawRect(
+                    Brush.radialGradient(
+                        listOf(stripes[i % stripes.size].copy(alpha = alpha), Color.Transparent),
+                        center = center, radius = size.width * 0.95f,
+                    ),
+                )
+            }
+        }
     } else {
         background(p.bg).drawBehind {
             drawRect(
@@ -288,6 +310,19 @@ fun Modifier.termBackground(): Modifier {
             )
         }
     }
+}
+
+/**
+ * Home Hub addition: the [i]th decorative accent. A palette with a flag (Pride) goes through its colours; others use
+ * [Palette.primary]. Only for decoration (icons, dots, the HDMI keys): "on" stays primary and OK stays action.
+ */
+fun Palette.accent(i: Int): Color = stripes?.let { it[((i % it.size) + it.size) % it.size] } ?: primary
+
+/** Home Hub addition: a thin rainbow line in the flag's colours, for palettes that have one (under page headers). */
+@Composable
+fun FlagLine(modifier: Modifier = Modifier) {
+    val stripes = LocalTerm.current.palette.stripes ?: return
+    Box(modifier.fillMaxWidth().height(3.dp).background(Brush.horizontalGradient(stripes), RoundedCornerShape(2.dp)))
 }
 
 // ------------------------------------------------------------------ themed Material buttons

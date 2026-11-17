@@ -12,7 +12,7 @@ own state never travels. This file is the contract; read it before adding any se
 | Class | What | Shared? | Examples |
 |---|---|---|---|
 | **Household** | describes the home | when the sender ticks it (on by default) | device list and addresses, output names, rooms, icons, output and room order, the IR bridge address |
-| **Preference** | how a person likes to use the app | when the sender ticks it (on by default); the receiver can still decline | list view ("By room"/"All"), menu order and menu names, look (style, colours, scanlines), custom pages; later haptics |
+| **Preference** | how a person likes to use the app | when the sender ticks it (on by default); the receiver can still decline | list view ("By room"/"All", rows or grid), menu order and menu names, look (style, colours, scanlines), custom pages; later haptics |
 | **State** | what the app remembers about itself | never: copying it would only do odd things | the page that was open last, hints already shown |
 | **Credential** | passwords, keys | only with "Include passwords" (see below) | the IR bridge login; later a Shelly password |
 
@@ -109,7 +109,8 @@ the same way, so the iOS app only has to register `homehub`.
 | `prefs.style` | `Crt` or `Glass` (docs/DESIGN.md) | unknown or missing → `Crt` |
 | `prefs.palette` | a palette id (`neon`, `dracula`, `nord`, …) | missing → `neon`; an unknown id is kept and shown as `neon` |
 | `prefs.scanlines` | scanlines over the CRT style | missing → on |
-| `prefs.pages` | custom pages: `[{"id", "title", "blocks": [{"kind", "output"?}]}]`; `kind` is a `BlockKind` id, `output` (switch blocks only) an output key. Their menu place is `page:<id>` in `prefs.menuOrder` | a page without an id is dropped, a missing title becomes "Page", an unknown block is dropped; missing → no pages |
+| `prefs.switchLayout` | `LIST` (rows) or `GRID` (compact cards, two to a row) on the Switches page | unknown or missing → `LIST` |
+| `prefs.pages` | custom pages: `[{"id", "title", "sections": [{"blocks": [{"kind", "output"?}]}]}]` (a page swipes between its sections); `kind` is a `BlockKind` id, `output` (switch blocks only) an output key. Their menu place is `page:<id>` in `prefs.menuOrder` | a page without an id is dropped, a missing title becomes "Page", an unknown block is dropped, a plain `blocks` list (before sections) is one section; missing → no pages |
 | `secrets` | only with "Include passwords": `{"irBridge": {"user": …, "password": …}}` | stored encrypted, replaces this phone's bridge login; an entry with an empty user is ignored |
 
 A payload with none of the parts (household, `prefs`, `secrets`) is refused ("This setup is empty.").

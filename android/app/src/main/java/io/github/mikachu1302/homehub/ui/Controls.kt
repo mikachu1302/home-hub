@@ -14,6 +14,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -34,6 +36,14 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+
+/** True for keys a swipe can start on: inside a page that swipes between sections (tv-remote's `LocalSwipeable`). */
+val LocalSwipeable = staticCompositionLocalOf { false }
+
+/** How long a touch in a swipeable area waits to see whether it becomes a swipe. */
+private const val SWIPE_WINDOW_MS = 100L
+
+private class Released(val up: PointerInputChange?)
 
 /** Which colour a key speaks in: plain, "alive" (plus/minus, on) or the action colour (OK). */
 enum class Look { Normal, Primary, Action }
@@ -67,6 +77,8 @@ fun RemoteButton(
     look: Look = Look.Normal,
     active: Boolean = false,
     activeColor: Color? = null,
+    /** A decorative colour for the label (Pride's flag colours on the HDMI keys); state colours still win. */
+    tint: Color? = null,
     strong: Boolean = false,
     ghost: Boolean = false,
     shape: Shape? = null,
@@ -81,6 +93,7 @@ fun RemoteButton(
     val press by rememberUpdatedState(onPress)
     val click by rememberUpdatedState(onClick)
     var pressed by remember { mutableStateOf(false) }
+    val swipeable = LocalSwipeable.current
 
     val keyShape = shape ?: term.controlShape
     val accent = if (look == Look.Action) p.action else p.primary
@@ -93,6 +106,7 @@ fun RemoteButton(
     val contentColor = when {
         !enabled -> p.dim.copy(alpha = 0.45f)
         active -> activeColor ?: accent
+        tint != null -> tint
         look == Look.Primary -> p.primary
         look == Look.Action -> p.action
         term.crt -> p.text
@@ -126,16 +140,27 @@ fun RemoteButton(
                     true
                 }
             }
-            .pointerInput(enabled, repeat, repeatEveryMs) {
+            .pointerInput(enabled, repeat, repeatEveryMs, swipeable) {
                 if (!enabled) return@pointerInput
                 awaitEachGesture {
                     awaitFirstDown()
                     pressed = true
+                    // In a swipeable area the touch may be a swipe: wait briefly. If the pager takes the touch over,
+                    // nothing is sent; a quick tap is sent as one press (tv-remote's rule).
+                    var released: PointerInputChange? = null
+                    if (swipeable) {
+                        val early = withTimeoutOrNull(SWIPE_WINDOW_MS) { Released(waitForUpOrCancellation()) }
+                        if (early != null && early.up == null) {
+                            pressed = false
+                            return@awaitEachGesture
+                        }
+                        released = early?.up
+                    }
                     // A key that acts on release (in a scrolling list) gives its feedback on release, so a scroll
                     // that starts on it does not buzz.
                     if (press != null) haptic.performHapticFeedback(HapticFeedbackType.VirtualKey)
                     press?.invoke(false)
-                    val ticker = if (repeat && press != null) scope.launch {
+                    val ticker = if (repeat && press != null && released == null) scope.launch {
                         delay(400)
                         while (true) {
                             press?.invoke(true)
@@ -143,7 +168,7 @@ fun RemoteButton(
                         }
                     } else null
                     try {
-                        if (waitForUpOrCancellation() != null && click != null) {
+                        if ((released ?: waitForUpOrCancellation()) != null && click != null) {
                             if (press == null) haptic.performHapticFeedback(HapticFeedbackType.VirtualKey)
                             click?.invoke()
                         }

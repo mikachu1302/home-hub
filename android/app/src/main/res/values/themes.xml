@@ -1,6 +1,11 @@
 <resources>
+    <!-- The window before the app draws, and the launch screen of the first start: the default palette (Neon).
+         Later starts use the palette's own launch-screen theme (values/splash_themes.xml, chosen in MainActivity). -->
     <style name="Theme.HomeHub" parent="@android:style/Theme.Material.NoActionBar">
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowBackground">@color/ic_launcher_bg_neon</item>
+        <item name="android:windowSplashScreenBackground">@color/ic_launcher_bg_neon</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_launcher_fg_neon</item>
     </style>
 </resources>

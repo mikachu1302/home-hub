@@ -36,6 +36,8 @@ object TvIrKeys {
     val right = IrKey("Right", "TV Right")
     val ok = IrKey("OK", "TV OK")
     val back = IrKey("Back", "TV Back")
+    val volumeUp = IrKey("TV volume up", "TV Volume Up")
+    val volumeDown = IrKey("TV volume down", "TV Volume Down")
 }
 
 /** The UGREEN HDMI switch in front of the TV (codes captured from its remote, docs/PROTOCOLS.md). */

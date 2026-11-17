@@ -1,6 +1,8 @@
 package io.github.mikachu1302.homehub.ui
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -85,19 +87,19 @@ fun MenuScreen(vm: HomeViewModel) {
             ) { Text("+ New page") }
             Text("Build your own page from blocks: amplifier, TV, HDMI switch, switches.", fontSize = 12.sp, color = p.dim)
         } else {
-            vm.menu.forEach { id ->
+            vm.menu.forEachIndexed { index, id ->
                 val page = vm.pages.firstOrNull { pageMenuId(it) == id }
                 if (page != null) {
-                    MenuEntry(page.title, "pad", pageLine(page), p.dim) { vm.openPage(page.id) }
+                    MenuEntry(page.title, "pad", pageLine(page), p.dim, p.accent(index)) { vm.openPage(page.id) }
                 } else {
-                    val section = runCatching { Section.valueOf(id) }.getOrNull() ?: return@forEach
+                    val section = runCatching { Section.valueOf(id) }.getOrNull() ?: return@forEachIndexed
                     val (line, color) = when (section) {
                         Section.SWITCHES -> switches
                         Section.AMP, Section.TV_IR, Section.HDMI -> bridge
                         Section.TV -> "Later, from tv-remote" to p.dim
                         else -> "" to p.dim
                     }
-                    MenuEntry(vm.title(section), glyphOf(section), line, color) { vm.open(section) }
+                    MenuEntry(vm.title(section), glyphOf(section), line, color, p.accent(index)) { vm.open(section) }
                 }
             }
         }
@@ -149,7 +151,7 @@ private fun glyphOf(section: Section) = when (section) {
 
 /** One entry: a pane with the section's icon (glass), its title and status line, and a chevron. */
 @Composable
-private fun MenuEntry(title: String, glyph: String, line: String, lineColor: Color, onClick: () -> Unit) {
+private fun MenuEntry(title: String, glyph: String, line: String, lineColor: Color, iconColor: Color, onClick: () -> Unit) {
     val term = LocalTerm.current
     val p = term.palette
     Row(
@@ -165,8 +167,13 @@ private fun MenuEntry(title: String, glyph: String, line: String, lineColor: Col
         horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         if (!term.crt) {
-            Box(Modifier.size(Dimens.iconBox).pane(CircleShape), contentAlignment = Alignment.Center) {
-                Glyph(glyph, p.primary, Modifier.size(22.dp))
+            // The icon in the entry's accent: the primary colour, or the next flag colour in a palette with a flag.
+            Box(
+                Modifier.size(Dimens.iconBox).background(p.surface, CircleShape)
+                    .border(1.dp, if (p.stripes != null) iconColor.copy(alpha = 0.55f) else p.primary.copy(alpha = 0.30f), CircleShape),
+                contentAlignment = Alignment.Center,
+            ) {
+                Glyph(glyph, iconColor, Modifier.size(22.dp))
             }
         }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {

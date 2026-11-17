@@ -125,7 +125,7 @@ Flipper-IRDB's VIDAA sets (`TVs/Hisense/Hisense_32A4HAU.ir` and `Hisense_55E7KQ.
 | OK | 0x15 | yes |
 | Back | 0x48 | yes |
 | Mute | 0x0E | yes |
-| Volume − / + | 0x43 / 0x44 | − yes; + from the database (the app uses UPnP for volume anyway) |
+| Volume − / + | 0x43 / 0x44 | − yes; + from the database. On the bridge as "TV Volume Down" / "TV Volume Up" since 2026-11-17 (the TV (IR) page); UPnP volume comes with tv-remote |
 
 ## UGREEN HDMI switch (5 inputs)
 

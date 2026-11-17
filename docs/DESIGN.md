@@ -19,19 +19,28 @@ without being redesigned. Its rules (tv-remote `AGENTS.md`, "Two styles, one lay
 
 ## How the Home Hub pages use it
 
-**One header on every page** (`PageHeader`): the title (CRT: upper case, glowing; glass: bold), one status line under
-it, keys of the same size on the right (menu: Settings; Switches: Arrange; IR pages: power), Settings' back key on
-the left. Same height and position everywhere, close to the top. No explanations at the bottom of control pages.
+**One header on every page**, tv-remote's (`PageHeader`): glass is one rounded pane with round keys on either side,
+the title and a status chip (coloured dot and text) under it; CRT is a row with square keys, the title as "> NAME" in
+the alive colour and an upper-case status line. Menu: Edit and Settings on the right;
+Switches: Edit (order); Settings: tv-remote's settings header (back key, large title); IR pages: Power top right, as
+tv-remote's PWR key (tried below the header and at the bottom: both felt wrong). In the Pride palette a thin rainbow line runs under the header.
 
 | Page | Built from |
 |---|---|
 | Menu | one pane per section with its status line (alive colour when something is on, warn when nothing answers); glass adds an icon |
-| Switches | one pane per output; an output that is on glows in `primary`, the On/Off key is tv-remote's key with `active` |
-| Amplifier | send status in the header, power key on its right (CRT `PWR`, glass power icon); tv-remote's volume rocker, larger; mute and input keys beside it |
+| Switches | one pane per output; an output that is on glows in `primary`, the On/Off key is tv-remote's key with `active`. "Grid" (a preference) shows compact cards two to a row: tap the card to switch (on release), hold it for name, room, icon and timers |
+| Amplifier | laid out like tv-remote's remote: header; the inputs as the main control in the middle (‹ INPUT ›; glass: a rounded pane with ghost keys like the dial); at the bottom tv-remote's VOL rocker with Mute beside it; Power in the header |
 | HDMI switch | its own page and menu entry: inputs 1–5 and Next as large keys |
-| TV (IR) | the same top row; tv-remote's D-pad (CRT cross / glass dial); Source, Mute, Back as tv-remote's cluster keys |
+| TV (IR) | laid out like tv-remote's remote: header; tv-remote's D-pad in the middle (CRT cross / glass dial, for the input menu); at the bottom the VOL rocker, Mute and Back as tv-remote's cluster keys, and Source as the wide key in tv-remote's Play/Pause spot; Power in the header |
 | Settings | an overview with one row per topic and its summary (Devices, IR bridge, Look, Share), each opening its own page; tv-remote's back key, cards, style cards and palette chips. Back goes page → overview → menu |
 | Menu, Edit | the menu's own "Edit" key: drag entries into order, rename them, "+ New page" (decided 2026-11-17: order is changed on the menu itself, not in Settings) |
+
+## Pride palette (decided 2026-11-17)
+
+The Pride palette shows the flag beyond the dial ring: each menu icon, the page dots and the HDMI keys 1–5 take the
+next flag colour (`Palette.accent`); a thin rainbow line runs under the page header (`FlagLine`); the glass background
+glows in the flag's colours instead of only pink and light blue. Colours with a meaning stay: "on" is light blue, OK
+is pink. Other palettes have no flag and are unchanged.
 
 ## Custom pages (decided 2026-11-17)
 
@@ -40,17 +49,22 @@ lays itself out in both styles, so a page always looks right. The built-in pages
 **stay fixed**; custom pages are extra menu entries, ordered with the rest.
 
 - Blocks (`BlockKind`): amplifier volume and mute; amplifier power and input; TV (IR) arrows, OK, back; TV (IR) power,
-  source, mute; HDMI switch inputs; one Shelly output. Each block once per page (a switch block once per output).
+  source, mute; TV (IR) volume; HDMI switch inputs; one Shelly output. Each block once per section (a switch block once per output).
   tv-remote's blocks (apps, number pad, TV volume over the network) come with the TV remote.
-- A page has the shared header (title, IR send status, "Edit"). Edit mode: name, the block list (drag, Remove),
-  "+ Add block", "Delete this page". A new page opens in edit mode.
+- A page has one or more **sections** (decided 2026-11-17). With more than one, everything under the header swipes
+  sideways between them, with tv-remote's dots below; a touch on a key waits 100 ms to see whether it is a swipe
+  (tv-remote's `LocalSwipeable`), so a swipe never presses a key. No fixed blocks for now.
+- A page has the shared header (title, IR send status, "Edit"). Edit mode: name, one tab per section and
+  "+ Section", the section's block list (drag, Remove), "+ Add block", "Remove section", "Delete this page". A new
+  page opens in edit mode.
 - Pages are a preference (shared on request, docs/SHARING.md); a block's id never changes.
 
 ## App icon (decided 2026-11-17)
 
 A lowercase **h in CRT pixels** (a 7-unit grid, 6-unit pixels with a gap, like a monitor's dot mask) in the palette's
 "alive" colour, with a **cursor block** in its action colour, on the palette's background; a faint outline gives the
-CRT glow. Chosen from three rounds of candidates (houses, then abstract shapes). As in tv-remote there is one icon per
+CRT glow. In the Pride palette the h is a rainbow, each row in the next flag colour from top to bottom, with the pink
+cursor. Chosen from three rounds of candidates (houses, then abstract shapes). As in tv-remote there is one icon per
 palette and the launcher icon follows the colours, 1.5 s after the last change (`ui/LauncherIcon.kt` enables one
 manifest alias); a white version serves themed (monochrome) icons. After changing a palette run
 `python3 tools/gen_launcher_icons.py`; `LauncherResourcesTest` fails until you do. Not taken over: tv-remote's five

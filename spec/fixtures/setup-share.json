@@ -387,7 +387,7 @@
       }
     },
     {
-      "name": "Preferences with a custom page in the menu (an unknown block from a newer app is dropped; a page without an id is dropped)",
+      "name": "Preferences with a custom page in the menu (the format from before sections: one section; an unknown block from a newer app is dropped; a page without an id is dropped)",
       "input": "homehub://import?d=TY_BCsIwEER_RfZc0Vr1kKsIetCCFT2IlGrXZmnShDSpSOm_mypKj_N2ZphtoQEWBqANPmpgLdRPsnd-InwCg0Mc7xIIQGLlYpOjAXYBnRXIysjj5Lw9rjbrBK7Bh_qCSwuU--TnbskK9GKnGsJRRQW3nt6Eupdfa0lVb-a5JOiCv7ZNSibVWT6EXAlVmEwO2Xes71TOamd7wlGIlxauDrUch-FsFkXz-WKxXE6mw2Qmddoo4SRCd-35b-tejfwDnnVv",
       "expected": {
         "household": null,
@@ -414,6 +414,66 @@
                 },
                 {
                   "kind": "amp_volume"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Switches as a grid of compact cards",
+      "input": "homehub://import?d=q1YqU7Iy1FEqKEpNK1ayqlYqLs8sSc4Iy0wtV7JScvTxUdKBCvkkVuaXlgAF3YM8XZRqawE",
+      "expected": {
+        "household": null,
+        "preferences": {
+          "switchView": "ALL",
+          "switchLayout": "GRID"
+        }
+      }
+    },
+    {
+      "name": "Unknown switch layout falls back to LIST",
+      "input": "homehub://import?d=q1YqU7Iy1FEqKEpNK1ayqlYqLs8sSc4Iy0wtV7JScvTxUdKBCvkkVuaXlgAFQzx9XIPjjV2UamsB",
+      "expected": {
+        "household": null,
+        "preferences": {
+          "switchView": "ALL",
+          "switchLayout": "LIST"
+        }
+      }
+    },
+    {
+      "name": "A custom page with three swipe sections (the last one empty; an unknown block is dropped)",
+      "input": "homehub://import?d=ZYtBCoMwEEWvUmbtpnTnHURooZsikpppMiQxomNchNy9I0IpLbP5__15GRLU5wqmGV8L1BmWjXiwd8INari2bXMDWZVBWR8ZSAt2F2FM7FFKExPhaSRjWeiCA1Mcj-enj4M7oqNxN60OBKX6dE49zf2kNJRux_-GClOfol8Dfns2-mhmFX61ruxX3g",
+      "expected": {
+        "household": null,
+        "preferences": {
+          "switchView": "ROOMS",
+          "pages": [
+            {
+              "id": "k3",
+              "title": "Movie night",
+              "sections": [
+                {
+                  "blocks": [
+                    {
+                      "kind": "hdmi"
+                    },
+                    {
+                      "kind": "tv_ir_pad"
+                    }
+                  ]
+                },
+                {
+                  "blocks": [
+                    {
+                      "kind": "amp_volume"
+                    }
+                  ]
+                },
+                {
+                  "blocks": []
                 }
               ]
             }

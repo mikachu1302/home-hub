@@ -46,6 +46,7 @@ import io.github.mikachu1302.homehub.ui.Dimens
 import io.github.mikachu1302.homehub.ui.HomeHubTheme
 import io.github.mikachu1302.homehub.ui.LocalTerm
 import io.github.mikachu1302.homehub.ui.Palettes
+import io.github.mikachu1302.homehub.ui.SPLASH_THEMES
 import io.github.mikachu1302.homehub.ui.TButton
 import io.github.mikachu1302.homehub.ui.crtOverlay
 import io.github.mikachu1302.homehub.ui.termBackground
@@ -66,6 +67,12 @@ class MainActivity : ComponentActivity() {
         if (savedInstanceState == null) handleLink(intent)
         setContent {
             val look = vm.appearance
+            // The next start's launch screen shows this palette's icon on its background (Android 13+ remembers it).
+            LaunchedEffect(look.palette) {
+                if (Build.VERSION.SDK_INT >= 33) {
+                    SPLASH_THEMES[Palettes.byId(look.palette).id]?.let { runCatching { splashScreen.setSplashScreenTheme(it) } }
+                }
+            }
             HomeHubTheme(look.style, Palettes.byId(look.palette), look.scanlines) {
                 val term = LocalTerm.current
                 // The Surface sets the content colour (the palette's text) for everything inside, as in tv-remote.

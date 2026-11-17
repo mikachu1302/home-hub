@@ -13,6 +13,7 @@ enum class BlockKind(val id: String, val title: String, val needsOutput: Boolean
     AMP_KEYS("amp_keys", "Amplifier · power and input"),
     TV_IR_PAD("tv_ir_pad", "TV (IR) · arrows, OK, back"),
     TV_IR_KEYS("tv_ir_keys", "TV (IR) · power, source, mute"),
+    TV_IR_VOLUME("tv_ir_volume", "TV (IR) · volume"),
     HDMI("hdmi", "HDMI switch · inputs 1–5, next"),
     SWITCH("switch", "Switch · one output", needsOutput = true),
     ;
@@ -25,8 +26,17 @@ enum class BlockKind(val id: String, val title: String, val needsOutput: Boolean
 /** One block on a page; [output] is the output key (`<device id>/<channel>`) of a [BlockKind.SWITCH] block. */
 data class Block(val kind: BlockKind, val output: String = "")
 
-/** A page the user built: a title and blocks from top to bottom. [id] is made once and never changes. */
-data class CustomPage(val id: String, val title: String, val blocks: List<Block> = emptyList())
+/** One swipeable part of a page: blocks from top to bottom. */
+data class PageSection(val blocks: List<Block> = emptyList())
+
+/**
+ * A page the user built: a title and one or more sections. With more than one, the page swipes sideways between them
+ * (tv-remote's pager). [id] is made once and never changes.
+ */
+data class CustomPage(val id: String, val title: String, val sections: List<PageSection> = listOf(PageSection())) {
+    /** Every block on the page, section after section. */
+    val blocks: List<Block> get() = sections.flatMap { it.blocks }
+}
 
 /** Menu ids: a built-in section is its `Section` name, a custom page `page:<id>`. */
 const val PAGE_PREFIX = "page:"
@@ -51,10 +61,10 @@ object PagesJson {
         pages.forEach { p ->
             put(
                 JSONObject().put("id", p.id).put("title", p.title).put(
-                    "blocks",
+                    "sections",
                     JSONArray().apply {
-                        p.blocks.forEach { b ->
-                            put(JSONObject().put("kind", b.kind.id).apply { if (b.kind.needsOutput) put("output", b.output) })
+                        p.sections.forEach { s ->
+                            put(JSONObject().put("blocks", JSONArray().apply { s.blocks.forEach { put(blockJson(it)) } }))
                         }
                     },
                 ),
@@ -62,20 +72,27 @@ object PagesJson {
         }
     }
 
-    /** Pages without an id are dropped, a missing title becomes "Page", unknown blocks are dropped. */
+    private fun blockJson(b: Block) = JSONObject().put("kind", b.kind.id).apply { if (b.kind.needsOutput) put("output", b.output) }
+
+    private fun blocks(b: JSONArray?): List<Block> = if (b == null) emptyList() else (0 until b.length()).mapNotNull { j ->
+        val bo = b.optJSONObject(j) ?: return@mapNotNull null
+        val kind = BlockKind.byId(bo.optString("kind")) ?: return@mapNotNull null
+        Block(kind, if (kind.needsOutput) bo.optString("output") else "")
+    }
+
+    /**
+     * Pages without an id are dropped, a missing title becomes "Page", unknown blocks are dropped. A page from before
+     * sections (a plain "blocks" list) becomes one section; a page always has at least one.
+     */
     fun fromJson(a: JSONArray?): List<CustomPage> {
         if (a == null) return emptyList()
         return (0 until a.length()).mapNotNull { i ->
             val o = a.optJSONObject(i) ?: return@mapNotNull null
             val id = o.optString("id").trim().takeIf { it.isNotEmpty() } ?: return@mapNotNull null
-            val blocks = o.optJSONArray("blocks")?.let { b ->
-                (0 until b.length()).mapNotNull { j ->
-                    val bo = b.optJSONObject(j) ?: return@mapNotNull null
-                    val kind = BlockKind.byId(bo.optString("kind")) ?: return@mapNotNull null
-                    Block(kind, if (kind.needsOutput) bo.optString("output") else "")
-                }
-            } ?: emptyList()
-            CustomPage(id, o.optString("title").trim().ifEmpty { "Page" }, blocks)
+            val sections = o.optJSONArray("sections")?.let { a ->
+                (0 until a.length()).mapNotNull { j -> a.optJSONObject(j)?.let { PageSection(blocks(it.optJSONArray("blocks"))) } }
+            } ?: listOf(PageSection(blocks(o.optJSONArray("blocks"))))
+            CustomPage(id, o.optString("title").trim().ifEmpty { "Page" }, sections.ifEmpty { listOf(PageSection()) })
         }.distinctBy { it.id }
     }
 

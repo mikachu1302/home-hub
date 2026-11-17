@@ -1,9 +1,12 @@
 package io.github.mikachu1302.homehub.ui
 
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -46,50 +49,83 @@ const val IR_REPEAT_MS = 200L
 private const val SLOW_MS = 1000L
 
 /**
- * Amp page: the keys the IR bridge defines (esphome/atom-lite-ir.yaml), laid out like tv-remote: power in the top row,
- * the volume rocker and the other keys below. IR is one-way, so no key shows a power, volume or mute state
- * (AGENTS.md); the status line says what happened to the last key. Disabled until the bridge is set up.
+ * The IR pages, laid out like tv-remote's remote screen (docs/DESIGN.md): its header; the main control in the middle
+ * ([pad], taking the space left, as tv-remote's pager); at the bottom tv-remote's row, the VOL rocker on the left and
+ * the keys beside it ([cluster]), within thumb reach. Extra room below for the home-gesture area, as there.
  */
 @Composable
-fun AmpScreen(title: String, ready: Boolean, status: IrStatus?, onPress: (IrKey, Boolean) -> Unit) {
+private fun IrPage(
+    title: String,
+    ready: Boolean,
+    status: IrStatus?,
+    power: IrKey,
+    volumeUp: IrKey,
+    volumeDown: IrKey,
+    onPress: (IrKey, Boolean) -> Unit,
+    pad: @Composable () -> Unit,
+    cluster: @Composable ColumnScope.() -> Unit,
+) {
     val term = LocalTerm.current
-    Column(
-        Modifier.fillMaxSize().padding(start = 16.dp, end = 16.dp, top = Dimens.topPadding, bottom = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        IrHeader(title, status, ready, AmpKeys.power, onPress)
-        if (!ready) Notice("Set up the IR bridge in Settings first.")
-        Row(
-            Modifier.weight(1f).fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        // Fits without scrolling; only a very short window scrolls, with a fixed-size pad (tv-remote's rule).
+        val tight = maxHeight < 600.dp
+        Column(
+            Modifier.fillMaxSize()
+                .then(if (tight) Modifier.verticalScroll(rememberScrollState()) else Modifier)
+                .padding(start = 16.dp, end = 16.dp, top = Dimens.topPadding, bottom = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Rocker("VOL", AmpKeys.volumeUp, AmpKeys.volumeDown, ready, onPress, width = 96.dp, height = 300.dp)
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(if (term.crt) 8.dp else 12.dp)) {
-                IrKeyButton(AmpKeys.mute, "MUTE", "speaker-off", ready, onPress, Modifier.fillMaxWidth().height(72.dp))
-                IrKeyButton(AmpKeys.inputPrevious, "‹ INPUT", null, ready, onPress, Modifier.fillMaxWidth().height(72.dp), glassText = "‹ Input")
-                IrKeyButton(AmpKeys.inputNext, "INPUT ›", null, ready, onPress, Modifier.fillMaxWidth().height(72.dp), glassText = "Input ›")
+            // Power top right in the header, as tv-remote's PWR key.
+            PageHeader(title, irStatusText(status, ready), irStatusColor(status)) {
+                HeaderKey(power.label, "PWR", "power", enabled = ready, onPress = { onPress(power, false) })
+            }
+            if (!ready) Notice("Set up the IR bridge in Settings first.")
+            Box((if (tight) Modifier.height(280.dp) else Modifier.weight(1f)).fillMaxWidth(), contentAlignment = Alignment.Center) { pad() }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                if (term.crt) {
+                    Rocker("VOL", volumeUp, volumeDown, ready, onPress, width = 72.dp, height = 184.dp)
+                } else {
+                    Rocker("VOL", volumeUp, volumeDown, ready, onPress, width = 74.dp, height = 188.dp)
+                }
+                Column(
+                    Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(if (term.crt) 6.dp else 8.dp),
+                    content = cluster,
+                )
             }
         }
     }
 }
 
 /**
- * TV over IR: power (a toggle: the TV reports nothing back over IR), the D-pad for the input menu, source, mute and
- * back. Volume stays with the network (tv-remote, later). Disabled until the bridge is set up.
+ * Amp page: Power in the header; the inputs as the main control (‹ and › around INPUT, where the TV has its dial); at
+ * the bottom the VOL rocker and Mute. IR is one-way, so no key shows a power, volume or mute state (AGENTS.md). Disabled until the
+ * bridge is set up.
+ */
+@Composable
+fun AmpScreen(title: String, ready: Boolean, status: IrStatus?, onPress: (IrKey, Boolean) -> Unit) {
+    IrPage(
+        title, ready, status, AmpKeys.power, AmpKeys.volumeUp, AmpKeys.volumeDown, onPress,
+        pad = { InputPad(AmpKeys.inputPrevious, AmpKeys.inputNext, ready, onPress) },
+        cluster = {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                ClusterKey(AmpKeys.mute, "MUTE", "speaker-off", ready, onPress)
+            }
+        },
+    )
+}
+
+/**
+ * TV over IR: Power in the header; tv-remote's dial in the middle (arrows and OK, for the input menu); at the bottom
+ * the VOL rocker, Mute and Back, and Source as the wide key where tv-remote has Play/Pause. Disabled until the bridge is set up.
  */
 @Composable
 fun TvIrScreen(title: String, ready: Boolean, status: IrStatus?, onPress: (IrKey, Boolean) -> Unit) {
     val term = LocalTerm.current
-    val p = term.palette
-    val gap = if (term.crt) 6.dp else 8.dp
-    Column(
-        Modifier.fillMaxSize().padding(start = 16.dp, end = 16.dp, top = Dimens.topPadding, bottom = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
-    ) {
-        IrHeader(title, status, ready, TvIrKeys.power, onPress)
-        if (!ready) Notice("Set up the IR bridge in Settings first.")
-        Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+    IrPage(
+        title, ready, status, TvIrKeys.power, TvIrKeys.volumeUp, TvIrKeys.volumeDown, onPress,
+        pad = {
             DPad(ready) { key, repeated ->
                 onPress(
                     when (key) {
@@ -102,12 +138,66 @@ fun TvIrScreen(title: String, ready: Boolean, status: IrStatus?, onPress: (IrKey
                     repeated,
                 )
             }
+        },
+        cluster = {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                ClusterKey(TvIrKeys.mute, "MUTE", "speaker-off", ready, onPress)
+                ClusterKey(TvIrKeys.back, "BACK", "back", ready, onPress)
+            }
+            IrKeyButton(
+                TvIrKeys.source, "SOURCE", null, ready, onPress, Modifier.fillMaxWidth().height(56.dp),
+                glassText = "Source", look = Look.Primary, shape = if (term.crt) null else RoundedCornerShape(28.dp), fontSize = 17,
+            )
+        },
+    )
+}
+
+/**
+ * The amp's main control: input previous and next as two large keys around the word INPUT, in the space where the TV
+ * page has its dial (glass: one rounded pane with ghost keys, like the dial; CRT: square keys with triangles).
+ */
+@Composable
+private fun InputPad(previous: IrKey, next: IrKey, enabled: Boolean, onPress: (IrKey, Boolean) -> Unit) {
+    val term = LocalTerm.current
+    val p = term.palette
+    if (term.crt) {
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+            RemoteButton(previous.label, Modifier.size(92.dp), enabled = enabled, onPress = { onPress(previous, false) }) { Triangle("left", it, Modifier.size(30.dp)) }
+            Box(Modifier.size(width = 110.dp, height = 92.dp), contentAlignment = Alignment.Center) {
+                Text("INPUT", color = p.dim, fontSize = 18.sp)
+            }
+            RemoteButton(next.label, Modifier.size(92.dp), enabled = enabled, onPress = { onPress(next, false) }) { Triangle("right", it, Modifier.size(30.dp)) }
         }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(gap)) {
-            ClusterKey(TvIrKeys.source, "SOURCE", null, ready, onPress, glassText = "Source")
-            ClusterKey(TvIrKeys.mute, "MUTE", "speaker-off", ready, onPress)
-            ClusterKey(TvIrKeys.back, "BACK", "back", ready, onPress)
+    } else {
+        Row(
+            Modifier.fillMaxWidth().height(120.dp).pane(RoundedCornerShape(60.dp)).padding(10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            RemoteButton(previous.label, Modifier.size(100.dp), enabled = enabled, ghost = true, shape = CircleShape, onPress = { onPress(previous, false) }) {
+                Glyph("left", it, Modifier.size(34.dp), 2.4f)
+            }
+            Text("Input", color = p.dim, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center, modifier = Modifier.weight(1f))
+            RemoteButton(next.label, Modifier.size(100.dp), enabled = enabled, ghost = true, shape = CircleShape, onPress = { onPress(next, false) }) {
+                Glyph("right", it, Modifier.size(34.dp), 2.4f)
+            }
         }
+    }
+}
+
+/** A volume pair side by side (− VOL +) for custom-page blocks; both repeat while held. */
+@Composable
+fun VolumeRow(down: IrKey, up: IrKey, enabled: Boolean, onPress: (IrKey, Boolean) -> Unit, modifier: Modifier = Modifier) {
+    val term = LocalTerm.current
+    val p = term.palette
+    @Composable
+    fun Key(key: IrKey, text: String, m: Modifier) = RemoteButton(
+        key.label, m.height(64.dp), enabled = enabled, repeat = true, repeatEveryMs = IR_REPEAT_MS, look = Look.Primary,
+        shape = if (term.crt) null else CircleShape, onPress = { onPress(key, it) },
+    ) { Text(text, color = it, fontSize = 30.sp, fontWeight = FontWeight.Bold, style = glowIf(term.crt && enabled, it)) }
+    Row(modifier, horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Key(down, "−", Modifier.weight(1f))
+        Text("VOL", color = p.dim, fontSize = 12.sp, maxLines = 1)
+        Key(up, "+", Modifier.weight(1f))
     }
 }
 
@@ -128,9 +218,11 @@ fun HdmiScreen(title: String, ready: Boolean, status: IrStatus?, onPress: (IrKey
             keys.chunked(2).forEach { row ->
                 Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(gap)) {
                     row.forEach { (key, text, look) ->
+                        val input = HdmiKeys.inputs.indexOf(key)
                         IrKeyButton(
                             key, text, null, ready, onPress, Modifier.weight(1f).fillMaxHeight(),
                             glassText = if (text == "NEXT") "Next" else text, look = look, fontSize = if (text == "NEXT") 20 else 30,
+                            tint = if (input >= 0) term.palette.stripes?.let { term.palette.accent(input) } else null,
                         )
                     }
                 }
@@ -156,14 +248,6 @@ fun TvScreen(title: String) {
 }
 
 // ------------------------------------------------------------------ parts
-
-/** The shared page header with the last key's fate as its status line and the power key on the right. */
-@Composable
-private fun IrHeader(title: String, status: IrStatus?, ready: Boolean, power: IrKey, onPress: (IrKey, Boolean) -> Unit) {
-    PageHeader(title, irStatusText(status, ready), irStatusColor(status)) {
-        HeaderKey(power.label, "PWR", "power", enabled = ready, onPress = { onPress(power, false) })
-    }
-}
 
 /** The last key's fate in one line: a mark and words, not colour alone. */
 fun irStatusText(status: IrStatus?, ready: Boolean): String = when (status) {
@@ -197,10 +281,17 @@ fun IrKeyButton(
     look: Look = Look.Normal,
     fontSize: Int = 16,
     shape: androidx.compose.ui.graphics.Shape? = null,
+    /** Glass: icon and text side by side (wide keys) instead of the icon alone. */
+    labelled: Boolean = false,
+    tint: Color? = null,
 ) {
     val term = LocalTerm.current
-    RemoteButton(key.label, modifier, enabled = enabled, look = look, shape = shape, onPress = { onPress(key, false) }) { color ->
+    RemoteButton(key.label, modifier, enabled = enabled, look = look, tint = tint, shape = shape, onPress = { onPress(key, false) }) { color ->
         when {
+            !term.crt && glyph != null && labelled -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Glyph(glyph, color, Modifier.size(24.dp))
+                Text(glassText, color = color, fontSize = fontSize.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
+            }
             !term.crt && glyph != null -> Glyph(glyph, color, Modifier.size(26.dp))
             term.crt -> Text(crtText, color = color, fontSize = (fontSize + 2).sp, maxLines = 1)
             else -> Text(glassText, color = color, fontSize = fontSize.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)

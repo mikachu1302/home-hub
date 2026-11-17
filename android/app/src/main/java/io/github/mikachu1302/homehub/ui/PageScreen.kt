@@ -2,6 +2,21 @@ package io.github.mikachu1302.homehub.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerState
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.FilterChip
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
+import io.github.mikachu1302.homehub.core.PageSection
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -43,8 +58,9 @@ import io.github.mikachu1302.homehub.core.IrKey
 import io.github.mikachu1302.homehub.core.TvIrKeys
 
 /**
- * A page the user built from blocks (docs/DESIGN.md, "Custom pages"). "Edit" lists the blocks to drag, remove and
- * add, and holds the page's name and "Delete page". A new, empty page opens in edit mode.
+ * A page the user built from blocks (docs/DESIGN.md, "Custom pages"). With more than one section, everything under
+ * the header swipes sideways between them, with tv-remote's dots below. "Edit" holds the page's name, the sections
+ * and their blocks, and "Delete this page". A new, empty page opens in edit mode.
  */
 @Composable
 fun CustomPageScreen(vm: HomeViewModel) {
@@ -59,22 +75,75 @@ fun CustomPageScreen(vm: HomeViewModel) {
     if (page.blocks.any { it.kind == BlockKind.SWITCH }) PollDevices(vm, withConfig = false)
     val hasIr = page.blocks.any { it.kind != BlockKind.SWITCH }
     val ready = vm.irBridge.isNotBlank()
-    Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState())
-            .padding(start = 16.dp, end = 16.dp, top = Dimens.topPadding, bottom = 32.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
-    ) {
+    val header = @Composable {
         PageHeader(
             page.title,
             if (hasIr && !editing) irStatusText(vm.irStatus, ready) else null,
             if (hasIr && !editing) irStatusColor(vm.irStatus) else null,
             trailing = { HeaderTextKey(if (editing) "Done editing" else "Edit this page", if (editing) "Done" else "Edit") { editing = !editing } },
         )
-        if (editing) {
-            EditBlocks(page, vm)
-        } else {
+    }
+    val padding = Modifier.padding(start = 16.dp, end = 16.dp, top = Dimens.topPadding)
+    if (editing || page.sections.size <= 1) {
+        Column(
+            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).then(padding).padding(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+        ) {
+            header()
+            if (editing) {
+                EditPage(page, vm)
+            } else {
+                if (hasIr && !ready) Notice("Set up the IR bridge in Settings first.")
+                page.blocks.forEach { BlockView(it, vm, ready) }
+            }
+        }
+    } else {
+        val pager = rememberPagerState { page.sections.size }
+        Column(Modifier.fillMaxSize().then(padding).padding(bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            header()
             if (hasIr && !ready) Notice("Set up the IR bridge in Settings first.")
-            page.blocks.forEach { BlockView(it, vm, ready) }
+            HorizontalPager(state = pager, modifier = Modifier.weight(1f).fillMaxWidth(), verticalAlignment = Alignment.Top, pageSpacing = 16.dp) { i ->
+                // A touch that starts a swipe must not press a key (tv-remote's rule).
+                CompositionLocalProvider(LocalSwipeable provides true) {
+                    Column(
+                        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = 4.dp, bottom = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(14.dp),
+                    ) {
+                        page.sections.getOrNull(i)?.blocks?.forEach { BlockView(it, vm, ready) }
+                    }
+                }
+            }
+            PagerDots(pager, Modifier.align(Alignment.CenterHorizontally))
+        }
+    }
+}
+
+/** tv-remote's pager dots: one per section, the current one a longer bar. Tapping a dot goes to that section. */
+@Composable
+private fun PagerDots(state: PagerState, modifier: Modifier = Modifier) {
+    val term = LocalTerm.current
+    val p = term.palette
+    val scope = rememberCoroutineScope()
+    Row(modifier.height(24.dp), horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
+        repeat(state.pageCount) { index ->
+            val selected = state.currentPage == index
+            val width by animateDpAsState(if (selected) 22.dp else 8.dp, label = "dot")
+            Box(
+                Modifier
+                    .size(width = 36.dp, height = 24.dp)
+                    .semantics {
+                        role = Role.Tab
+                        this.selected = selected
+                        contentDescription = "Section ${index + 1} of ${state.pageCount}"
+                    }
+                    .clickable { scope.launch { state.animateScrollToPage(index) } },
+                contentAlignment = Alignment.Center,
+            ) {
+                Box(
+                    Modifier.size(width = width, height = 8.dp)
+                        .background(if (selected) p.primary else if (p.stripes != null) p.accent(index) else p.border, if (term.crt) RoundedCornerShape(0.dp) else CircleShape),
+                )
+            }
         }
     }
 }
@@ -130,9 +199,13 @@ private fun BlockView(block: Block, vm: HomeViewModel, ready: Boolean) {
                 ClusterKey(TvIrKeys.source, "SOURCE", null, ready, press, glassText = "Source")
                 ClusterKey(TvIrKeys.mute, "MUTE", "speaker-off", ready, press)
             }
+            BlockKind.TV_IR_VOLUME -> VolumeRow(TvIrKeys.volumeDown, TvIrKeys.volumeUp, ready, press, Modifier.fillMaxWidth())
             BlockKind.HDMI -> Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(gap)) {
                 HdmiKeys.inputs.forEachIndexed { i, key ->
-                    IrKeyButton(key, "${i + 1}", null, ready, press, Modifier.weight(1f).height(60.dp), fontSize = 22)
+                    IrKeyButton(
+                        key, "${i + 1}", null, ready, press, Modifier.weight(1f).height(60.dp), fontSize = 22,
+                        tint = term.palette.stripes?.let { term.palette.accent(i) },
+                    )
                 }
                 IrKeyButton(HdmiKeys.next, "NEXT", null, ready, press, Modifier.weight(1.5f).height(60.dp), glassText = "Next", look = Look.Primary)
             }
@@ -153,65 +226,104 @@ private fun RepeatKey(key: IrKey, text: String, enabled: Boolean, onPress: (IrKe
 // ------------------------------------------------------------------ editing
 
 @Composable
-private fun EditBlocks(page: CustomPage, vm: HomeViewModel) {
+private fun EditPage(page: CustomPage, vm: HomeViewModel) {
     val p = LocalTerm.current.palette
     var title by rememberSaveable(page.id) { mutableStateOf(page.title) }
+    var current by rememberSaveable(page.id) { mutableIntStateOf(0) }
     var adding by remember { mutableStateOf(false) }
     var deleting by remember { mutableStateOf(false) }
+    var removingSection by remember { mutableStateOf(false) }
+    val index = current.coerceIn(0, page.sections.lastIndex)
+    val section = page.sections[index]
+    fun setSection(s: PageSection) = vm.updatePage(page.copy(sections = page.sections.mapIndexed { i, old -> if (i == index) s else old }))
+
     OutlinedTextField(
         value = title,
         onValueChange = {
             title = it
             if (it.isNotBlank()) vm.updatePage(page.copy(title = it.trim()))
         },
-        label = { Text("Name (menu and title)") },
+        label = { Text("Name") },
         singleLine = true,
         modifier = Modifier.fillMaxWidth(),
     )
-    if (page.blocks.isEmpty()) {
-        Text("No blocks yet. Add the ones you need; they stack from top to bottom.", color = p.dim, fontSize = 13.sp)
+
+    // Sections: one tab each; the page swipes between them.
+    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        page.sections.forEachIndexed { i, _ ->
+            FilterChip(selected = i == index, onClick = { current = i }, label = { Text(if (page.sections.size == 1) "Page" else "Section ${i + 1}") })
+        }
+        TTextButton(onClick = {
+            vm.updatePage(page.copy(sections = page.sections + PageSection()))
+            current = page.sections.size
+        }) { Text("+ Section") }
+    }
+    if (page.sections.size > 1) Text("Swipe between sections on the page.", color = p.dim, fontSize = 12.sp)
+
+    if (section.blocks.isEmpty()) {
+        Text("No blocks yet.", color = p.dim, fontSize = 13.sp)
     } else {
         ReorderableList(
-            items = page.blocks,
+            items = section.blocks,
             keyOf = { it.kind.id + "/" + it.output },
             nameOf = { blockName(it, vm) },
-            onMove = { from, delta -> vm.updatePage(page.copy(blocks = io.github.mikachu1302.homehub.core.moved(page.blocks, from, delta))) },
+            onMove = { from, delta -> setSection(section.copy(blocks = io.github.mikachu1302.homehub.core.moved(section.blocks, from, delta))) },
         ) { block ->
             Text(blockName(block, vm), fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-            TTextButton(onClick = { vm.updatePage(page.copy(blocks = page.blocks - block)) }) { Text("Remove") }
+            TTextButton(onClick = { setSection(section.copy(blocks = section.blocks - block)) }) { Text("Remove") }
         }
     }
     TButton(onClick = { adding = true }, modifier = Modifier.fillMaxWidth().height(52.dp)) { Text("+ Add block") }
+    if (page.sections.size > 1) {
+        TOutlinedButton(
+            onClick = { if (section.blocks.isEmpty()) removeSection(page, index, vm) { current = it } else removingSection = true },
+            modifier = Modifier.fillMaxWidth().height(48.dp),
+        ) { Text("Remove section ${index + 1}") }
+    }
     TTextButton(onClick = { deleting = true }, modifier = Modifier.fillMaxWidth()) { Text("Delete this page", color = p.warn) }
 
     if (adding) {
         AddBlockDialog(
-            page, vm,
-            onAdd = { vm.updatePage(page.copy(blocks = page.blocks + it)); adding = false },
+            section, vm,
+            onAdd = { setSection(section.copy(blocks = section.blocks + it)); adding = false },
             onDismiss = { adding = false },
+        )
+    }
+    if (removingSection) {
+        AlertDialog(
+            onDismissRequest = { removingSection = false },
+            title = { Text("Remove section ${index + 1}?") },
+            text = { Text("Its ${section.blocks.size} blocks go with it.") },
+            confirmButton = { TTextButton(onClick = { removingSection = false; removeSection(page, index, vm) { current = it } }) { Text("Remove", color = p.warn) } },
+            dismissButton = { TTextButton(onClick = { removingSection = false }) { Text("Cancel") } },
         )
     }
     if (deleting) {
         AlertDialog(
             onDismissRequest = { deleting = false },
             title = { Text("Delete \"${page.title}\"?") },
-            text = { Text("The page and its blocks are removed from this phone. Devices are not affected.") },
+            text = { Text("Devices are not affected.") },
             confirmButton = { TTextButton(onClick = { deleting = false; vm.deletePage(page.id) }) { Text("Delete", color = p.warn) } },
             dismissButton = { TTextButton(onClick = { deleting = false }) { Text("Cancel") } },
         )
     }
 }
 
+private fun removeSection(page: CustomPage, index: Int, vm: HomeViewModel, select: (Int) -> Unit) {
+    vm.updatePage(page.copy(sections = page.sections.filterIndexed { i, _ -> i != index }))
+    select((index - 1).coerceAtLeast(0))
+}
+
 private fun blockName(block: Block, vm: HomeViewModel): String =
     if (block.kind == BlockKind.SWITCH) "Switch · " + (vm.outputs.firstOrNull { it.key == block.output }?.name ?: "removed output")
     else block.kind.title
 
-/** Blocks not on the page yet; "Switch" then asks which output. Each block appears once per page. */
+/** Blocks not in the section yet; "Switch" then asks which output. Each block appears once per section. */
 @Composable
-private fun AddBlockDialog(page: CustomPage, vm: HomeViewModel, onAdd: (Block) -> Unit, onDismiss: () -> Unit) {
+private fun AddBlockDialog(section: PageSection, vm: HomeViewModel, onAdd: (Block) -> Unit, onDismiss: () -> Unit) {
     val p = LocalTerm.current.palette
     var pickOutput by remember { mutableStateOf(false) }
-    val used = page.blocks.toSet()
+    val used = section.blocks.toSet()
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (pickOutput) "Which switch?" else "Add a block") },
@@ -225,7 +337,7 @@ private fun AddBlockDialog(page: CustomPage, vm: HomeViewModel, onAdd: (Block) -
                         kind.title to { if (kind.needsOutput) pickOutput = true else onAdd(Block(kind)) }
                     }
                 }
-                if (rows.isEmpty()) Text(if (pickOutput) "Every switch is on this page already." else "Every block is on this page already.", color = p.dim)
+                if (rows.isEmpty()) Text(if (pickOutput) "Every switch is in this section already." else "Every block is in this section already.", color = p.dim)
                 rows.forEachIndexed { i, (name, action) ->
                     if (i > 0) HorizontalDivider()
                     Text(

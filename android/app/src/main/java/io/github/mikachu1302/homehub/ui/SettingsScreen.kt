@@ -74,7 +74,11 @@ fun SettingsScreen(vm: HomeViewModel) {
         // Settings is not a full-height control page, so it gets a visible back key (the sections use the system
         // back only; docs/PLAN.md, "App layout").
         val current = page
-        PageHeader(current?.title ?: "Settings", leading = { BackButton { if (current == null) vm.back() else page = null } })
+        // tv-remote's settings header: the back key and a large title (no pane).
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+            BackButton { if (current == null) vm.back() else page = null }
+            Text(current?.title ?: "Settings", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+        }
         Spacer(Modifier.height(2.dp))
         when (current) {
             null -> Overview(vm) { page = it }

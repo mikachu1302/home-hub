@@ -12,6 +12,7 @@ import androidx.lifecycle.viewModelScope
 import io.github.mikachu1302.homehub.core.AmpKeys
 import io.github.mikachu1302.homehub.core.Appearance
 import io.github.mikachu1302.homehub.core.CustomPage
+import io.github.mikachu1302.homehub.core.SwitchLayout
 import io.github.mikachu1302.homehub.core.PAGE_PREFIX
 import io.github.mikachu1302.homehub.core.menuIds
 import io.github.mikachu1302.homehub.core.newPageId
@@ -97,6 +98,8 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     var discovering by mutableStateOf(false)
         private set
     var switchView by mutableStateOf(store.switchView)
+        private set
+    var switchLayout by mutableStateOf(store.switchLayout)
         private set
     var menuOrder by mutableStateOf(store.menuOrder)
         private set
@@ -263,6 +266,11 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         followIcon()
     }
 
+    fun showLayout(layout: SwitchLayout) {
+        switchLayout = layout
+        store.switchLayout = layout
+    }
+
     fun showView(view: SwitchView) {
         switchView = view
         store.switchView = view
@@ -362,6 +370,7 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
                 menuNames = p.menuNames
                 appearance = p.appearance
                 pages = p.pages
+                switchLayout = p.switchLayout
                 followIcon()
             }
         }

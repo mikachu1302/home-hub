@@ -22,7 +22,9 @@ class LauncherResourcesTest {
         val manifest = file("AndroidManifest.xml").readText()
         Palettes.all.forEach { p ->
             val fg = file("res/drawable/ic_launcher_fg_${p.id}.xml").readText()
-            assertTrue("${p.name}: letter colour", fg.contains(hex(p.primary)))
+            // A palette with a flag draws the h in its flag colours, row by row; the others in the alive colour.
+            val letter = p.stripes ?: listOf(p.primary)
+            letter.forEach { assertTrue("${p.name}: letter colour ${hex(it)}", fg.contains(hex(it))) }
             assertTrue("${p.name}: cursor colour", fg.contains(hex(p.action)))
             assertTrue("${p.name}: background", colors.contains("ic_launcher_bg_${p.id}\">${hex(p.bg)}"))
             assertTrue("${p.name}: adaptive icon", file("res/mipmap-anydpi/ic_launcher_${p.id}.xml").exists())
@@ -47,6 +49,13 @@ class LauncherResourcesTest {
             val s = scale.find(file("res/drawable/ic_launcher_fg_${p.id}.xml").readText())!!.groupValues[1].toDouble()
             assertTrue("${p.id}: scale $s is too large", s <= 0.8)
         }
+    }
+
+    @Test
+    fun everyPaletteHasALaunchScreen() {
+        assertEquals(Palettes.all.map { it.id }.toSet(), SPLASH_THEMES.keys)
+        val styles = file("res/values/splash_themes.xml").readText()
+        Palettes.all.forEach { assertTrue(it.id, styles.contains("@drawable/ic_launcher_fg_${it.id}<")) }
     }
 
     @Test

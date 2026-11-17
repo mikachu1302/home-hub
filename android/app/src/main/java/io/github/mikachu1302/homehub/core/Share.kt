@@ -35,6 +35,8 @@ data class Preferences(
     val appearance: Appearance = Appearance(),
     /** The user's own pages (custom pages; their place in the menu is in [menuOrder]). */
     val pages: List<CustomPage> = emptyList(),
+    /** Rows or compact cards on the Switches page. */
+    val switchLayout: SwitchLayout = SwitchLayout.LIST,
 )
 
 /**
@@ -77,7 +79,8 @@ object SetupShare {
                         .put("style", p.appearance.style.name)
                         .put("palette", p.appearance.palette)
                         .put("scanlines", p.appearance.scanlines)
-                        .put("pages", PagesJson.toJson(p.pages)),
+                        .put("pages", PagesJson.toJson(p.pages))
+                        .put("switchLayout", p.switchLayout.name),
                 )
             }
             s.secrets?.let { x ->
@@ -116,6 +119,7 @@ object SetupShare {
                     scanlines = p.optBoolean("scanlines", Appearance().scanlines),
                 ),
                 pages = PagesJson.fromJson(p.optJSONArray("pages")),
+                switchLayout = runCatching { SwitchLayout.valueOf(p.optString("switchLayout")) }.getOrDefault(SwitchLayout.LIST),
             )
         }
         val secrets = o.optJSONObject("secrets")?.let { x ->

@@ -155,6 +155,14 @@ button:
     name: "TV Mute"        # confirmed 2026-11-14
     on_press:
       - remote_transmitter.transmit_nec: {address: 0xBF00, command: 0xF10E}
+  - platform: template
+    name: "TV Volume Up"        # k 0x44, from the database (not tested yet)
+    on_press:
+      - remote_transmitter.transmit_nec: {address: 0xBF00, command: 0xBB44}
+  - platform: template
+    name: "TV Volume Down"      # k 0x43, tested 2026-11-14
+    on_press:
+      - remote_transmitter.transmit_nec: {address: 0xBF00, command: 0xBC43}
 
   # --- UGREEN HDMI switch (captured from its remote, 2026-11-17): NEC address 80 7F (0x7F80).
   # Its remote sends every key as frame + NEC repeat code(s); sent the same way (one repeat), raw.
