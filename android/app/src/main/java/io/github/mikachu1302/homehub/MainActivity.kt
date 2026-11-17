@@ -40,6 +40,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import io.github.mikachu1302.homehub.core.Section
+import io.github.mikachu1302.homehub.ui.LauncherIcon
 import io.github.mikachu1302.homehub.ui.AmpScreen
 import io.github.mikachu1302.homehub.ui.CustomPageScreen
 import io.github.mikachu1302.homehub.ui.HdmiScreen
@@ -95,6 +96,18 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    /**
+     * The launcher icon follows the palette, switched only once the app is out of sight: disabling the alias the
+     * app was started from closes its task on some launchers (Samsung's did, 2026-11-17), so never while it is open.
+     */
+    override fun onStop() {
+        super.onStop()
+        if (isChangingConfigurations) return
+        val look = vm.appearance
+        val context = applicationContext
+        Thread { runCatching { LauncherIcon.apply(context, look) } }.start()
     }
 
     override fun onNewIntent(intent: Intent) {

@@ -47,8 +47,6 @@ import io.github.mikachu1302.homehub.net.ShellyClient
 import io.github.mikachu1302.homehub.net.findShellys
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -152,23 +150,6 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         runCatching { connectivity?.registerDefaultNetworkCallback(networkCallback) }
-        // Make the launcher icon match the saved colours (also after an update or an import on another start).
-        viewModelScope.launch(Dispatchers.IO) { runCatching { LauncherIcon.apply(getApplication(), appearance) } }
-    }
-
-    private var iconJob: Job? = null
-
-    /**
-     * The launcher icon follows the colours a moment after the last change: the launcher redraws on every switch, and
-     * the user is usually still trying palettes.
-     */
-    private fun followIcon() {
-        iconJob?.cancel()
-        val look = appearance
-        iconJob = viewModelScope.launch(Dispatchers.IO) {
-            delay(1_500)
-            runCatching { LauncherIcon.apply(getApplication(), look) }
-        }
     }
 
     override fun onCleared() {
@@ -262,7 +243,6 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     fun updateAppearance(change: (Appearance) -> Appearance) {
         appearance = change(appearance)
         store.appearance = appearance
-        followIcon()
     }
 
     fun showLayout(layout: SwitchLayout) {
@@ -384,8 +364,7 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
                 appearance = p.appearance
                 pages = p.pages ?: pages // a link from before custom pages keeps this phone's pages
                 switchLayout = p.switchLayout
-                followIcon()
-            }
+                    }
         }
         shared.secrets?.irBridge?.let { login ->
             secrets.bridgeLogin = login

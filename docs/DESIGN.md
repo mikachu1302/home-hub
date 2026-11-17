@@ -74,8 +74,9 @@ A lowercase **h in CRT pixels** (a 7-unit grid, 6-unit pixels with a gap, like a
 "alive" colour, with a **cursor block** in its action colour, on the palette's background; a faint outline gives the
 CRT glow. In the Pride palette the h is a rainbow, each row in the next flag colour from top to bottom, with the pink
 cursor. Chosen from three rounds of candidates (houses, then abstract shapes). As in tv-remote there is one icon per
-palette and the launcher icon follows the colours, 1.5 s after the last change (`ui/LauncherIcon.kt` enables one
-manifest alias); a white version serves themed (monochrome) icons. After changing a palette run
+palette and the launcher icon follows the colours (`ui/LauncherIcon.kt` enables one manifest alias). It switches when
+the app goes to the background, never while it is open: disabling the alias the app was started from closes the app
+on Samsung's launcher (found 2026-11-17; tv-remote switches after 1.5 s and has the same problem); a white version serves themed (monochrome) icons. After changing a palette run
 `python3 tools/gen_launcher_icons.py`; `LauncherResourcesTest` fails until you do. Not taken over: tv-remote's five
 Pride flag icons.
 
