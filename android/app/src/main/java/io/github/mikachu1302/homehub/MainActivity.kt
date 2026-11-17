@@ -10,7 +10,10 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.viewModels
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
+import android.graphics.Color as AndroidColor
+import androidx.compose.ui.graphics.Color
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Arrangement
@@ -18,9 +21,9 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -36,9 +39,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import io.github.mikachu1302.homehub.core.Section
 import io.github.mikachu1302.homehub.ui.AmpScreen
+import io.github.mikachu1302.homehub.ui.CustomPageScreen
+import io.github.mikachu1302.homehub.ui.HdmiScreen
 import io.github.mikachu1302.homehub.ui.TvIrScreen
 import io.github.mikachu1302.homehub.ui.Dimens
 import io.github.mikachu1302.homehub.ui.HomeHubTheme
+import io.github.mikachu1302.homehub.ui.LocalTerm
+import io.github.mikachu1302.homehub.ui.Palettes
+import io.github.mikachu1302.homehub.ui.TButton
+import io.github.mikachu1302.homehub.ui.crtOverlay
+import io.github.mikachu1302.homehub.ui.termBackground
 import io.github.mikachu1302.homehub.ui.HomeViewModel
 import io.github.mikachu1302.homehub.ui.ImportDialog
 import io.github.mikachu1302.homehub.ui.MenuScreen
@@ -51,10 +61,23 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
+        // Every palette is dark: light system-bar icons always, whatever the phone's own theme.
+        enableEdgeToEdge(SystemBarStyle.dark(AndroidColor.TRANSPARENT), SystemBarStyle.dark(AndroidColor.TRANSPARENT))
         if (savedInstanceState == null) handleLink(intent)
         setContent {
-            HomeHubTheme { App(vm) }
+            val look = vm.appearance
+            HomeHubTheme(look.style, Palettes.byId(look.palette), look.scanlines) {
+                val term = LocalTerm.current
+                // The Surface sets the content colour (the palette's text) for everything inside, as in tv-remote.
+                Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                    Box(
+                        Modifier
+                            .fillMaxSize()
+                            .termBackground()
+                            .let { if (term.crt && term.scanlines) it.crtOverlay() else it },
+                    ) { App(vm) }
+                }
+            }
         }
     }
 
@@ -101,7 +124,7 @@ private fun App(vm: HomeViewModel) {
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbar) },
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = Color.Transparent,
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {
             LocalNetworkGate {
@@ -111,6 +134,8 @@ private fun App(vm: HomeViewModel) {
                     Section.AMP -> AmpScreen(vm.title(Section.AMP), vm.irBridge.isNotBlank(), vm.irStatus, vm::press)
                     Section.TV -> TvScreen(vm.title(Section.TV))
                     Section.TV_IR -> TvIrScreen(vm.title(Section.TV_IR), vm.irBridge.isNotBlank(), vm.irStatus, vm::press)
+                    Section.PAGE -> CustomPageScreen(vm)
+                    Section.HDMI -> HdmiScreen(vm.title(Section.HDMI), vm.irBridge.isNotBlank(), vm.irStatus, vm::press)
                     Section.SETTINGS -> SettingsScreen(vm)
                 }
             }
@@ -136,7 +161,7 @@ private fun LocalNetworkGate(content: @Composable () -> Unit) {
         Column(Modifier.padding(Dimens.screenPadding), verticalArrangement = Arrangement.spacedBy(Dimens.gap)) {
             Text("Home Hub", fontSize = 28.sp, fontWeight = FontWeight.Bold)
             Text("The app needs access to devices on your network to reach the switches and the IR bridge.")
-            Button(onClick = { if (Build.VERSION.SDK_INT >= 37) ask.launch(localNetworkPermission()) }) { Text("Allow") }
+            TButton(onClick = { if (Build.VERSION.SDK_INT >= 37) ask.launch(localNetworkPermission()) }) { Text("Allow") }
         }
     }
 }

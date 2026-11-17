@@ -80,20 +80,20 @@ fun ShareDialog(
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 CheckRow("Devices, names, rooms, icons, order", household) { household = it }
-                CheckRow("My preferences (list view, menu)", preferences) { preferences = it }
+                CheckRow("My preferences (menu, pages, look)", preferences) { preferences = it }
                 if (hasPasswords) {
-                    CheckRow("Include passwords (IR bridge login)", passwords) { passwords = it }
+                    CheckRow("IR bridge password", passwords) { passwords = it }
                     if (passwords) {
                         Text(
-                            "Anyone who sees or photographs this code can read the passwords. Show it only to the other phone.",
+                            "Anyone who sees this code can read the password.",
                             fontSize = 13.sp,
                             color = MaterialTheme.colorScheme.error,
                         )
                     }
                 }
                 when {
-                    link == null -> Text("Tick at least one part to share.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    matrix == null -> Text("The setup is too large for one QR code. Use \"Copy link\" and send it instead.")
+                    link == null -> Text("Tick at least one.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    matrix == null -> Text("Too large for a QR code. Use \"Copy link\".")
                     else -> Canvas(
                         Modifier.fillMaxWidth().aspectRatio(1f)
                             .background(Color.White, RoundedCornerShape(8.dp))
@@ -105,17 +105,12 @@ fun ShareDialog(
                         }
                     }
                 }
-                Text(
-                    "Scan it with the other phone's camera. The other phone confirms before anything changes." +
-                        if (passwords) "" else " No passwords are included.",
-                    fontSize = 13.sp,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                Text("Scan with the other phone's camera.", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Close") } },
+        confirmButton = { TTextButton(onClick = onDismiss) { Text("Close") } },
         dismissButton = {
-            TextButton(onClick = { link?.let { copyToClipboard(context, it) } }, enabled = link != null) { Text("Copy link") }
+            TTextButton(onClick = { link?.let { copyToClipboard(context, it) } }, enabled = link != null) { Text("Copy link") }
         },
     )
 }
@@ -133,33 +128,32 @@ fun ImportDialog(setup: SharedSetup, localDeviceIds: Set<String>, onConfirm: (ta
                 if (shared != null) {
                     val outputs = shared.devices.sumOf { it.channels }
                     val known = shared.devices.count { it.id in localDeviceIds }
-                    Text("${shared.devices.size} devices with $outputs outputs ($known already here, ${shared.devices.size - known} new).")
+                    Text("${shared.devices.size} devices, $outputs outputs ($known known, ${shared.devices.size - known} new).")
                     Text(
-                        "For these devices the names, rooms, icons and order from the other phone replace the ones here. " +
-                            "Devices only on this phone stay.",
+                        "Their names, rooms and order replace the ones here.",
                         fontSize = 13.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
                 if (shared != null && shared.irBridge.isNotBlank()) {
-                    Text("The IR bridge address: ${shared.irBridge}.", fontSize = 13.sp)
+                    Text("IR bridge: ${shared.irBridge}", fontSize = 13.sp)
                 }
                 setup.secrets?.irBridge?.let {
-                    Text("Passwords: the IR bridge login. It is stored encrypted on this phone.")
+                    Text("IR bridge password (stored encrypted).")
                 }
                 if (setup.preferences != null) {
                     if (shared != null) {
-                        CheckRow("Also use the other phone's preferences (list view)", takePreferences) { takePreferences = it }
+                        CheckRow("Also take their preferences", takePreferences) { takePreferences = it }
                     } else {
-                        Text("The other phone's preferences (list view) replace the ones here.")
+                        Text("Their preferences replace yours.")
                     }
                 }
             }
         },
         confirmButton = {
-            TextButton(onClick = { onConfirm(setup.preferences != null && (takePreferences || shared == null)) }) { Text("Import") }
+            TTextButton(onClick = { onConfirm(setup.preferences != null && (takePreferences || shared == null)) }) { Text("Import") }
         },
-        dismissButton = { TextButton(onClick = onCancel) { Text("Cancel") } },
+        dismissButton = { TTextButton(onClick = onCancel) { Text("Cancel") } },
     )
 }
 

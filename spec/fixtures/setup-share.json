@@ -359,6 +359,67 @@
       "expected": {
         "error": "This is not a Home Hub setup."
       }
+    },
+    {
+      "name": "Preferences with look and colours (glass style, a palette, scanlines off)",
+      "input": "homehub://import?d=JcqxCoQwEEXRf3l1Gtt0W9mIdtssFoMZMTBmJZPdIJJ_N8HyXs6FP2xncEReFfaCZp-W7e05w-I1DDDYOfym6DjCfuYnR9q58WKg6RSuthdSrfog4ZTaCd_o6tCFgvjQ_EqiXMoN",
+      "expected": {
+        "household": null,
+        "preferences": {
+          "switchView": "ALL",
+          "style": "Glass",
+          "palette": "nord",
+          "scanlines": false
+        }
+      }
+    },
+    {
+      "name": "Look from a newer app: an unknown style falls back to Crt, an unknown palette id is kept (shown as the default palette)",
+      "input": "homehub://import?d=q1YqU7Iy1FEqKEpNK1ayqlYqLs8sSc4Iy0wtV7JSCvL39w1W0lEqLqnMSQXyPfJz8tOLEnOBQgWJOaklJSDBxNKi_KJEpdpaAA",
+      "expected": {
+        "household": null,
+        "preferences": {
+          "switchView": "ROOMS",
+          "style": "Crt",
+          "palette": "aurora",
+          "scanlines": true
+        }
+      }
+    },
+    {
+      "name": "Preferences with a custom page in the menu (an unknown block from a newer app is dropped; a page without an id is dropped)",
+      "input": "homehub://import?d=TY_BCsIwEER_RfZc0Vr1kKsIetCCFT2IlGrXZmnShDSpSOm_mypKj_N2ZphtoQEWBqANPmpgLdRPsnd-InwCg0Mc7xIIQGLlYpOjAXYBnRXIysjj5Lw9rjbrBK7Bh_qCSwuU--TnbskK9GKnGsJRRQW3nt6Eupdfa0lVb-a5JOiCv7ZNSibVWT6EXAlVmEwO2Xes71TOamd7wlGIlxauDrUch-FsFkXz-WKxXE6mw2Qmddoo4SRCd-35b-tejfwDnnVv",
+      "expected": {
+        "household": null,
+        "preferences": {
+          "switchView": "ROOMS",
+          "menuOrder": [
+            "page:k3",
+            "SWITCHES"
+          ],
+          "pages": [
+            {
+              "id": "k3",
+              "title": "Movie night",
+              "blocks": [
+                {
+                  "kind": "hdmi"
+                },
+                {
+                  "kind": "tv_ir_pad"
+                },
+                {
+                  "kind": "switch",
+                  "output": "shellyplus1pm-112233445566/0"
+                },
+                {
+                  "kind": "amp_volume"
+                }
+              ]
+            }
+          ]
+        }
+      }
     }
   ]
 }

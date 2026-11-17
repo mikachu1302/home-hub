@@ -2,8 +2,12 @@
 
 package io.github.mikachu1302.homehub.ui
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -51,6 +55,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -93,6 +98,7 @@ fun SwitchesScreen(vm: HomeViewModel) {
     PollDevices(vm, withConfig = true)
     var editing by remember { mutableStateOf<Pair<String, Int>?>(null) }
     var arranging by remember { mutableStateOf(false) }
+    BackHandler(enabled = arranging) { arranging = false }
     val outputs = vm.outputs
 
     LazyColumn(
@@ -102,7 +108,15 @@ fun SwitchesScreen(vm: HomeViewModel) {
         ),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        item { Text(vm.title(Section.SWITCHES), fontSize = 24.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 8.dp)) }
+        item {
+            val (line, color) = switchesSummary(vm, LocalTerm.current.palette)
+            PageHeader(
+                vm.title(Section.SWITCHES), line, color,
+                trailing = if (outputs.isEmpty()) null else ({
+                    HeaderTextKey(if (arranging) "Done arranging" else "Arrange the outputs", if (arranging) "Done" else "Arrange") { arranging = !arranging }
+                }),
+            )
+        }
         if (vm.allUnreachable) {
             item { ConnectionProblem(onRetry = vm::retryNow) }
         }
@@ -110,7 +124,7 @@ fun SwitchesScreen(vm: HomeViewModel) {
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(Dimens.gap)) {
                     Text("No devices yet. Find them on the home Wi-Fi first.")
-                    Button(onClick = { vm.open(Section.SETTINGS) }) { Text("Find devices") }
+                    TButton(onClick = { vm.open(Section.SETTINGS) }) { Text("Find devices") }
                 }
             }
         }
@@ -131,8 +145,6 @@ fun SwitchesScreen(vm: HomeViewModel) {
                         onClick = { vm.showView(SwitchView.ALL) },
                         label = { Text("All") },
                     )
-                    Spacer(Modifier.weight(1f))
-                    TextButton(onClick = { arranging = !arranging }) { Text(if (arranging) "Done" else "Arrange") }
                 }
             }
         }
@@ -185,7 +197,7 @@ fun SwitchesScreen(vm: HomeViewModel) {
 }
 
 @Composable
-private fun OutputRow(o: OutputUi, showRoom: Boolean, onToggle: () -> Unit, onEdit: () -> Unit) {
+fun OutputRow(o: OutputUi, showRoom: Boolean, onToggle: () -> Unit, onEdit: (() -> Unit)?) {
     // Unreachable: the last known state may be wrong, so it is not shown (show real state only).
     val on = o.reachable && o.status?.on == true
     val details = buildList {
@@ -196,51 +208,67 @@ private fun OutputRow(o: OutputUi, showRoom: Boolean, onToggle: () -> Unit, onEd
             if (c.autoOff) add("⏱ Auto-off ${formatDelay(c.autoOffDelay)}")
             if (c.autoOn) add("⏱ Auto-on ${formatDelay(c.autoOnDelay)}")
         }
-    }.joinToString(" · ")
-    Surface(
-        shape = RoundedCornerShape(Dimens.corner),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-        color = MaterialTheme.colorScheme.surface,
+    }.joinToString(" · ") { it.replace(' ', '\u00A0') } // breaks only between the parts, never inside one
+    val term = LocalTerm.current
+    val p = term.palette
+    val known = o.reachable && o.status != null
+    // An output that is on glows in the "alive" colour (tv-remote's rule); the button also says it in words.
+    Row(
+        Modifier.fillMaxWidth().pane(glowColor = if (on) p.primary.copy(alpha = 0.6f) else null).padding(Dimens.rowPadding),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(Modifier.fillMaxWidth().padding(Dimens.rowPadding), verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                Modifier.size(Dimens.iconBox).background(
-                    if (on) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant,
-                    RoundedCornerShape(12.dp),
-                ),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    o.icon.vector(),
-                    contentDescription = null, // the name says what it is; the button says on/off
-                    tint = if (on) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(26.dp),
-                )
+        val iconShape = if (term.crt) term.controlShape else CircleShape
+        Box(
+            Modifier.size(Dimens.iconBox)
+                .background(if (on) p.primary.copy(alpha = 0.16f) else p.bg, iconShape)
+                .border(1.dp, if (on) p.primary else p.border, iconShape),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                o.icon.vector(),
+                contentDescription = null, // the name says what it is; the button says on/off
+                tint = if (on) p.primary else p.dim,
+                modifier = Modifier.size(24.dp),
+            )
+        }
+        Spacer(Modifier.width(Dimens.gap))
+        Column(
+            Modifier.weight(1f).let { if (onEdit == null) it else it.clickable(onClickLabel = "Name, room, icon and timers", onClick = onEdit) },
+            verticalArrangement = Arrangement.spacedBy(3.dp),
+        ) {
+            Text(
+                o.name, color = p.text, fontSize = if (term.crt) 20.sp else 17.sp,
+                fontWeight = if (term.crt) FontWeight.Normal else FontWeight.SemiBold,
+                maxLines = 1, overflow = TextOverflow.Ellipsis,
+            )
+            if (details.isNotEmpty()) {
+                Text(details, fontSize = 13.sp, color = if (!o.reachable) p.warn else p.dim)
             }
-            Spacer(Modifier.width(Dimens.gap))
-            Column(
-                Modifier.weight(1f).clickable(onClickLabel = "Name, room, icon and timers", onClick = onEdit),
-                verticalArrangement = Arrangement.spacedBy(3.dp),
-            ) {
-                Text(o.name, fontSize = 17.sp, fontWeight = FontWeight.SemiBold)
-                if (details.isNotEmpty()) Text(details, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            Spacer(Modifier.width(Dimens.gap))
-            val known = o.reachable && o.status != null
-            val label = when {
-                o.busy -> "…"
-                !known -> "–"
-                on -> "On"
-                else -> "Off"
-            }
-            val description = "${o.name}: ${if (!known) "state unknown" else if (on) "on" else "off"}. Tap to switch."
-            val modifier = Modifier.width(Dimens.toggleWidth).height(Dimens.buttonHeight).semantics { contentDescription = description }
-            val enabled = !o.busy && o.reachable
-            if (on) {
-                Button(onClick = onToggle, enabled = enabled, modifier = modifier) { Text(label, fontWeight = FontWeight.Bold) }
-            } else {
-                OutlinedButton(onClick = onToggle, enabled = enabled, modifier = modifier) { Text(label, fontWeight = FontWeight.Bold) }
-            }
+        }
+        Spacer(Modifier.width(Dimens.gap))
+        val label = when {
+            o.busy -> "…"
+            !known -> "–"
+            on -> "On"
+            else -> "Off"
+        }
+        val description = "${o.name}: ${if (!known) "state unknown" else if (on) "on" else "off"}. Tap to switch."
+        // Acts on release: the list scrolls, and a scroll that starts on the key must not switch anything.
+        RemoteButton(
+            description,
+            Modifier.width(Dimens.toggleWidth).height(Dimens.buttonHeight + 4.dp),
+            enabled = !o.busy && o.reachable,
+            active = on,
+            shape = if (term.crt) null else RoundedCornerShape(26.dp),
+            onClick = onToggle,
+        ) { color ->
+            Text(
+                if (term.crt) label.uppercase() else label,
+                color = color,
+                fontSize = if (term.crt) 20.sp else 16.sp,
+                fontWeight = if (term.crt) FontWeight.Normal else FontWeight.Bold,
+                style = glowIf(on && term.crt, color),
+            )
         }
     }
 }
@@ -295,8 +323,8 @@ private fun TimerSheet(
                 )
             }
             Row(horizontalArrangement = Arrangement.spacedBy(Dimens.gap)) {
-                OutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f).height(52.dp)) { Text("Cancel") }
-                Button(
+                TOutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f).height(52.dp)) { Text("Cancel") }
+                TButton(
                     onClick = {
                         val config = start?.copy(autoOff = autoOff, autoOffDelay = offDelay, autoOn = autoOn, autoOnDelay = onDelay)
                         onSave(name, room, icon, config)
@@ -364,20 +392,16 @@ private fun formatMinutes(seconds: Double): String {
 
 @Composable
 private fun ConnectionProblem(onRetry: () -> Unit) {
-    Surface(
-        shape = RoundedCornerShape(Dimens.corner),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error),
-        color = MaterialTheme.colorScheme.surface,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
+    val p = LocalTerm.current.palette
+    Box(Modifier.fillMaxWidth().pane(glowColor = p.warn)) {
         Column(Modifier.padding(Dimens.rowPadding), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("⚠ Can't reach the devices", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            Text("⚠ Can't reach the devices", color = p.warn, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
             Text(
                 "Check the Wi-Fi, or the VPN when you are away. The app keeps trying every few seconds.",
                 fontSize = 13.sp,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            OutlinedButton(onClick = onRetry) { Text("Try now") }
+            TOutlinedButton(onClick = onRetry) { Text("Try now") }
         }
     }
 }

@@ -39,6 +39,12 @@ class ShareTest {
                         SwitchView.valueOf(p.getString("switchView")),
                         p.optJSONArray("menuOrder")?.let { a -> (0 until a.length()).map { a.getString(it) } } ?: emptyList(),
                         p.optJSONObject("menuNames")?.let { n -> n.keys().asSequence().associateWith { n.getString(it) } } ?: emptyMap(),
+                        Appearance(
+                            p.optString("style").takeIf { it.isNotEmpty() }?.let { UiStyle.valueOf(it) } ?: Appearance().style,
+                            p.optString("palette").ifEmpty { Appearance().palette },
+                            p.optBoolean("scanlines", Appearance().scanlines),
+                        ),
+                        PagesJson.fromJson(p.optJSONArray("pages")),
                     )
                 }
                 assertEquals(name, prefs, got.preferences)
@@ -59,7 +65,7 @@ class ShareTest {
     @Test
     fun roundTrip() {
         val h = Household(listOf(lamp, ceiling), listOf(outputKey(ceiling.id, 0), outputKey(lamp.id, 1)), listOf("Aisle"))
-        val setup = SharedSetup(h, Preferences(SwitchView.ALL, listOf("TV", "SWITCHES"), mapOf("SWITCHES" to "Lights")))
+        val setup = SharedSetup(h, Preferences(SwitchView.ALL, listOf("TV", "SWITCHES"), mapOf("SWITCHES" to "Lights"), Appearance(UiStyle.Glass, "nord", false), listOf(CustomPage("k3", "Movie night", listOf(Block(BlockKind.HDMI), Block(BlockKind.SWITCH, "shellyplus1pm-112233445566/0"))))))
         val link = SetupShare.toLink(setup)
         assertTrue(link.startsWith(SetupShare.LINK_PREFIX))
         assertEquals(setup, SetupShare.fromLink(link))
@@ -127,6 +133,9 @@ class ShareTest {
         assertTrue("not classified (see docs/SHARING.md): $unclassified", unclassified.isEmpty())
         // What SetupShare carries today; change together with Household/Preferences, SetupShare and docs/SHARING.md.
         assertEquals(setOf(SettingKeys.DEVICES, SettingKeys.OUTPUT_ORDER, SettingKeys.ROOM_ORDER, SettingKeys.IR_BRIDGE), SettingKeys.HOUSEHOLD)
-        assertEquals(setOf(SettingKeys.SWITCH_VIEW, SettingKeys.MENU_ORDER, SettingKeys.MENU_NAMES), SettingKeys.PREFERENCES)
+        assertEquals(
+            setOf(SettingKeys.SWITCH_VIEW, SettingKeys.MENU_ORDER, SettingKeys.MENU_NAMES, SettingKeys.STYLE, SettingKeys.PALETTE, SettingKeys.SCANLINES, SettingKeys.PAGES),
+            SettingKeys.PREFERENCES,
+        )
     }
 }

@@ -92,8 +92,10 @@ From a wireframe round (variants: one long list, tabs, tiles + amp bar, menu fir
   sheet with rename + auto-off/auto-on.
 - **Amp page:** will grow (more keys than power/volume/mute/inputs); built like the TV remote, with a pager if the
   keys stop fitting.
-- Look and feel (colours, fonts, styles) comes after the first slice, before the iOS port. The first slice uses plain
+- Look and feel (colours, fonts, styles) comes after the first slice, before the iOS port. The first slice used plain
   Material 3 with every colour and size taken from one theme file.
+- **Design pass (2026-11-17): the look of `tv-remote`, taken over unchanged** (Neon CRT and Glass, its ten palettes,
+  its keys, D-pad, dial and rocker), so the TV remote can move in without a redesign. Details: docs/DESIGN.md.
 
 ## Hardware
 
@@ -136,7 +138,7 @@ From a wireframe round (variants: one long list, tabs, tiles + amp bar, menu fir
 - [x] Device list storage (names per output, stored on the phone only, no backup)
 - [x] Timers per output: show and edit auto-off and auto-on (on/off + delay), written to the device (`Switch.SetConfig`). Two outputs use auto-off today, one for a light after 7 min. Part of the minimum for the Shelly side.
 - [x] IR client: amp keys via HTTP with digest login (`IrBridgeClient`); bridge address and login in Settings, "Check" without sending IR
-- [x] Menu + Switches + Settings pages (Settings holds devices, IR bridge, sharing); Amp page with power, mute, volume and inputs; "TV (IR)" page with power, mute, the input menu and the UGREEN HDMI switch (1–5, Next; captured 2026-11-17) (until tv-remote moves into the TV page)
+- [x] Menu + Switches + Settings pages (Settings holds devices, IR bridge, sharing); Amp page with power, mute, volume and inputs; "TV (IR)" page with power, mute, the input menu (until tv-remote moves into the TV page); "HDMI switch" page for the UGREEN switch (1–5, Next; captured 2026-11-17)
 - [x] Test through WireGuard from outside (switches and amp, 2026-11-11)
 - [ ] First slice done = Shelly outputs (switch, power, timers) and amp buttons work on the real phone
 
@@ -177,6 +179,8 @@ Updated 2026-11-10: **iOS starts after the design pass**, not right after the fi
 should be settled first so it is built once. The second user has an iPhone 13 mini, so sharing the setup (2c)
 only reaches them once the iOS app exists.
 
+- [x] Design pass: tv-remote's look (docs/DESIGN.md), 2026-11-17; one header on every page, Settings as overview + pages,
+      HDMI switch as its own page, menu Edit (order, names, new page), custom pages from blocks, app icon (pixel h)
 - [ ] Start iOS after the design pass
 - [ ] The iOS app reads/writes the same setup link (docs/SHARING.md) and runs spec/fixtures/setup-share.json
 - [ ] The iOS app gets the same tripwire as `ShareTest.everySettingIsClassifiedExactlyOnce`: every stored key
@@ -188,7 +192,6 @@ only reaches them once the iOS app exists.
 - Detect whether the amp is on, by plugging it into the Plug S MG3 and reading its power draw
 - More IR devices (soundbar, fan, ...): just more buttons on the same bridge; one bridge per room
 - RF 433 MHz devices: separate RF module or an ESP32 variant with RF
-- Redesign/theming of the UI
 
 ## Open questions
 

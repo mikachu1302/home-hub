@@ -1,0 +1,70 @@
+# Design
+
+Decided 2026-11-17: Home Hub takes over the look of `tv-remote` unchanged, so the TV remote can move in later
+without being redesigned. Its rules (tv-remote `AGENTS.md`, "Two styles, one layout") apply here too.
+
+## Rules
+
+- **Two styles, one layout.** *Neon CRT*: square keys, glow, scanlines, text labels, VT323. *Glass*: round keys,
+  soft glow, a circular dial, icons, Fira Code. The user picks style, palette and scanlines in Settings → Style /
+  Colors (a preference, shared on request: docs/SHARING.md).
+- **Everything reads `LocalTerm`** (style + palette) or the Material colour scheme made from it, never a hard-coded
+  colour. CRT text is scaled up through the density's font scale (VT323 is drawn small), so sizes are plain `sp`.
+- **Palette roles:** `primary` = alive (an output that is on, a successful send, + and −), `action` = the action
+  (OK), `soft` = a quiet third colour, `warn` = problems (no connection, a failed or slow send). `PaletteTest`
+  enforces contrast (text 7:1, other text 4.5:1, borders 3:1): a new palette must pass it.
+- **All palettes are dark.** The phone's light/dark setting no longer changes the app; the system bars always get
+  light icons.
+- Colour is never the only signal (AGENTS.md): "On"/"Off" is written on the key, a send says ✓ or ✗.
+
+## How the Home Hub pages use it
+
+**One header on every page** (`PageHeader`): the title (CRT: upper case, glowing; glass: bold), one status line under
+it, keys of the same size on the right (menu: Settings; Switches: Arrange; IR pages: power), Settings' back key on
+the left. Same height and position everywhere, close to the top. No explanations at the bottom of control pages.
+
+| Page | Built from |
+|---|---|
+| Menu | one pane per section with its status line (alive colour when something is on, warn when nothing answers); glass adds an icon |
+| Switches | one pane per output; an output that is on glows in `primary`, the On/Off key is tv-remote's key with `active` |
+| Amplifier | send status in the header, power key on its right (CRT `PWR`, glass power icon); tv-remote's volume rocker, larger; mute and input keys beside it |
+| HDMI switch | its own page and menu entry: inputs 1–5 and Next as large keys |
+| TV (IR) | the same top row; tv-remote's D-pad (CRT cross / glass dial); Source, Mute, Back as tv-remote's cluster keys |
+| Settings | an overview with one row per topic and its summary (Devices, IR bridge, Look, Share), each opening its own page; tv-remote's back key, cards, style cards and palette chips. Back goes page → overview → menu |
+| Menu, Edit | the menu's own "Edit" key: drag entries into order, rename them, "+ New page" (decided 2026-11-17: order is changed on the menu itself, not in Settings) |
+
+## Custom pages (decided 2026-11-17)
+
+The user builds own pages from **ready-made blocks stacked top to bottom** (not a free grid of single keys): each block
+lays itself out in both styles, so a page always looks right. The built-in pages (Amplifier, TV (IR), HDMI switch, TV)
+**stay fixed**; custom pages are extra menu entries, ordered with the rest.
+
+- Blocks (`BlockKind`): amplifier volume and mute; amplifier power and input; TV (IR) arrows, OK, back; TV (IR) power,
+  source, mute; HDMI switch inputs; one Shelly output. Each block once per page (a switch block once per output).
+  tv-remote's blocks (apps, number pad, TV volume over the network) come with the TV remote.
+- A page has the shared header (title, IR send status, "Edit"). Edit mode: name, the block list (drag, Remove),
+  "+ Add block", "Delete this page". A new page opens in edit mode.
+- Pages are a preference (shared on request, docs/SHARING.md); a block's id never changes.
+
+## App icon (decided 2026-11-17)
+
+A lowercase **h in CRT pixels** (a 7-unit grid, 6-unit pixels with a gap, like a monitor's dot mask) in the palette's
+"alive" colour, with a **cursor block** in its action colour, on the palette's background; a faint outline gives the
+CRT glow. Chosen from three rounds of candidates (houses, then abstract shapes). As in tv-remote there is one icon per
+palette and the launcher icon follows the colours, 1.5 s after the last change (`ui/LauncherIcon.kt` enables one
+manifest alias); a white version serves themed (monochrome) icons. After changing a palette run
+`python3 tools/gen_launcher_icons.py`; `LauncherResourcesTest` fails until you do. Not taken over: tv-remote's five
+Pride flag icons.
+
+## Code
+
+`ui/Theme.kt` (styles, palettes, fonts, glow, pane, background, scanlines, themed Material buttons) and `ui/Glyphs.kt`
+are copies of tv-remote's `Theme.kt` and `Icons.kt` (only the package and the theme's name changed, plus a `tv`
+glyph); `ui/Controls.kt` has tv-remote's `RemoteButton` without its TV connection, `ui/IrScreens.kt` its D-pad, dial,
+rocker and cluster keys. When the TV remote moves in, its screens should need little more than an `onPress` in place of
+`vm.press(keyCode)`.
+
+Not taken over (yet): the Pride flag icons, haptics/smooth-press settings, keep awake,
+theater mode. They come with the TV remote if wanted.
+
+Fonts: VT323 and Fira Code, SIL Open Font License (`licenses/`).

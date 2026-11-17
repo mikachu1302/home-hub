@@ -5,18 +5,20 @@ import org.json.JSONObject
 import kotlin.math.roundToLong
 
 /** The app's sections. The menu is the start screen; the others open full screen. */
-enum class Section { MENU, SWITCHES, AMP, TV, TV_IR, SETTINGS }
+enum class Section { MENU, SWITCHES, AMP, TV, TV_IR, HDMI, SETTINGS, PAGE }
 
 /** The sections the menu lists, in the default order, with their default titles. */
-val MENU_SECTIONS = listOf(Section.SWITCHES, Section.AMP, Section.TV, Section.TV_IR)
+val MENU_SECTIONS = listOf(Section.SWITCHES, Section.AMP, Section.TV, Section.TV_IR, Section.HDMI)
 
 fun defaultTitle(section: Section): String = when (section) {
     Section.SWITCHES -> "Switches"
     Section.AMP -> "Amplifier"
     Section.TV -> "TV"
     Section.TV_IR -> "TV (IR)"
+    Section.HDMI -> "HDMI switch"
     Section.SETTINGS -> "Settings"
     Section.MENU -> "Home Hub"
+    Section.PAGE -> "Page"
 }
 
 /** The menu sections in the user's order (ids are `Section` names; unknown ids are ignored, new sections come last). */
@@ -28,6 +30,23 @@ fun sectionTitle(section: Section, names: Map<String, String>): String =
 
 /** How the Switches page lists the outputs. */
 enum class SwitchView { ROOMS, ALL }
+
+/**
+ * The two looks, taken over from tv-remote (docs/DESIGN.md). Layout stays the same; shapes, borders, fonts and glow
+ * differ. Entry names are stored and shared (`prefs.style`), so they never change.
+ */
+enum class UiStyle(val label: String, val blurb: String) {
+    Crt("Neon CRT", "Square, glowing, scanlines"),
+    Glass("Glass", "Round, soft, dial"),
+}
+
+/** Look and colours, a preference ([Preferences]). [palette] is a palette id; an unknown one shows the default. */
+data class Appearance(
+    val style: UiStyle = UiStyle.Crt,
+    val palette: String = "neon",
+    /** Scanlines over the CRT style. */
+    val scanlines: Boolean = true,
+)
 
 /** The user's settings for one output (channel). Blank means "not set"; [icon] is an [OutputIcon] id. */
 data class OutputPrefs(val name: String = "", val room: String = "", val icon: String = "")

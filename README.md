@@ -54,6 +54,11 @@ and is not committed.
 Parts: an M5Stack ATOM Lite and a Unit IR (both plug together, no soldering). Setup and firmware:
 [esphome/README.md](esphome/README.md).
 
+## Look
+
+The look of the TV remote app (Neon CRT or Glass, ten colour palettes), chosen in Settings. Fonts: VT323 and
+Fira Code (SIL Open Font License, see `licenses/`).
+
 ## Privacy
 
 This repository is public. It contains no real addresses, device IDs, Wi-Fi names or passwords, and tests use

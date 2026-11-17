@@ -10,6 +10,12 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import io.github.mikachu1302.homehub.core.AmpKeys
+import io.github.mikachu1302.homehub.core.Appearance
+import io.github.mikachu1302.homehub.core.CustomPage
+import io.github.mikachu1302.homehub.core.PAGE_PREFIX
+import io.github.mikachu1302.homehub.core.menuIds
+import io.github.mikachu1302.homehub.core.newPageId
+import io.github.mikachu1302.homehub.core.pageMenuId
 import io.github.mikachu1302.homehub.core.BridgeLogin
 import io.github.mikachu1302.homehub.core.IrKey
 import io.github.mikachu1302.homehub.core.Secrets
@@ -40,6 +46,9 @@ import io.github.mikachu1302.homehub.net.NotLanException
 import io.github.mikachu1302.homehub.net.ShellyClient
 import io.github.mikachu1302.homehub.net.findShellys
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -93,6 +102,20 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         private set
     var menuNames by mutableStateOf(store.menuNames)
         private set
+
+    /** Look and colours (a preference, docs/SHARING.md). */
+    var appearance by mutableStateOf(store.appearance)
+        private set
+
+    /** The user's own pages (a preference), and the one that is open when [section] is [Section.PAGE]. */
+    var pages by mutableStateOf(store.pages)
+        private set
+    var pageId by mutableStateOf(store.lastPage)
+        private set
+
+    /** The open custom page, or null (also when it was deleted, for example by an import). */
+    val page: CustomPage?
+        get() = pages.firstOrNull { it.id == pageId }
     /** The IR bridge's address (blank = not set up) and its login (from the Keystore). */
     var irBridge by mutableStateOf(store.irBridge)
         private set
@@ -127,6 +150,23 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         runCatching { connectivity?.registerDefaultNetworkCallback(networkCallback) }
+        // Make the launcher icon match the saved colours (also after an update or an import on another start).
+        viewModelScope.launch(Dispatchers.IO) { runCatching { LauncherIcon.apply(getApplication(), appearance) } }
+    }
+
+    private var iconJob: Job? = null
+
+    /**
+     * The launcher icon follows the colours a moment after the last change: the launcher redraws on every switch, and
+     * the user is usually still trying palettes.
+     */
+    private fun followIcon() {
+        iconJob?.cancel()
+        val look = appearance
+        iconJob = viewModelScope.launch(Dispatchers.IO) {
+            delay(1_500)
+            runCatching { LauncherIcon.apply(getApplication(), look) }
+        }
     }
 
     override fun onCleared() {
@@ -162,22 +202,65 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     val rooms: List<String>
         get() = roomsInUse(devices)
 
-    /** The menu sections in the user's order. */
-    val menu: List<Section>
-        get() = menuSections(menuOrder)
+    /** The menu in the user's order: built-in sections (`Section` names) and custom pages (`page:<id>`). */
+    val menu: List<String>
+        get() = menuIds(menuOrder, pages)
 
     /** The title the user gave [section] (menu entry and page title), or its default. */
     fun title(section: Section): String = sectionTitle(section, menuNames)
 
+    /** The title of a menu id. */
+    fun menuTitle(id: String): String =
+        pages.firstOrNull { pageMenuId(it) == id }?.title ?: runCatching { title(Section.valueOf(id)) }.getOrDefault(id)
+
     fun moveMenu(from: Int, delta: Int) {
-        menuOrder = moved(menu, from, delta).map { it.name }
+        menuOrder = moved(menu, from, delta)
         store.menuOrder = menuOrder
+    }
+
+    /** Opens a menu entry: a built-in section or a custom page. */
+    fun openMenu(id: String) {
+        val p = pages.firstOrNull { pageMenuId(it) == id }
+        if (p != null) openPage(p.id) else runCatching { Section.valueOf(id) }.getOrNull()?.let(::open)
+    }
+
+    fun openPage(id: String) {
+        pageId = id
+        store.lastPage = id
+        open(Section.PAGE)
+    }
+
+    /** Adds an empty page at the end of the menu and returns it. */
+    fun newPage(): CustomPage {
+        val p = CustomPage(newPageId(pages) { kotlin.random.Random.nextLong() }, "My page")
+        savePages(pages + p)
+        return p
+    }
+
+    fun updatePage(page: CustomPage) = savePages(pages.map { if (it.id == page.id) page else it })
+
+    fun deletePage(id: String) {
+        savePages(pages.filter { it.id != id })
+        menuOrder = menuOrder - (PAGE_PREFIX + id)
+        store.menuOrder = menuOrder
+        if (section == Section.PAGE && pageId == id) back()
+    }
+
+    private fun savePages(list: List<CustomPage>) {
+        pages = list
+        store.pages = list
     }
 
     /** A blank name goes back to the default title. */
     fun renameSection(section: Section, name: String) {
         menuNames = if (name.isBlank()) menuNames - section.name else menuNames + (section.name to name.trim())
         store.menuNames = menuNames
+    }
+
+    fun updateAppearance(change: (Appearance) -> Appearance) {
+        appearance = change(appearance)
+        store.appearance = appearance
+        followIcon()
     }
 
     fun showView(view: SwitchView) {
@@ -267,7 +350,7 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         pendingImport = null
     }
 
-    /** [takePreferences]: also use the sender's preferences (list view, later theme …). */
+    /** [takePreferences]: also use the sender's preferences (list view, menu, look and colours). */
     fun confirmImport(takePreferences: Boolean) {
         val shared = pendingImport ?: return
         pendingImport = null
@@ -277,6 +360,9 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
                 switchView = p.switchView
                 menuOrder = p.menuOrder
                 menuNames = p.menuNames
+                appearance = p.appearance
+                pages = p.pages
+                followIcon()
             }
         }
         shared.secrets?.irBridge?.let { login ->

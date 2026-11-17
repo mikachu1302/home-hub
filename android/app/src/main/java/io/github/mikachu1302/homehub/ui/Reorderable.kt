@@ -58,7 +58,7 @@ fun <T> ReorderableList(
     rowContent: @Composable RowScope.(T) -> Unit,
 ) {
     val colors = MaterialTheme.colorScheme
-    val shape = RoundedCornerShape(12.dp)
+    val shape = LocalTerm.current.buttonShape
     val rowHeight = 60.dp
     val rowPx = with(LocalDensity.current) { rowHeight.toPx() }
     var dragging by remember { mutableStateOf<String?>(null) }

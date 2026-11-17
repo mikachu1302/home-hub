@@ -31,6 +31,10 @@ data class Preferences(
     val menuOrder: List<String> = emptyList(),
     /** The user's titles for menu sections, keyed by `Section` name. Missing = default title. */
     val menuNames: Map<String, String> = emptyMap(),
+    /** Look and colours. */
+    val appearance: Appearance = Appearance(),
+    /** The user's own pages (custom pages; their place in the menu is in [menuOrder]). */
+    val pages: List<CustomPage> = emptyList(),
 )
 
 /**
@@ -69,7 +73,11 @@ object SetupShare {
                     JSONObject()
                         .put("switchView", p.switchView.name)
                         .put("menuOrder", JSONArray(p.menuOrder))
-                        .put("menuNames", JSONObject(p.menuNames)),
+                        .put("menuNames", JSONObject(p.menuNames))
+                        .put("style", p.appearance.style.name)
+                        .put("palette", p.appearance.palette)
+                        .put("scanlines", p.appearance.scanlines)
+                        .put("pages", PagesJson.toJson(p.pages)),
                 )
             }
             s.secrets?.let { x ->
@@ -102,6 +110,12 @@ object SetupShare {
                 switchView = runCatching { SwitchView.valueOf(p.optString("switchView")) }.getOrDefault(SwitchView.ROOMS),
                 menuOrder = strings(p.optJSONArray("menuOrder")),
                 menuNames = p.optJSONObject("menuNames")?.let { n -> n.keys().asSequence().associateWith { n.optString(it) } } ?: emptyMap(),
+                appearance = Appearance(
+                    style = UiStyle.entries.firstOrNull { it.name == p.optString("style") } ?: Appearance().style,
+                    palette = p.optString("palette").ifBlank { Appearance().palette },
+                    scanlines = p.optBoolean("scanlines", Appearance().scanlines),
+                ),
+                pages = PagesJson.fromJson(p.optJSONArray("pages")),
             )
         }
         val secrets = o.optJSONObject("secrets")?.let { x ->

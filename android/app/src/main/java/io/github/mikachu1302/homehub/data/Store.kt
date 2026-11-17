@@ -4,7 +4,11 @@ import android.content.Context
 import androidx.core.content.edit
 import io.github.mikachu1302.homehub.core.DeviceJson
 import io.github.mikachu1302.homehub.core.Household
+import io.github.mikachu1302.homehub.core.Appearance
+import io.github.mikachu1302.homehub.core.CustomPage
+import io.github.mikachu1302.homehub.core.PagesJson
 import io.github.mikachu1302.homehub.core.Preferences
+import io.github.mikachu1302.homehub.core.UiStyle
 import io.github.mikachu1302.homehub.core.SavedDevice
 import io.github.mikachu1302.homehub.core.Section
 import io.github.mikachu1302.homehub.core.SwitchView
@@ -28,10 +32,15 @@ object SettingKeys {
     const val SWITCH_VIEW = "switch_view"
     const val MENU_ORDER = "menu_order"
     const val MENU_NAMES = "menu_names"
+    const val STYLE = "style"
+    const val PALETTE = "palette"
+    const val SCANLINES = "scanlines"
+    const val PAGES = "pages"
+    const val LAST_PAGE = "last_page"
 
     val HOUSEHOLD = setOf(DEVICES, OUTPUT_ORDER, ROOM_ORDER, IR_BRIDGE)
-    val PREFERENCES = setOf(SWITCH_VIEW, MENU_ORDER, MENU_NAMES)
-    val STATE = setOf(LAST_SECTION, BACK_HINT)
+    val PREFERENCES = setOf(SWITCH_VIEW, MENU_ORDER, MENU_NAMES, STYLE, PALETTE, SCANLINES, PAGES)
+    val STATE = setOf(LAST_SECTION, BACK_HINT, LAST_PAGE)
 }
 
 /** Device list and settings (SharedPreferences, no backup). No secrets here: credentials go to [SecretStore]. */
@@ -87,15 +96,43 @@ class Store(context: Context) {
         }.getOrDefault(emptyMap())
         set(value) = prefs.edit { putString(SettingKeys.MENU_NAMES, org.json.JSONObject(value).toString()) }
 
+    /** Look and colours. */
+    var appearance: Appearance
+        get() {
+            val d = Appearance()
+            return Appearance(
+                style = UiStyle.entries.firstOrNull { it.name == prefs.getString(SettingKeys.STYLE, null) } ?: d.style,
+                palette = prefs.getString(SettingKeys.PALETTE, null) ?: d.palette,
+                scanlines = prefs.getBoolean(SettingKeys.SCANLINES, d.scanlines),
+            )
+        }
+        set(value) = prefs.edit {
+            putString(SettingKeys.STYLE, value.style.name)
+            putString(SettingKeys.PALETTE, value.palette)
+            putBoolean(SettingKeys.SCANLINES, value.scanlines)
+        }
+
+    /** The user's own pages. */
+    var pages: List<CustomPage>
+        get() = PagesJson.decode(prefs.getString(SettingKeys.PAGES, null))
+        set(value) = prefs.edit { putString(SettingKeys.PAGES, PagesJson.encode(value)) }
+
     var preferences: Preferences
-        get() = Preferences(switchView, menuOrder, menuNames)
+        get() = Preferences(switchView, menuOrder, menuNames, appearance, pages)
         set(value) {
             switchView = value.switchView
             menuOrder = value.menuOrder
             menuNames = value.menuNames
+            appearance = value.appearance
+            pages = value.pages
         }
 
     // --- state (this phone only, never shared) ---
+
+    /** The custom page the app reopens on, when [lastSection] is a page. */
+    var lastPage: String
+        get() = prefs.getString(SettingKeys.LAST_PAGE, "") ?: ""
+        set(value) = prefs.edit { putString(SettingKeys.LAST_PAGE, value) }
 
     /** The page the app reopens on (the last section used; Settings counts as the menu). */
     var lastSection: Section
