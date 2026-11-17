@@ -28,6 +28,8 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -43,7 +45,9 @@ import io.github.mikachu1302.homehub.ui.CustomPageScreen
 import io.github.mikachu1302.homehub.ui.HdmiScreen
 import io.github.mikachu1302.homehub.ui.TvIrScreen
 import io.github.mikachu1302.homehub.ui.Dimens
+import io.github.mikachu1302.homehub.ui.ControlPage
 import io.github.mikachu1302.homehub.ui.HomeHubTheme
+import io.github.mikachu1302.homehub.ui.LocalHaptics
 import io.github.mikachu1302.homehub.ui.LocalTerm
 import io.github.mikachu1302.homehub.ui.Palettes
 import io.github.mikachu1302.homehub.ui.SPLASH_THEMES
@@ -138,20 +142,28 @@ private fun App(vm: HomeViewModel, tvVm: RemoteViewModel) {
         containerColor = Color.Transparent,
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {
-            LocalNetworkGate {
-                when (vm.section) {
-                    Section.MENU -> MenuScreen(vm)
-                    Section.SWITCHES -> SwitchesScreen(vm)
-                    Section.AMP -> AmpScreen(vm.title(Section.AMP), vm.irBridge.isNotBlank(), vm.irStatus, vm::press)
-                    Section.TV -> TvSection(tvVm)
-                    Section.TV_IR -> TvIrScreen(vm.title(Section.TV_IR), vm.irBridge.isNotBlank(), vm.irStatus, vm::press) {
-                        // Wake-on-LAN uses the TV chosen on the TV page (tv-remote's settings): its MAC address.
-                        vm.message = if (tvVm.wakeTv()) "Wake signal sent (works when the TV is fully in standby)"
-                        else "Set the TV's MAC address on the TV page: gear > TV volume and power"
+            // Settings > Remote (stored with tv-remote's settings): haptics for every key, keep-awake and theater
+            // mode on the control pages.
+            val remote by tvVm.settings.collectAsStateWithLifecycle()
+            val control = vm.section in setOf(Section.AMP, Section.TV, Section.TV_IR, Section.HDMI, Section.PAGE)
+            CompositionLocalProvider(LocalHaptics provides remote.haptics) {
+                LocalNetworkGate {
+                    ControlPage(keepAwake = control && remote.keepAwake, theater = control && remote.theater) {
+                        when (vm.section) {
+                            Section.MENU -> MenuScreen(vm)
+                            Section.SWITCHES -> SwitchesScreen(vm)
+                            Section.AMP -> AmpScreen(vm.title(Section.AMP), vm.irBridge.isNotBlank(), vm.irStatus, vm::press)
+                            Section.TV -> TvSection(tvVm, onAddApp = { vm.openSettings("AppShortcuts", Section.TV) })
+                            Section.TV_IR -> TvIrScreen(vm.title(Section.TV_IR), vm.irBridge.isNotBlank(), vm.irStatus, vm::press) {
+                                // Wake-on-LAN to the TV set up in Settings > TV: its MAC address.
+                                vm.message = if (tvVm.wakeTv()) "Wake signal sent (works when the TV is fully in standby)"
+                                else "Set the TV's MAC address in Settings > TV"
+                            }
+                            Section.PAGE -> CustomPageScreen(vm)
+                            Section.HDMI -> HdmiScreen(vm.title(Section.HDMI), vm.irBridge.isNotBlank(), vm.irStatus, vm::press)
+                            Section.SETTINGS -> SettingsScreen(vm)
+                        }
                     }
-                    Section.PAGE -> CustomPageScreen(vm)
-                    Section.HDMI -> HdmiScreen(vm.title(Section.HDMI), vm.irBridge.isNotBlank(), vm.irStatus, vm::press)
-                    Section.SETTINGS -> SettingsScreen(vm)
                 }
             }
         }

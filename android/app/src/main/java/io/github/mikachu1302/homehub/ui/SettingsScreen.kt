@@ -21,6 +21,14 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.text.style.TextOverflow
 import io.github.mikachu1302.homehub.core.Appearance
 import io.github.mikachu1302.homehub.core.UiStyle
+import io.github.mikachu1302.homehub.core.Section
+import io.github.mikachu1302.homehub.tv.AppShortcutsScreen
+import io.github.mikachu1302.homehub.tv.RemoteViewModel
+import io.github.mikachu1302.homehub.tv.AndroidTvSettingsPage
+import io.github.mikachu1302.homehub.tv.RemoteSettingsPage
+import io.github.mikachu1302.homehub.tv.TvSettingsPage
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -52,11 +60,13 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
-import io.github.mikachu1302.homehub.core.Section
 import io.github.mikachu1302.homehub.core.defaultTitle
 
 /** The pages under Settings; null is the overview. */
-private enum class SettingsPage(val title: String) { Devices("Devices"), Bridge("IR bridge"), Look("Look"), Share("Share") }
+private enum class SettingsPage(val title: String, val parent: SettingsPage? = null) {
+    Devices("Devices"), Bridge("IR bridge"), Remote("Remote"), Tv("TV"), AndroidTv("Android TV"),
+    AppShortcuts("App shortcuts", AndroidTv), Look("Look"), Share("Share"),
+}
 
 /**
  * Settings: an overview with one row per topic and a short summary; each row opens its own page (docs/DESIGN.md).
@@ -64,8 +74,45 @@ private enum class SettingsPage(val title: String) { Devices("Devices"), Bridge(
  */
 @Composable
 fun SettingsScreen(vm: HomeViewModel) {
-    var page by rememberSaveable { mutableStateOf<SettingsPage?>(null) }
-    BackHandler(enabled = page != null) { page = null }
+    // Opened at a page by another page (the Android TV page's "+": app shortcuts)? Then back returns there.
+    val entry = remember { vm.settingsEntry.also { vm.settingsEntry = null } }
+    val direct = entry?.first?.let { name -> SettingsPage.entries.firstOrNull { it.name == name } }
+    val returnTo = entry?.second
+    var page by rememberSaveable { mutableStateOf(direct) }
+    fun goBack() {
+        val current = page
+        when {
+            current == null -> vm.back()
+            current == direct && returnTo != null -> vm.open(returnTo)
+            else -> page = current.parent
+        }
+    }
+    BackHandler(enabled = page != null) { goBack() }
+    // tv-remote's settings pages bring their own header and scrolling.
+    val tvVm = viewModel<RemoteViewModel>()
+    when (page) {
+        SettingsPage.Remote -> {
+            RemoteSettingsPage(tvVm, onBack = ::goBack)
+            return
+        }
+        SettingsPage.Tv -> {
+            TvSettingsPage(tvVm, onBack = ::goBack)
+            return
+        }
+        SettingsPage.AndroidTv -> {
+            val tv by tvVm.paired.collectAsStateWithLifecycle()
+            AndroidTvSettingsPage(
+                tv, tvVm, onBack = ::goBack, onApps = { page = SettingsPage.AppShortcuts },
+                onAddTv = { tvVm.beginAddTv(); vm.open(Section.TV) },
+            )
+            return
+        }
+        SettingsPage.AppShortcuts -> {
+            AppShortcutsScreen(tvVm, onBack = ::goBack)
+            return
+        }
+        else -> Unit
+    }
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState())
             .padding(start = Dimens.screenPadding, end = Dimens.screenPadding, top = Dimens.topPadding, bottom = 32.dp),
@@ -76,7 +123,7 @@ fun SettingsScreen(vm: HomeViewModel) {
         val current = page
         // tv-remote's settings header: the back key and a large title (no pane).
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            BackButton { if (current == null) vm.back() else page = null }
+            BackButton { goBack() }
             Text(current?.title ?: "Settings", fontSize = 24.sp, fontWeight = FontWeight.Bold)
         }
         Spacer(Modifier.height(2.dp))
@@ -86,6 +133,7 @@ fun SettingsScreen(vm: HomeViewModel) {
             SettingsPage.Bridge -> BridgePage(vm)
             SettingsPage.Look -> AppearanceSection(vm.appearance, vm::updateAppearance)
             SettingsPage.Share -> SharePage(vm)
+            SettingsPage.Remote, SettingsPage.Tv, SettingsPage.AndroidTv, SettingsPage.AppShortcuts -> Unit // drawn above
         }
     }
 }
@@ -106,6 +154,20 @@ private fun Overview(vm: HomeViewModel, open: (SettingsPage) -> Unit) {
             else -> "Set up"
         },
     ) { open(SettingsPage.Bridge) }
+    val tvVm = viewModel<RemoteViewModel>()
+    val remote = tvVm.settings.collectAsStateWithLifecycle().value
+    val audioTv = tvVm.audioTv.collectAsStateWithLifecycle().value
+    val stick = tvVm.paired.collectAsStateWithLifecycle().value
+    NavRow(
+        "Remote",
+        listOfNotNull("haptics".takeIf { remote.haptics }, "keep awake".takeIf { remote.keepAwake }, "theater".takeIf { remote.theater })
+            .joinToString(", ").replaceFirstChar { it.uppercase() }.ifEmpty { "Keys and screen" },
+    ) { open(SettingsPage.Remote) }
+    NavRow(
+        "TV",
+        audioTv?.let { tv -> tv.name + " · volume" + if (tv.mac != null) ", Wake-on-LAN" else "" } ?: "Network volume and Wake-on-LAN not set up",
+    ) { open(SettingsPage.Tv) }
+    NavRow("Android TV", stick?.let { "${it.name} · app shortcuts" } ?: "No stick paired yet") { open(SettingsPage.AndroidTv) }
     NavRow("Look", "${vm.appearance.style.label} · ${Palettes.byId(vm.appearance.palette).name}") { open(SettingsPage.Look) }
     NavRow("Share", "With another phone") { open(SettingsPage.Share) }
 }

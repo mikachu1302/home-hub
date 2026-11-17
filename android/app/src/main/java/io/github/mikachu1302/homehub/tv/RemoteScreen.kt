@@ -103,7 +103,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 @Composable
-fun RemoteScreen(tv: PairedTv, vm: RemoteViewModel, onSettings: () -> Unit, onAddApp: () -> Unit) {
+fun RemoteScreen(tv: PairedTv, vm: RemoteViewModel, onAddApp: () -> Unit) {
     val link by vm.link.collectAsStateWithLifecycle()
     val state by vm.tvState.collectAsStateWithLifecycle()
     val apps by vm.apps.collectAsStateWithLifecycle()
@@ -156,9 +156,9 @@ fun RemoteScreen(tv: PairedTv, vm: RemoteViewModel, onSettings: () -> Unit, onAd
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             if (term.crt) {
-                CrtHeader(tv, vm, chips, on, powerLabel, onSettings)
+                CrtHeader(tv, vm, chips, on, powerLabel)
             } else {
-                GlassHeader(tv, vm, chips, on, powerLabel, onSettings)
+                GlassHeader(tv, vm, chips, on, powerLabel)
             }
 
             AppRow(apps, currentApp, vm, onAddApp)
@@ -285,13 +285,11 @@ private fun statusLine(chips: List<Chip>, separator: Color): AnnotatedString = b
 @Composable
 private fun CrtHeader(
     tv: PairedTv, vm: RemoteViewModel, chips: List<Chip>, on: Boolean,
-    powerLabel: String, onSettings: () -> Unit,
+    powerLabel: String,
 ) {
     val p = LocalTerm.current.palette
+    // Home Hub: no settings key here; the Android TV settings are in Settings > Android TV.
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Top) {
-        RemoteButton("Settings", null, vm, Modifier.size(52.dp), onClick = onSettings) {
-            Text("SET", color = it, fontSize = 13.sp)
-        }
         Column(Modifier.weight(1f).clickable(onClick = vm::retry)) {
             TvSwitcher(tv, vm)
             Text(statusLine(chips, p.dim), fontSize = 14.sp, lineHeight = 16.sp)
@@ -306,15 +304,13 @@ private fun CrtHeader(
 @Composable
 private fun GlassHeader(
     tv: PairedTv, vm: RemoteViewModel, chips: List<Chip>, on: Boolean,
-    powerLabel: String, onSettings: () -> Unit,
+    powerLabel: String,
 ) {
+    // Home Hub: no settings key here; the Android TV settings are in Settings > Android TV.
     Row(
-        Modifier.fillMaxWidth().pane(RoundedCornerShape(20.dp)).padding(12.dp),
+        Modifier.fillMaxWidth().pane(RoundedCornerShape(20.dp)).padding(start = 16.dp, end = 12.dp, top = 12.dp, bottom = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically,
     ) {
-        RemoteButton("Settings", null, vm, Modifier.size(46.dp), shape = CircleShape, onClick = onSettings) {
-            Glyph("gear", it, Modifier.size(22.dp))
-        }
         Column(Modifier.weight(1f).clickable(onClick = vm::retry)) {
             TvSwitcher(tv, vm)
             FlowRow(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {

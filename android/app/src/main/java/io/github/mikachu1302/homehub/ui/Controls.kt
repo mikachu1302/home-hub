@@ -89,6 +89,7 @@ fun RemoteButton(
     val term = LocalTerm.current
     val p = term.palette
     val haptic = LocalHapticFeedback.current
+    val haptics = LocalHaptics.current
     val scope = rememberCoroutineScope()
     val press by rememberUpdatedState(onPress)
     val click by rememberUpdatedState(onClick)
@@ -140,7 +141,7 @@ fun RemoteButton(
                     true
                 }
             }
-            .pointerInput(enabled, repeat, repeatEveryMs, swipeable) {
+            .pointerInput(enabled, repeat, repeatEveryMs, swipeable, haptics) {
                 if (!enabled) return@pointerInput
                 awaitEachGesture {
                     awaitFirstDown()
@@ -158,7 +159,7 @@ fun RemoteButton(
                     }
                     // A key that acts on release (in a scrolling list) gives its feedback on release, so a scroll
                     // that starts on it does not buzz.
-                    if (press != null) haptic.performHapticFeedback(HapticFeedbackType.VirtualKey)
+                    if (press != null && haptics) haptic.performHapticFeedback(HapticFeedbackType.VirtualKey)
                     press?.invoke(false)
                     val ticker = if (repeat && press != null && released == null) scope.launch {
                         delay(400)
@@ -169,7 +170,7 @@ fun RemoteButton(
                     } else null
                     try {
                         if ((released ?: waitForUpOrCancellation()) != null && click != null) {
-                            if (press == null) haptic.performHapticFeedback(HapticFeedbackType.VirtualKey)
+                            if (press == null && haptics) haptic.performHapticFeedback(HapticFeedbackType.VirtualKey)
                             click?.invoke()
                         }
                     } finally {

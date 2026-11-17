@@ -42,65 +42,31 @@ import io.github.mikachu1302.homehub.ui.TButton
 import io.github.mikachu1302.homehub.ui.TTextButton
 import kotlinx.coroutines.delay
 
-/** The TV section's own pages (tv-remote's screens). */
-private enum class Screen { Remote, Settings, Apps }
-
-/** Idle time before theater mode dims the screen (tv-remote's value). */
-private const val THEATER_IDLE_MS = 10_000L
-
 /**
- * The TV page: tv-remote's app, moved in (docs/DESIGN.md, docs/PROTOCOLS.md). The remote, its settings and app
- * shortcuts, or finding and pairing a TV when none is paired. Connects while the page is visible and the app is in
+ * The Android TV page: tv-remote's app, moved in (docs/DESIGN.md, docs/PROTOCOLS.md). The remote, or finding and
+ * pairing a TV when none is paired; its settings and app shortcuts are in Settings > Android TV. Connects while the page is visible and the app is in
  * front, and closes the connection otherwise (tv-remote did that for the whole app). Keep-awake and theater mode
  * apply only here.
  */
 @Composable
-fun TvSection(vm: RemoteViewModel) {
+fun TvSection(vm: RemoteViewModel, onAddApp: () -> Unit) {
     val paired by vm.paired.collectAsStateWithLifecycle()
     val pairing by vm.pairing.collectAsStateWithLifecycle()
     val settings by vm.settings.collectAsStateWithLifecycle()
     val adding by vm.addingTv.collectAsStateWithLifecycle()
-    var screen by remember { mutableStateOf(Screen.Remote) }
-    // Back from the app shortcuts: Settings, or the remote when "+" in the app row opened it.
-    var appsBack by remember { mutableStateOf(Screen.Settings) }
-    LaunchedEffect(paired == null) { screen = Screen.Remote }
     BackHandler(enabled = pairing != PairingUi.None) { vm.cancelPairing() }
     BackHandler(enabled = adding && pairing == PairingUi.None) { vm.cancelAddTv() }
-    BackHandler(enabled = paired != null && screen != Screen.Remote) {
-        screen = if (screen == Screen.Apps) appsBack else Screen.Remote
-    }
 
     ConnectWhileVisible(vm)
-    KeepAwake(settings.keepAwake)
-    // The last touch, kept outside Compose state: touches must not redraw the page.
-    val lastTouch = remember { longArrayOf(SystemClock.uptimeMillis()) }
-    Theater(settings.theater && screen == Screen.Remote, lastTouch)
-
-    Box(
-        Modifier.fillMaxSize().pointerInput(Unit) {
-            // Every touch counts as activity for theater mode; nothing is consumed.
-            awaitPointerEventScope {
-                while (true) {
-                    awaitPointerEvent(PointerEventPass.Initial)
-                    lastTouch[0] = SystemClock.uptimeMillis()
-                }
-            }
-        },
-    ) {
+    // Keep-awake and theater mode: Home Hub applies them on every control page (MainActivity, ui/ControlPage.kt).
+    Box(Modifier.fillMaxSize()) {
         CompositionLocalProvider(LocalSettings provides settings) {
             val tv = paired
             when {
                 pairing != PairingUi.None -> PairingScreen(pairing, vm)
                 tv == null || adding -> FindTvScreen(vm, canCancel = tv != null)
-                screen == Screen.Remote -> RemoteScreen(
-                    tv, vm, onSettings = { screen = Screen.Settings },
-                    onAddApp = { appsBack = Screen.Remote; screen = Screen.Apps },
-                )
-                screen == Screen.Settings -> SettingsScreen(
-                    tv, vm, onBack = { screen = Screen.Remote },
-                    onApps = { appsBack = Screen.Settings; screen = Screen.Apps },
-                )
-                else -> AppShortcutsScreen(vm, onBack = { screen = appsBack })
+                // Its settings and app shortcuts are in Settings > Android TV (Home Hub); "+" in the app row opens them.
+                else -> RemoteScreen(tv, vm, onAddApp = onAddApp)
             }
         }
     }
@@ -124,40 +90,6 @@ internal fun ConnectWhileVisible(vm: RemoteViewModel) {
             vm.onBackground()
         }
     }
-}
-
-/** "Keep screen awake": no screen timeout while the TV page is in front. */
-@Composable
-private fun KeepAwake(on: Boolean) {
-    val view = LocalView.current
-    DisposableEffect(on) {
-        view.keepScreenOn = on
-        onDispose { view.keepScreenOn = false }
-    }
-}
-
-/**
- * "Theater mode": dims the screen when nothing was touched for a while; a touch brings it back within a moment (tv-remote
- * checked once a second, too). [lastTouch] holds the time of the last touch.
- */
-@Composable
-private fun Theater(enabled: Boolean, lastTouch: LongArray) {
-    val activity = LocalActivity.current ?: return
-    val dimmed = remember { booleanArrayOf(false) }
-    fun dim(on: Boolean) {
-        if (on == dimmed[0]) return
-        dimmed[0] = on
-        activity.window.attributes = activity.window.attributes.also {
-            it.screenBrightness = if (on) 0.01f else WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
-        }
-    }
-    LaunchedEffect(enabled) {
-        while (true) {
-            dim(enabled && SystemClock.uptimeMillis() - lastTouch[0] > THEATER_IDLE_MS)
-            delay(if (dimmed[0]) 200 else 1_000)
-        }
-    }
-    DisposableEffect(Unit) { onDispose { dim(false) } }
 }
 
 // ---------------------------------------------------------------- finding and pairing (tv-remote's screens)

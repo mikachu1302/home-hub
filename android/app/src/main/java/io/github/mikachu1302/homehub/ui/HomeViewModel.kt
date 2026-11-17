@@ -277,6 +277,8 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun open(target: Section) {
+        // The IR send status belongs to the page the key was sent from: a new page starts without one.
+        if (target != section || target == Section.PAGE) irStatus = null
         section = target
         store.lastSection = target
         if (target != Section.MENU && !store.backHintShown) {
@@ -286,6 +288,15 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun back() = open(Section.MENU)
+
+    /** A Settings page another page asked for (its name) and where back from it returns to; read once by Settings. */
+    var settingsEntry by mutableStateOf<Pair<String, Section>?>(null)
+
+    /** Opens Settings at [page] (a page name); back from it returns to [from]. */
+    fun openSettings(page: String, from: Section) {
+        settingsEntry = page to from
+        open(Section.SETTINGS)
+    }
 
     fun hintShown() {
         backHint = false
@@ -502,17 +513,22 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         if (irBridge.isBlank() || (repeat && pressesInFlight > 0)) return
         pressesInFlight++
         val start = System.nanoTime()
+        // The result shows only on the page that sent the key (open() clears the status on a page change).
+        val from = section to pageId
+        fun report(status: IrStatus) {
+            if ((section to pageId) == from) irStatus = status
+        }
         irStatus = IrStatus.Sending(key)
         viewModelScope.launch {
             try {
                 bridge.press(irBridge, bridgeLogin, key)
-                irStatus = IrStatus.Sent(key, (System.nanoTime() - start) / 1_000_000)
+                report(IrStatus.Sent(key, (System.nanoTime() - start) / 1_000_000))
             } catch (e: CancellationException) {
                 throw e
             } catch (e: BridgeException) {
-                irStatus = IrStatus.Failed(key, e.message ?: "the bridge refused it")
+                report(IrStatus.Failed(key, e.message ?: "the bridge refused it"))
             } catch (_: Exception) {
-                irStatus = IrStatus.Failed(key, "the bridge did not answer (Wi-Fi, power or VPN?)")
+                report(IrStatus.Failed(key, "the bridge did not answer (Wi-Fi, power or VPN?)"))
             } finally {
                 pressesInFlight--
             }

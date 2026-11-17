@@ -245,6 +245,7 @@ private fun OutputCard(o: OutputUi, showRoom: Boolean, onToggle: () -> Unit, onE
     val term = LocalTerm.current
     val p = term.palette
     val haptic = LocalHapticFeedback.current
+    val haptics = LocalHaptics.current
     val on = o.reachable && o.status?.on == true
     val known = o.reachable && o.status != null
     val canSwitch = !o.busy && o.reachable
@@ -272,12 +273,12 @@ private fun OutputCard(o: OutputUi, showRoom: Boolean, onToggle: () -> Unit, onE
                 onClickLabel = "Switch",
                 onLongClickLabel = "Name, room, icon and timers",
                 onLongClick = {
-                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    if (haptics) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                     onEdit()
                 },
                 onClick = {
                     if (canSwitch) {
-                        haptic.performHapticFeedback(HapticFeedbackType.VirtualKey)
+                        if (haptics) haptic.performHapticFeedback(HapticFeedbackType.VirtualKey)
                         onToggle()
                     }
                 },

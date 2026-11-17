@@ -84,13 +84,15 @@ Android layout, under `android/app/src/main/java/io/github/mikachu1302/homehub/`
   `data/SecretStore.kt` – credentials, encrypted with a Keystore key
 - `ui/` – `HomeViewModel`, `Theme` (tv-remote's styles and palettes, `LocalTerm`, sizes; docs/DESIGN.md), `Glyphs`
   (tv-remote's drawn key icons), `Controls` (`RemoteButton`), `LauncherIcon` (launcher icon per palette), `Icons` (drawn output icons), `Reorderable` (drag list),
-  `MenuScreen`, `SwitchesScreen` (+ output sheet, arrange mode), `SettingsScreen` (overview + pages: devices, IR bridge, look, sharing), `ShareUi` (QR and import dialogs),
+  `MenuScreen`, `SwitchesScreen` (+ output sheet, arrange mode), `SettingsScreen` (overview + pages: devices, IR bridge, remote, TV, Android TV, look, sharing), `ShareUi` (QR and import dialogs),
   `IrScreens` (Amp, TV (IR) and HDMI pages with tv-remote's D-pad and rocker, TV placeholder), `PageHeader` (the one
   header of every page), `PageScreen` (custom pages: blocks and their editor)
 - `tv/` – `tv-remote`, ported 2026-11-17 and kept close to the original so changes there can be carried over:
   `Proto`, `Pairing`, `Remote`, `Voice` (protocol, no UI), `Tls` (Keystore identity, pinned TLS), `Discovery`, `TvAudio`
   (UPnP volume, Wake-on-LAN), `Prefs`, `RemoteViewModel`, `RemoteScreen`, `SettingsScreens`, `Controls`, `AppLogos`,
-  `MoreKeys`, and `TvSection` (the TV page: its screens, find and pair, keep-awake, theater mode). tv-remote's own
+  `MoreKeys`, `AndroidTvBlocks` (custom-page blocks), and `TvSection` (the Android TV page: the remote, find and pair,
+  its settings are Settings > Remote, TV and Android TV, from `SettingsScreens`). `ui/ControlPage` applies keep-awake
+  and theater mode to every control page, `LocalHaptics` the haptics setting to every key. tv-remote's own
   AGENTS.md rules apply here too: pair and discover only on a user action, the mic only while held, keep the TV pinned.
 - `MainActivity.kt` – permission gate, system back to the menu, page switch, `homehub://import` links
 

@@ -78,39 +78,69 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
+/**
+ * tv-remote's settings screen, split over three Home Hub Settings pages (docs/DESIGN.md): Remote (how keys and the screen
+ * behave on every control page), TV (the TV's network volume and Wake-on-LAN) and Android TV (paired sticks and app
+ * shortcuts). Each page keeps tv-remote's frame: back key, large title, its sections and cards.
+ */
 @Composable
-fun SettingsScreen(tv: PairedTv, vm: RemoteViewModel, onBack: () -> Unit, onApps: () -> Unit) {
-    val settings by vm.settings.collectAsStateWithLifecycle()
-    val apps by vm.apps.collectAsStateWithLifecycle()
-
+private fun TvSettingsFrame(title: String, onBack: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             BackButton(onBack)
-            Text("TV settings", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+            Text(title, fontSize = 24.sp, fontWeight = FontWeight.Bold)
         }
-        // Style and colours are Home Hub's own (Settings > Look); the rest is tv-remote's settings screen.
+        content()
+    }
+}
 
-        Section("Remote behavior")
+/** Settings > Remote: haptics, keep awake and theater mode for every control page; smooth press for the stick. */
+@Composable
+fun RemoteSettingsPage(vm: RemoteViewModel, onBack: () -> Unit) {
+    val settings by vm.settings.collectAsStateWithLifecycle()
+    TvSettingsFrame("Remote", onBack) {
+        Section("Keys and screen")
         SectionCard {
-            SwitchRow("Haptic feedback", "A light vibration when remote buttons are pressed.", settings.haptics) {
+            SwitchRow("Haptic feedback", "A light vibration when a key is pressed, on every page.", settings.haptics) {
                 vm.updateSettings { s -> s.copy(haptics = it) }
             }
             SwitchRow(
+                "Keep screen awake",
+                "The screen stays on while a control page is open: Amplifier, TV, Android TV, HDMI switch and your own pages.",
+                settings.keepAwake,
+            ) { vm.updateSettings { s -> s.copy(keepAwake = it) } }
+            SwitchRow(
+                "Theater mode",
+                "Dims the screen when a control page is left untouched, to save battery and reduce glare while watching.",
+                settings.theater,
+            ) { vm.updateSettings { s -> s.copy(theater = it) } }
+        }
+        Section("Android TV")
+        SectionCard {
+            SwitchRow(
                 "Smooth press",
-                "Holding volume, channel or a direction acts like holding a key on a physical remote.",
+                "Holding volume, channel or a direction on the stick acts like holding a key on a physical remote.",
                 settings.smoothPress,
             ) { vm.updateSettings { s -> s.copy(smoothPress = it) } }
-            SwitchRow("Keep screen awake", "The screen stays on while the remote is open.", settings.keepAwake) {
-                vm.updateSettings { s -> s.copy(keepAwake = it) }
-            }
-            SwitchRow("Theater mode", "Dims the screen when idle, to save battery and reduce glare while watching.", settings.theater) {
-                vm.updateSettings { s -> s.copy(theater = it) }
-            }
         }
+    }
+}
 
-        Section("Applications")
-        NavRow("App shortcuts", "${apps.size} apps", onApps)
+/** Settings > TV: the TV's own volume over the network and switching it on (Wake-on-LAN). */
+@Composable
+fun TvSettingsPage(vm: RemoteViewModel, onBack: () -> Unit) {
+    val settings by vm.settings.collectAsStateWithLifecycle()
+    TvSettingsFrame("TV", onBack) { TvVolumeSection(settings, vm) }
+}
 
+/**
+ * Settings > Android TV: the paired sticks and the app shortcuts. [tv] is the stick in use (none yet: the list is
+ * empty and "Pair a TV" pairs the first); [onAddTv] goes to the Android TV page, where finding and pairing run.
+ */
+@Composable
+fun AndroidTvSettingsPage(tv: PairedTv?, vm: RemoteViewModel, onBack: () -> Unit, onApps: () -> Unit, onAddTv: () -> Unit) {
+    val apps by vm.apps.collectAsStateWithLifecycle()
+    TvSettingsFrame("Android TV", onBack) {
         Section("Connected TVs")
         val tvs by vm.tvs.collectAsStateWithLifecycle()
         SectionCard {
@@ -124,11 +154,10 @@ fun SettingsScreen(tv: PairedTv, vm: RemoteViewModel, onBack: () -> Unit, onApps
                     TTextButton(onClick = { vm.forgetTv(item) }) { Text("Forget") }
                 }
             }
-            TOutlinedButton(onClick = vm::beginAddTv, modifier = Modifier.padding(vertical = 8.dp)) { Text("Add a TV…") }
+            TOutlinedButton(onClick = onAddTv, modifier = Modifier.padding(vertical = 8.dp)) { Text(if (tvs.isEmpty()) "Pair a TV…" else "Add a TV…") }
         }
-
-        TvVolumeSection(settings, vm)
-
+        Section("Applications")
+        NavRow("App shortcuts", "${apps.size} apps", onApps)
     }
 }
 
@@ -139,7 +168,7 @@ private fun TvVolumeSection(settings: RemoteSettings, vm: RemoteViewModel) {
     val audio by vm.audio.collectAsStateWithLifecycle()
     var choosing by remember { mutableStateOf(false) }
     Section(
-        "TV volume and power",
+        "Volume and power",
         "TVs with a UPnP media renderer (Hisense VIDAA has one) let apps read and set their volume over the network, " +
             "so the volume keys control the TV itself and show its level. The first time, the TV asks on screen whether " +
             "this phone may control it: allow it with the TV's remote. To switch the TV on from standby the app sends " +
