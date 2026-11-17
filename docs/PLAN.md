@@ -177,7 +177,7 @@ The user's call: port everything, leave `tv-remote` itself as it is. Its code mo
 - [x] The TV page: find and pair when no TV is paired, the remote, TV settings and app shortcuts behind its gear key
 - [x] Pair the stick from Home Hub on the real phone (each app has its own pairing; tv-remote keeps its own), 2026-11-17
 - [x] TV for volume and Wake-on-LAN set up (copied from tv-remote's settings); Wake-on-LAN moved to the TV (IR) page
-- [ ] TV blocks for custom pages (app row, D-pad over the network, number pad, network volume), if wanted
+- [x] Android TV blocks for custom pages (app row, D-pad, keys, volume, number pad, more keys), 2026-11-17
 - [ ] TV settings shared between phones (today this phone only, docs/SHARING.md), if wanted
 
 ### iOS (after the first slice)

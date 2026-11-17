@@ -53,8 +53,10 @@ lays itself out in both styles, so a page always looks right. The built-in pages
 **stay fixed**; custom pages are extra menu entries, ordered with the rest.
 
 - Blocks (`BlockKind`): amplifier volume and mute; amplifier power and input; TV (IR) arrows, OK, back; TV (IR) power,
-  source, mute; TV (IR) volume; HDMI switch inputs; one Shelly output. Each block once per section (a switch block once per output).
-  tv-remote's blocks (apps, number pad, TV volume over the network) come with the TV remote.
+  source, mute; TV (IR) volume; HDMI switch inputs; one Shelly output; and the Android TV blocks (2026-11-17), pieces of
+  tv-remote's remote with its own keys: app shortcuts, arrows and OK, power/home/back/menu/play, volume and mute (the
+  TV's own volume when set up), number pad, playback and more keys. A page with Android TV blocks connects to the stick
+  while it is shown; its status line then shows the connection (IR blocks: the last IR key). Each block once per section (a switch block once per output).
 - A page has one or more **sections** (decided 2026-11-17). With more than one, everything under the header swipes
   sideways between them, with tv-remote's dots below; a touch on a key waits 100 ms to see whether it is a swipe
   (tv-remote's `LocalSwipeable`), so a swipe never presses a key. No fixed blocks for now.

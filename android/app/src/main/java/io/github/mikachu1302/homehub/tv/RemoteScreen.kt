@@ -392,7 +392,7 @@ private fun TvSwitcher(active: PairedTv, vm: RemoteViewModel) {
 // ------------------------------------------------------------------ app row
 
 @Composable
-private fun AppRow(apps: List<AppShortcut>, current: AppShortcut?, vm: RemoteViewModel, onAddApp: () -> Unit) {
+internal fun AppRow(apps: List<AppShortcut>, current: AppShortcut?, vm: RemoteViewModel, onAddApp: () -> Unit) {
     val term = LocalTerm.current
     val p = term.palette
     val haptic = LocalHapticFeedback.current
@@ -450,7 +450,7 @@ private fun AppRow(apps: List<AppShortcut>, current: AppShortcut?, vm: RemoteVie
 // ------------------------------------------------------------------ pads
 
 @Composable
-private fun CrtPad(vm: RemoteViewModel) {
+internal fun CrtPad(vm: RemoteViewModel) {
     BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         val cell = minOf(92.dp, (maxHeight - 12.dp) / 3, (maxWidth - 12.dp) / 3)
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -468,7 +468,7 @@ private fun CrtPad(vm: RemoteViewModel) {
 }
 
 @Composable
-private fun GlassDial(vm: RemoteViewModel) {
+internal fun GlassDial(vm: RemoteViewModel) {
     val p = LocalTerm.current.palette
     BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         // 272 dp when there is room (the glow around the ring needs a little air), smaller otherwise.
@@ -515,7 +515,7 @@ private fun GlassDial(vm: RemoteViewModel) {
 }
 
 @Composable
-private fun Keypad(vm: RemoteViewModel) {
+internal fun Keypad(vm: RemoteViewModel) {
     val term = LocalTerm.current
     val gap = if (term.crt) 6.dp else 8.dp
     // Rows share the height of the page (at most 4 x 64 dp), so the pad fits whatever room there is.
@@ -580,7 +580,7 @@ private fun PagerDots(state: PagerState) {
  * with a TV chosen in Settings, a sixth row switches that TV on (Wake-on-LAN).
  */
 @Composable
-private fun MoreKeysPage(vm: RemoteViewModel) {
+internal fun MoreKeysPage(vm: RemoteViewModel) {
     val gap = if (LocalTerm.current.crt) 6.dp else 8.dp
     val tv by vm.audioTv.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -606,7 +606,7 @@ private fun MoreKeysPage(vm: RemoteViewModel) {
 
 /** A key of the 3 x 3 cluster: a text label in the CRT style, an icon in the glass style. */
 @Composable
-private fun RowScope.ClusterKey(
+internal fun RowScope.ClusterKey(
     label: String,
     description: String,
     glyph: String,

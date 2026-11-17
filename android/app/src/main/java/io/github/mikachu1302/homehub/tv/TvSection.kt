@@ -108,7 +108,7 @@ fun TvSection(vm: RemoteViewModel) {
 
 /** Connected while this page is shown and the app is started; closed when the page or the app goes away. */
 @Composable
-private fun ConnectWhileVisible(vm: RemoteViewModel) {
+internal fun ConnectWhileVisible(vm: RemoteViewModel) {
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     DisposableEffect(lifecycle) {
         val observer = LifecycleEventObserver { _, event ->

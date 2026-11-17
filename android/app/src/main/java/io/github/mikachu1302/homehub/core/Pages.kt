@@ -5,8 +5,7 @@ import org.json.JSONObject
 
 /**
  * The ready-made blocks a custom page is built from (docs/DESIGN.md, "Custom pages"). [id] is stored and shared, so it
- * never changes; a block an older app does not know is dropped on reading. tv-remote's blocks (apps, number pad, TV
- * volume) come with the TV remote.
+ * never changes; a block an older app does not know is dropped on reading.
  */
 enum class BlockKind(val id: String, val title: String, val needsOutput: Boolean = false) {
     AMP_VOLUME("amp_volume", "Amplifier · volume and mute"),
@@ -16,7 +15,16 @@ enum class BlockKind(val id: String, val title: String, val needsOutput: Boolean
     TV_IR_VOLUME("tv_ir_volume", "TV · volume"),
     HDMI("hdmi", "HDMI switch · inputs 1–5, next"),
     SWITCH("switch", "Switch · one output", needsOutput = true),
+    ATV_APPS("atv_apps", "Android TV · app shortcuts"),
+    ATV_PAD("atv_pad", "Android TV · arrows and OK"),
+    ATV_KEYS("atv_keys", "Android TV · power, home, back, menu, play"),
+    ATV_VOLUME("atv_volume", "Android TV · volume and mute"),
+    ATV_NUMBERS("atv_numbers", "Android TV · number pad"),
+    ATV_MORE("atv_more", "Android TV · playback and more keys"),
     ;
+
+    /** A block that talks to the Android TV stick (tv-remote's protocol), not to the IR bridge. */
+    val androidTv: Boolean get() = id.startsWith("atv_")
 
     companion object {
         fun byId(id: String): BlockKind? = entries.firstOrNull { it.id == id }

@@ -63,7 +63,10 @@ class PagesTest {
     fun blockIdsNeverChange() {
         // Stored and shared: renaming one would drop it from every saved page.
         assertEquals(
-            listOf("amp_volume", "amp_keys", "tv_ir_pad", "tv_ir_keys", "tv_ir_volume", "hdmi", "switch"),
+            listOf(
+                "amp_volume", "amp_keys", "tv_ir_pad", "tv_ir_keys", "tv_ir_volume", "hdmi", "switch",
+                "atv_apps", "atv_pad", "atv_keys", "atv_volume", "atv_numbers", "atv_more",
+            ),
             BlockKind.entries.map { it.id },
         )
     }

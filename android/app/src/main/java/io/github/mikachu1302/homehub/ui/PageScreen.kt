@@ -16,6 +16,13 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import io.github.mikachu1302.homehub.core.PageSection
+import io.github.mikachu1302.homehub.core.Section
+import io.github.mikachu1302.homehub.tv.AndroidTvBlock
+import io.github.mikachu1302.homehub.tv.ConnectWhileVisible
+import io.github.mikachu1302.homehub.tv.Link
+import io.github.mikachu1302.homehub.tv.RemoteViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -73,13 +80,40 @@ fun CustomPageScreen(vm: HomeViewModel) {
     // Back leaves edit mode first, then the page.
     BackHandler(enabled = editing) { editing = false }
     if (page.blocks.any { it.kind == BlockKind.SWITCH }) PollDevices(vm, withConfig = false)
-    val hasIr = page.blocks.any { it.kind != BlockKind.SWITCH }
+    val hasIr = page.blocks.any { it.kind != BlockKind.SWITCH && !it.kind.androidTv }
+    val hasAtv = page.blocks.any { it.kind.androidTv }
     val ready = vm.irBridge.isNotBlank()
+    // The Android TV page's view model (tv-remote's): connected while this page shows Android TV blocks.
+    val tvVm = viewModel<RemoteViewModel>()
+    if (hasAtv && !editing) ConnectWhileVisible(tvVm)
+    val tvPaired = tvVm.paired.collectAsStateWithLifecycle().value
+    val link = tvVm.link.collectAsStateWithLifecycle().value
+    val p = LocalTerm.current.palette
+    // IR blocks: the last key's fate; only Android TV blocks: the connection to the stick.
+    val (status, statusColor) = when {
+        editing -> null to null
+        hasIr -> irStatusText(vm.irStatus, ready) to irStatusColor(vm.irStatus)
+        hasAtv -> when (link) {
+            Link.Connected -> "Connected to ${tvPaired?.name ?: "the stick"}" to p.primary
+            Link.Connecting -> "Connecting…" to p.dim
+            Link.Retrying -> "Can't reach the stick, retrying" to p.warn
+            Link.PinChanged -> "Certificate changed, pair again on the Android TV page" to p.warn
+            Link.Idle -> "Not connected" to p.dim
+        }
+        else -> null to null
+    }
+    val blocks = @Composable { list: List<Block>, swipeable: Boolean ->
+        list.forEach { BlockView(it, vm, ready, tvVm, swipeable) }
+    }
+    val notices = @Composable {
+        if (hasIr && !ready) Notice("Set up the IR bridge in Settings first.")
+        if (hasAtv && tvPaired == null) Notice("Pair the Android TV stick on its page first.")
+    }
     val header = @Composable {
         PageHeader(
             page.title,
-            if (hasIr && !editing) irStatusText(vm.irStatus, ready) else null,
-            if (hasIr && !editing) irStatusColor(vm.irStatus) else null,
+            status,
+            statusColor,
             trailing = { HeaderTextKey(if (editing) "Done editing" else "Edit this page", if (editing) "Done" else "Edit") { editing = !editing } },
         )
     }
@@ -93,15 +127,15 @@ fun CustomPageScreen(vm: HomeViewModel) {
             if (editing) {
                 EditPage(page, vm)
             } else {
-                if (hasIr && !ready) Notice("Set up the IR bridge in Settings first.")
-                page.blocks.forEach { BlockView(it, vm, ready) }
+                notices()
+                blocks(page.blocks, false)
             }
         }
     } else {
         val pager = rememberPagerState { page.sections.size }
         Column(Modifier.fillMaxSize().then(padding).padding(bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             header()
-            if (hasIr && !ready) Notice("Set up the IR bridge in Settings first.")
+            notices()
             HorizontalPager(state = pager, modifier = Modifier.weight(1f).fillMaxWidth(), verticalAlignment = Alignment.Top, pageSpacing = 16.dp) { i ->
                 // A touch that starts a swipe must not press a key (tv-remote's rule).
                 CompositionLocalProvider(LocalSwipeable provides true) {
@@ -109,7 +143,7 @@ fun CustomPageScreen(vm: HomeViewModel) {
                         Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(top = 4.dp, bottom = 8.dp),
                         verticalArrangement = Arrangement.spacedBy(14.dp),
                     ) {
-                        page.sections.getOrNull(i)?.blocks?.forEach { BlockView(it, vm, ready) }
+                        blocks(page.sections.getOrNull(i)?.blocks.orEmpty(), true)
                     }
                 }
             }
@@ -151,7 +185,7 @@ private fun PagerDots(state: PagerState, modifier: Modifier = Modifier) {
 // ------------------------------------------------------------------ blocks
 
 @Composable
-private fun BlockView(block: Block, vm: HomeViewModel, ready: Boolean) {
+private fun BlockView(block: Block, vm: HomeViewModel, ready: Boolean, tvVm: RemoteViewModel, swipeable: Boolean) {
     val term = LocalTerm.current
     val gap = if (term.crt) 6.dp else 8.dp
     val press: (IrKey, Boolean) -> Unit = vm::press
@@ -164,6 +198,10 @@ private fun BlockView(block: Block, vm: HomeViewModel, ready: Boolean) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         val label = block.kind.title.substringBefore(" · ")
         Text(if (term.crt) label.uppercase() else label, color = term.palette.dim, fontSize = 12.sp)
+        if (block.kind.androidTv) {
+            AndroidTvBlock(block.kind, tvVm, swipeable, onOpenTvPage = { vm.open(Section.TV) })
+            return@Column
+        }
         when (block.kind) {
             BlockKind.AMP_VOLUME -> Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(gap)) {
                 RepeatKey(AmpKeys.volumeDown, "−", ready, press, Modifier.weight(1f))
@@ -209,7 +247,7 @@ private fun BlockView(block: Block, vm: HomeViewModel, ready: Boolean) {
                 }
                 IrKeyButton(HdmiKeys.next, "NEXT", null, ready, press, Modifier.weight(1.5f).height(60.dp), glassText = "Next", look = Look.Primary)
             }
-            BlockKind.SWITCH -> Unit
+            else -> Unit
         }
     }
 }
