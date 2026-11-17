@@ -61,6 +61,18 @@ data class OutputUi(
     val key: String get() = outputKey(device.id, channel)
 }
 
+/**
+ * What happened to the last IR key. "Sent" means the bridge accepted it and fires the LED; whether the amp or TV saw
+ * the light is unknowable (IR is one-way). [ms] counts from the tap, so waiting behind earlier presses shows too.
+ */
+sealed interface IrStatus {
+    val key: IrKey
+
+    data class Sending(override val key: IrKey) : IrStatus
+    data class Sent(override val key: IrKey, val ms: Long) : IrStatus
+    data class Failed(override val key: IrKey, val reason: String) : IrStatus
+}
+
 class HomeViewModel(app: Application) : AndroidViewModel(app) {
     private val store = Store(app)
     private val shelly = ShellyClient()
@@ -382,6 +394,10 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
 
     private var pressesInFlight = 0
 
+    /** The last IR key's fate, shown on the Amp and TV (IR) pages. */
+    var irStatus by mutableStateOf<IrStatus?>(null)
+        private set
+
     /**
      * Sends one IR key. The amp reports nothing back, so a success shows nothing; a failure says why.
      * [repeat]: a repeat while the key is held; dropped while a press is still on its way, so a slow network never
@@ -390,15 +406,18 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     fun press(key: IrKey, repeat: Boolean = false) {
         if (irBridge.isBlank() || (repeat && pressesInFlight > 0)) return
         pressesInFlight++
+        val start = System.nanoTime()
+        irStatus = IrStatus.Sending(key)
         viewModelScope.launch {
             try {
                 bridge.press(irBridge, bridgeLogin, key)
+                irStatus = IrStatus.Sent(key, (System.nanoTime() - start) / 1_000_000)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: BridgeException) {
-                message = e.message
+                irStatus = IrStatus.Failed(key, e.message ?: "the bridge refused it")
             } catch (_: Exception) {
-                message = "Could not reach the IR bridge"
+                irStatus = IrStatus.Failed(key, "the bridge did not answer (Wi-Fi, power or VPN?)")
             } finally {
                 pressesInFlight--
             }

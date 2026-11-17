@@ -22,7 +22,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -34,6 +36,7 @@ import androidx.compose.runtime.setValue
 import kotlinx.coroutines.delay
 import io.github.mikachu1302.homehub.core.AmpKeys
 import io.github.mikachu1302.homehub.core.IrKey
+import io.github.mikachu1302.homehub.core.HdmiKeys
 import io.github.mikachu1302.homehub.core.TvIrKeys
 import androidx.compose.foundation.layout.width
 
@@ -42,12 +45,15 @@ import androidx.compose.foundation.layout.width
  * volume or mute state (AGENTS.md); a failed send shows a message. Disabled until the bridge is set up.
  */
 @Composable
-fun AmpScreen(title: String, ready: Boolean, onPress: (IrKey, Boolean) -> Unit) {
+fun AmpScreen(title: String, ready: Boolean, status: IrStatus?, onPress: (IrKey, Boolean) -> Unit) {
     Column(
         Modifier.fillMaxSize().padding(horizontal = Dimens.screenPadding, vertical = Dimens.topPadding),
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
-        Text(title, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+        Column {
+            Text(title, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+            IrStatusLine(status)
+        }
         if (!ready) Notice("Set up the IR bridge in Settings first.")
         Row(horizontalArrangement = Arrangement.spacedBy(Dimens.gap)) {
             AmpKey(AmpKeys.power, ready, onPress, Modifier.weight(1f))
@@ -74,6 +80,32 @@ fun AmpScreen(title: String, ready: Boolean, onPress: (IrKey, Boolean) -> Unit) 
         )
     }
 }
+
+/** The last key's fate; a fixed height so the keys below do not jump. Mark and text, not colour alone. */
+@Composable
+private fun IrStatusLine(status: IrStatus?) {
+    val (text, color) = when (status) {
+        null -> " " to MaterialTheme.colorScheme.onSurfaceVariant
+        is IrStatus.Sending -> "Sending ${status.key.label}…" to MaterialTheme.colorScheme.onSurfaceVariant
+        is IrStatus.Sent -> {
+            val time = if (status.ms < SLOW_MS) "${status.ms} ms" else "slow connection (%.1f s)".format(status.ms / 1000.0)
+            "✓ ${status.key.label} sent · $time" to
+                if (status.ms < SLOW_MS) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.error
+        }
+        is IrStatus.Failed -> "✗ ${status.key.label} not sent: ${status.reason}" to MaterialTheme.colorScheme.error
+    }
+    Text(
+        text,
+        fontSize = 13.sp,
+        color = color,
+        maxLines = 2,
+        minLines = 2,
+        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+    )
+}
+
+/** Above this a press counts as slow (the bridge normally answers in about 0.1 to 0.3 s). */
+private const val SLOW_MS = 1000L
 
 @Composable
 private fun AmpKey(
@@ -122,24 +154,36 @@ private fun AmpKey(
  * back. Volume stays with the network (tv-remote, later). Disabled until the bridge is set up.
  */
 @Composable
-fun TvIrScreen(title: String, ready: Boolean, onPress: (IrKey, Boolean) -> Unit) {
+fun TvIrScreen(title: String, ready: Boolean, status: IrStatus?, onPress: (IrKey, Boolean) -> Unit) {
     Column(
         Modifier.fillMaxSize().padding(horizontal = Dimens.screenPadding, vertical = Dimens.topPadding),
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
-        Text(title, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+        Column {
+            Text(title, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+            IrStatusLine(status)
+        }
         if (!ready) Notice("Set up the IR bridge in Settings first.")
         Row(horizontalArrangement = Arrangement.spacedBy(Dimens.gap)) {
             AmpKey(TvIrKeys.power, ready, onPress, Modifier.weight(1f))
             AmpKey(TvIrKeys.mute, ready, onPress, Modifier.weight(1f))
             AmpKey(TvIrKeys.source, ready, onPress, Modifier.weight(1f))
         }
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text("HDMI switch", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                HdmiKeys.inputs.forEachIndexed { i, key ->
+                    AmpKey(key, ready, onPress, Modifier.weight(1f), text = "${i + 1}")
+                }
+                AmpKey(HdmiKeys.next, ready, onPress, Modifier.weight(1.4f), text = "Next")
+            }
+        }
         Column(
             Modifier.weight(1f).fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(Dimens.gap, Alignment.CenterVertically),
         ) {
-            val key = Modifier.size(96.dp)
+            val key = Modifier.size(84.dp)
             AmpKey(TvIrKeys.up, ready, onPress, key, text = "▲")
             Row(horizontalArrangement = Arrangement.spacedBy(Dimens.gap)) {
                 AmpKey(TvIrKeys.left, ready, onPress, key, text = "◀")

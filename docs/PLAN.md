@@ -136,7 +136,7 @@ From a wireframe round (variants: one long list, tabs, tiles + amp bar, menu fir
 - [x] Device list storage (names per output, stored on the phone only, no backup)
 - [x] Timers per output: show and edit auto-off and auto-on (on/off + delay), written to the device (`Switch.SetConfig`). Two outputs use auto-off today, one for a light after 7 min. Part of the minimum for the Shelly side.
 - [x] IR client: amp keys via HTTP with digest login (`IrBridgeClient`); bridge address and login in Settings, "Check" without sending IR
-- [x] Menu + Switches + Settings pages (Settings holds devices, IR bridge, sharing); Amp page with power, mute, volume and inputs; "TV (IR)" page with power, mute and the input menu (until tv-remote moves into the TV page)
+- [x] Menu + Switches + Settings pages (Settings holds devices, IR bridge, sharing); Amp page with power, mute, volume and inputs; "TV (IR)" page with power, mute, the input menu and the UGREEN HDMI switch (1–5, Next; captured 2026-11-17) (until tv-remote moves into the TV page)
 - [x] Test through WireGuard from outside (switches and amp, 2026-11-11)
 - [ ] First slice done = Shelly outputs (switch, power, timers) and amp buttons work on the real phone
 

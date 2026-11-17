@@ -38,6 +38,12 @@ object TvIrKeys {
     val back = IrKey("Back", "TV Back")
 }
 
+/** The UGREEN HDMI switch in front of the TV (codes captured from its remote, docs/PROTOCOLS.md). */
+object HdmiKeys {
+    val inputs = (1..5).map { IrKey("HDMI $it", "HDMI $it") }
+    val next = IrKey("Next HDMI input", "HDMI Next")
+}
+
 /** `POST` path that presses [key] on the bridge; the name is percent-encoded (spaces as %20). */
 fun irPressPath(key: IrKey): String = irButtonPath(key) + "/press"
 

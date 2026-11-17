@@ -127,6 +127,17 @@ Flipper-IRDB's VIDAA sets (`TVs/Hisense/Hisense_32A4HAU.ir` and `Hisense_55E7KQ.
 | Mute | 0x0E | yes |
 | Volume − / + | 0x43 / 0x44 | − yes; + from the database (the app uses UPnP for volume anyway) |
 
+## UGREEN HDMI switch (5 inputs)
+
+IR only. Codes captured from its remote with the Unit IR (2026-11-17): NEC, address bytes `80 7F` (ESPHome `0x7F80`).
+The remote sends every key as the frame plus one or two NEC repeat codes, so the bridge sends frame + one repeat
+(`transmit_raw`, like the amp's input keys). Not yet tested from the bridge.
+
+| Key | k |
+|---|---|
+| 1 / 2 / 3 / 4 / 5 | 0x05 / 0x09 / 0x07 / 0x1B / 0x08 |
+| Next | 0x1F |
+
 ## Android TV stick (waipu.tv 4K)
 
 Not part of the first slice. Documented in `tv-remote` (Android TV Remote protocol v2 over TLS with pinning). When it

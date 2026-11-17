@@ -108,9 +108,9 @@ private fun App(vm: HomeViewModel) {
                 when (vm.section) {
                     Section.MENU -> MenuScreen(vm)
                     Section.SWITCHES -> SwitchesScreen(vm)
-                    Section.AMP -> AmpScreen(vm.title(Section.AMP), vm.irBridge.isNotBlank(), vm::press)
+                    Section.AMP -> AmpScreen(vm.title(Section.AMP), vm.irBridge.isNotBlank(), vm.irStatus, vm::press)
                     Section.TV -> TvScreen(vm.title(Section.TV))
-                    Section.TV_IR -> TvIrScreen(vm.title(Section.TV_IR), vm.irBridge.isNotBlank(), vm::press)
+                    Section.TV_IR -> TvIrScreen(vm.title(Section.TV_IR), vm.irBridge.isNotBlank(), vm.irStatus, vm::press)
                     Section.SETTINGS -> SettingsScreen(vm)
                 }
             }
