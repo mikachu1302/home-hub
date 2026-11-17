@@ -206,7 +206,7 @@ private fun BridgePage(vm: HomeViewModel) {
         Column(Modifier.padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             if (vm.irBridge.isBlank()) {
                 Text("Not set up", fontWeight = FontWeight.Medium)
-                InfoText("Sends the IR codes for amplifier, TV and HDMI switch.")
+                InfoText("Sends the IR codes for amplifier, TV and HDMI Switch.")
             } else {
                 Text(vm.irBridge, fontWeight = FontWeight.Medium)
                 InfoText(vm.bridgeLogin?.let { "Login: ${it.user}" } ?: "No login")

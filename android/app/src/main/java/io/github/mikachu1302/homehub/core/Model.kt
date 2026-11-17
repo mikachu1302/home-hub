@@ -15,7 +15,7 @@ fun defaultTitle(section: Section): String = when (section) {
     Section.AMP -> "Amplifier"
     Section.TV -> "Android TV"
     Section.TV_IR -> "TV"
-    Section.HDMI -> "HDMI switch"
+    Section.HDMI -> "HDMI Switch"
     Section.SETTINGS -> "Settings"
     Section.MENU -> "Home Hub"
     Section.PAGE -> "Page"

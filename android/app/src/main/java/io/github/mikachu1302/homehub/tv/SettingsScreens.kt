@@ -106,7 +106,7 @@ fun RemoteSettingsPage(vm: RemoteViewModel, onBack: () -> Unit) {
             }
             SwitchRow(
                 "Keep screen awake",
-                "The screen stays on while a control page is open: Amplifier, TV, Android TV, HDMI switch and your own pages.",
+                "The screen stays on while a control page is open: Amplifier, TV, Android TV, HDMI Switch and your own pages.",
                 settings.keepAwake,
             ) { vm.updateSettings { s -> s.copy(keepAwake = it) } }
             SwitchRow(

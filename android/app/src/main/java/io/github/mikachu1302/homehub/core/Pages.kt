@@ -13,7 +13,7 @@ enum class BlockKind(val id: String, val title: String, val needsOutput: Boolean
     TV_IR_PAD("tv_ir_pad", "TV · arrows, OK, back"),
     TV_IR_KEYS("tv_ir_keys", "TV · power, source, mute"),
     TV_IR_VOLUME("tv_ir_volume", "TV · volume"),
-    HDMI("hdmi", "HDMI switch · inputs 1–5, next"),
+    HDMI("hdmi", "HDMI Switch · inputs 1–5, next"),
     SWITCH("switch", "Switch · one output", needsOutput = true),
     ATV_APPS("atv_apps", "Android TV · app shortcuts"),
     ATV_PAD("atv_pad", "Android TV · arrows and OK"),

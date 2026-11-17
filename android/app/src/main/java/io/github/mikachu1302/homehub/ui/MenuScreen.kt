@@ -90,7 +90,7 @@ fun MenuScreen(vm: HomeViewModel) {
                 },
                 modifier = Modifier.fillMaxWidth().height(52.dp),
             ) { Text("+ New page") }
-            Text("Build your own page from blocks: amplifier, TV, HDMI switch, switches.", fontSize = 12.sp, color = p.dim)
+            Text("Build your own page from blocks: amplifier, TV, Android TV, HDMI Switch, switches.", fontSize = 12.sp, color = p.dim)
         } else {
             vm.menu.forEachIndexed { index, id ->
                 val page = vm.pages.firstOrNull { pageMenuId(it) == id }
