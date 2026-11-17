@@ -118,10 +118,10 @@ fun AmpScreen(title: String, ready: Boolean, status: IrStatus?, onPress: (IrKey,
 
 /**
  * TV over IR: Power in the header; tv-remote's dial in the middle (arrows and OK, for the input menu); at the bottom
- * the VOL rocker, Mute and Back, and Source as the wide key where tv-remote has Play/Pause. Disabled until the bridge is set up.
+ * the VOL rocker, Wake (Wake-on-LAN, from tv-remote: switches the TV on from deep standby), Mute and Back, and Source as the wide key where tv-remote has Play/Pause. Disabled until the bridge is set up.
  */
 @Composable
-fun TvIrScreen(title: String, ready: Boolean, status: IrStatus?, onPress: (IrKey, Boolean) -> Unit) {
+fun TvIrScreen(title: String, ready: Boolean, status: IrStatus?, onPress: (IrKey, Boolean) -> Unit, onWake: () -> Unit) {
     val term = LocalTerm.current
     IrPage(
         title, ready, status, TvIrKeys.power, TvIrKeys.volumeUp, TvIrKeys.volumeDown, onPress,
@@ -141,6 +141,7 @@ fun TvIrScreen(title: String, ready: Boolean, status: IrStatus?, onPress: (IrKey
         },
         cluster = {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                WakeKey(onWake)
                 ClusterKey(TvIrKeys.mute, "MUTE", "speaker-off", ready, onPress)
                 ClusterKey(TvIrKeys.back, "BACK", "back", ready, onPress)
             }
@@ -181,6 +182,19 @@ private fun InputPad(previous: IrKey, next: IrKey, enabled: Boolean, onPress: (I
                 Glyph("right", it, Modifier.size(34.dp), 2.4f)
             }
         }
+    }
+}
+
+/**
+ * Wake-on-LAN (tv-remote's "TV on"): not IR, a network packet to the TV's MAC address from the TV page's settings. Works
+ * only from the TV's real standby, a few minutes after it was switched off; IR power works from either.
+ */
+@Composable
+private fun RowScope.WakeKey(onWake: () -> Unit) {
+    val term = LocalTerm.current
+    val shape = if (term.crt) null else RoundedCornerShape(30.dp)
+    RemoteButton("Wake the TV (Wake-on-LAN)", Modifier.weight(1f).height(60.dp), look = Look.Primary, shape = shape, onClick = onWake) {
+        Text(if (term.crt) "WAKE" else "Wake", color = it, fontSize = if (term.crt) 18.sp else 16.sp, fontWeight = if (term.crt) FontWeight.Normal else FontWeight.SemiBold, maxLines = 1)
     }
 }
 
@@ -231,21 +245,6 @@ fun HdmiScreen(title: String, ready: Boolean, status: IrStatus?, onPress: (IrKey
     }
 }
 
-/** TV page, placeholder: the tv-remote screen moves in here later and gets the whole height. */
-@Composable
-fun TvScreen(title: String) {
-    val p = LocalTerm.current.palette
-    Column(Modifier.fillMaxSize().padding(start = 16.dp, end = 16.dp, top = Dimens.topPadding, bottom = 24.dp)) {
-        PageHeader(title, "Later, from tv-remote")
-        Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-            Text(
-                "The TV remote moves over from tv-remote later. It will use this whole screen.",
-                textAlign = TextAlign.Center,
-                color = p.dim,
-            )
-        }
-    }
-}
 
 // ------------------------------------------------------------------ parts
 

@@ -37,7 +37,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.mikachu1302.homehub.core.CustomPage
+import io.github.mikachu1302.homehub.tv.RemoteViewModel
 import io.github.mikachu1302.homehub.core.Section
 import io.github.mikachu1302.homehub.core.defaultTitle
 import io.github.mikachu1302.homehub.core.formatWatts
@@ -56,6 +59,8 @@ fun MenuScreen(vm: HomeViewModel) {
     BackHandler(enabled = editing) { editing = false }
     var renaming by remember { mutableStateOf<String?>(null) }
     val switches = switchesSummary(vm, p)
+    // The TV page's paired TV (tv-remote's view model, shared with the TV page).
+    val tvPaired = viewModel<RemoteViewModel>().paired.collectAsStateWithLifecycle().value?.name
     val bridge = if (vm.irBridge.isBlank()) "IR bridge not set up yet" to p.dim else "Through the IR bridge" to p.dim
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState())
@@ -96,7 +101,7 @@ fun MenuScreen(vm: HomeViewModel) {
                     val (line, color) = when (section) {
                         Section.SWITCHES -> switches
                         Section.AMP, Section.TV_IR, Section.HDMI -> bridge
-                        Section.TV -> "Later, from tv-remote" to p.dim
+                        Section.TV -> (tvPaired?.let { "Paired with $it" } ?: "No TV paired yet") to p.dim
                         else -> "" to p.dim
                     }
                     MenuEntry(vm.title(section), glyphOf(section), line, color, p.accent(index)) { vm.open(section) }

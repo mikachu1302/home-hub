@@ -11,9 +11,9 @@ import org.json.JSONObject
 enum class BlockKind(val id: String, val title: String, val needsOutput: Boolean = false) {
     AMP_VOLUME("amp_volume", "Amplifier · volume and mute"),
     AMP_KEYS("amp_keys", "Amplifier · power and input"),
-    TV_IR_PAD("tv_ir_pad", "TV (IR) · arrows, OK, back"),
-    TV_IR_KEYS("tv_ir_keys", "TV (IR) · power, source, mute"),
-    TV_IR_VOLUME("tv_ir_volume", "TV (IR) · volume"),
+    TV_IR_PAD("tv_ir_pad", "TV · arrows, OK, back"),
+    TV_IR_KEYS("tv_ir_keys", "TV · power, source, mute"),
+    TV_IR_VOLUME("tv_ir_volume", "TV · volume"),
     HDMI("hdmi", "HDMI switch · inputs 1–5, next"),
     SWITCH("switch", "Switch · one output", needsOutput = true),
     ;

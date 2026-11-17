@@ -28,6 +28,13 @@ Then, in the same change:
    payload, bump `SetupShare.VERSION`.
 3. **State:** nothing else; it must never appear in the payload.
 
+## The TV page's settings (from tv-remote)
+
+Stored in their own preferences file "tv" and classified in `SettingKeys` as `tv/<key>`: paired TVs and the active one,
+app shortcuts, the TV chosen for volume (address, MAC), haptics, smooth press, keep awake, theater mode, TV volume. **All
+this phone only for now** (state). The pairing can never be shared: it is bound to this phone's key in the Keystore.
+The others could become shared later (app shortcuts and remote behaviour as preferences, the volume TV as household).
+
 ## Credentials ("Include passwords")
 
 The other phone needs the bridge login to send amp commands, and typing it on every phone is tedious. Rules:

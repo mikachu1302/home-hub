@@ -7,7 +7,7 @@ Status as of 2026-11-10. Keep this file current; it is the single source of trut
 
 ## Goal and scope
 
-- Control, from one screen: Shelly switches/socket, Onkyo A-9050 (power, volume, mute, input) and, later, the TV (Hisense TV + Android TV stick, ported from `tv-remote`).
+- Control, from one screen: Shelly switches/socket, Onkyo A-9050 (power, volume, mute, input) and the TV (Hisense TV + Android TV stick, ported from `tv-remote` on 2026-11-17).
 - Everything local. No dependence on a vendor cloud for control.
 - Smallest useful version first. Everything marked *later* stays out until it is actually wanted.
 
@@ -167,6 +167,18 @@ classification of every setting: `docs/SHARING.md`** (every future setting must 
 - [x] `SettingKeys` classifies every stored key (household / preference / state); `ShareTest` fails for an unclassified one.
 - [ ] Check on the second phone: scan with its camera app (does that camera open `homehub://` links?) and import.
 - It is a copy, not a sync (see SHARING.md).
+
+### TV page – tv-remote ported (2026-11-17)
+
+The user's call: port everything, leave `tv-remote` itself as it is. Its code moved into `tv/` nearly unchanged
+(package, Home Hub's theme, LAN checks, its own appearance settings and launcher icons dropped in favour of Home Hub's).
+
+- [x] Protocol, pairing, connection, TV state, voice, app shortcuts, UPnP volume, Wake-on-LAN, keep-awake, theater mode
+- [x] The TV page: find and pair when no TV is paired, the remote, TV settings and app shortcuts behind its gear key
+- [x] Pair the stick from Home Hub on the real phone (each app has its own pairing; tv-remote keeps its own), 2026-11-17
+- [x] TV for volume and Wake-on-LAN set up (copied from tv-remote's settings); Wake-on-LAN moved to the TV (IR) page
+- [ ] TV blocks for custom pages (app row, D-pad over the network, number pad, network volume), if wanted
+- [ ] TV settings shared between phones (today this phone only, docs/SHARING.md), if wanted
 
 ### iOS (after the first slice)
 Decision 2026-11-10: **Android first, iPhone after the first slice**, not both at once. Reasons: the model is still

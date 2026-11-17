@@ -125,7 +125,7 @@ Flipper-IRDB's VIDAA sets (`TVs/Hisense/Hisense_32A4HAU.ir` and `Hisense_55E7KQ.
 | OK | 0x15 | yes |
 | Back | 0x48 | yes |
 | Mute | 0x0E | yes |
-| Volume − / + | 0x43 / 0x44 | − yes; + from the database. On the bridge as "TV Volume Down" / "TV Volume Up" since 2026-11-17 (the TV (IR) page); UPnP volume comes with tv-remote |
+| Volume − / + | 0x43 / 0x44 | yes, both (+ confirmed by the user 2026-11-17). On the bridge as "TV Volume Down" / "TV Volume Up" since 2026-11-17 (the TV (IR) page); UPnP volume comes with tv-remote |
 
 ## UGREEN HDMI switch (5 inputs)
 
@@ -138,7 +138,73 @@ The remote sends every key as the frame plus one or two NEC repeat codes, so the
 | 1 / 2 / 3 / 4 / 5 | 0x05 / 0x09 / 0x07 / 0x1B / 0x08 |
 | Next | 0x1F |
 
-## Android TV stick (waipu.tv 4K)
+## Android TV stick (waipu.tv 4K) and the TV's network volume
 
-Not part of the first slice. Documented in `tv-remote` (Android TV Remote protocol v2 over TLS with pinning). When it
-is ported, the protocol section moves or links here.
+Ported from `tv-remote` on 2026-11-17 (its code in `android/.../tv/`, unchanged apart from the package, Home Hub's
+theme and the LAN check below). These are tv-remote's own notes, taken over as they were; file names refer to the
+`tv` package.
+
+The same protocol Google's own remote uses. Reference: `tronikos/androidtvremote2`
+(`polo.proto` for pairing, `remotemessage.proto` for control). The stick advertises
+`_androidtvremote2._tcp` over mDNS.
+
+- **Pairing, port 6467, TLS** with our client certificate. Messages are length-prefixed
+  (varint) protobuf `OuterMessage`, `protocol_version = 2`, `status = 200`:
+  pairing request → ack → options → options → configuration → ack, then the TV shows a
+  6-digit hex code. Secret = SHA-256 over client modulus, client exponent, server
+  modulus, server exponent (unsigned big-endian, no leading zero byte) and the code
+  *without its first byte*; the first code byte must equal the first hash byte (typo
+  check). Send the hash as `Secret`; `SecretAck` means paired.
+- **Control, port 6466, TLS**, same framing, `RemoteMessage`. The TV sends configure → we
+  answer with the features we offer; set_active → we answer; ping request every ~5 s → we
+  must answer with the same value or the TV drops us. Keys are `remote_key_inject`
+  (Android key code; direction `SHORT = 3`, or `START_LONG = 1` / `END_LONG = 2` for a
+  held key – "smooth press").
+- **What the TV tells us** (`TvState`, applied by the pure function `TvState.apply`):
+  `remote_start` (field 40) = power state, `remote_set_volume_level` (50) = volume,
+  `remote_ime_key_inject` (20) = current app package and the focused text field,
+  `remote_ime_show_request` (22) = a text field got focus (we open the keyboard bar),
+  `remote_voice_begin` (30) = voice session id after we send the Search key.
+- **What we send besides keys:** text = `remote_ime_batch_edit` (21) with the counters from
+  the last ime message (backspace and Enter are plain DEL/ENTER keys); app launch =
+  `remote_app_link_launch_request` (90) with a deep link, or `market://launch?id=<package>`
+  for any installed app; voice = after Search key and the TV's voice_begin, echo it, stream
+  16-bit 8 kHz mono PCM in chunks of at least 8 KB (`voice_payload` 31), end with
+  `voice_end` (32).
+- **Observed on the real waipu.tv 4K stick:** supports all features (code 639). It reports
+  power and the current app, **but not its volume**: the volume message has no maximum or
+  level and nothing arrives when volume keys are pressed (volume lives on the TV over
+  HDMI-CEC). So the app shows a level or mute state only when a device reports a maximum.
+  Remote ATV shows "VOL 0" for the same reason.
+- **The TV itself (Hisense VIDAA, found by probing the real one):** the stick's volume keys only reach the TV over
+  HDMI-CEC, which is unreliable and reports nothing back. VIDAA TVs run a UPnP/DLNA media renderer (port 38400,
+  SSDP, description at `/MediaServer/rendererdevicedesc.xml`): its standard `RenderingControl` service answers
+  `GetVolume`/`GetMute` and accepts `SetVolume`/`SetMute` (0-100) over plain HTTP + SOAP, no pairing (`TvAudio.kt`:
+  `AudioClient`, `Upnp`; SSDP can miss the TV, so `discoverAudioTvs` also probes the phone's /24 for the port).
+  Power on = Wake-on-LAN magic packet to the MAC the user types in (`Wol`; the TV's Wi-Fi/network MAC, from the
+  neighbour table or the TV's network info); the TV must have wake-on-LAN/Wi-Fi enabled. **It only wakes the TV from real
+  standby** (verified with a laptop: the TV was silent on the network, the packet brought it up in about 6 s). Right after the
+  user powers off with the original remote the TV is in quick-start standby (screen dark, UPnP and port 36669 still answer)
+  and ignores the packet; a few minutes later it drops into real standby. VIDAA's
+  own remote protocol (MQTT over TLS on port 36669) needs a client certificate issued by Hisense's "RemoteCA":
+  without it the TLS handshake fails, so keys, power-off and input switching are NOT available that way, and
+  Hisense's key must not be copied into this repo. **Tried and dropped: the phone as a Bluetooth HID remote** (LE HID over
+  GATT and classic `BluetoothHidDevice`, both worked on the phone and were visible to a laptop scan), but the TV's Bluetooth
+  device list never showed the phone (it listed the waipu stick, an audio adapter and its own remote): it filters on something
+  an Android app cannot set (device class / GAP appearance). Power-off and input switching therefore need a Wi-Fi IR bridge
+  (Broadlink-style) or the Hisense app.
+- **Connection life:** the app connects when it is visible and closes the connection in the
+  background; the loop retries with backoff (0.5 s … 8 s), re-finds the TV by its mDNS
+  name when its address changed, and stops with a message if the pinned certificate no
+  longer matches.
+- **Identity:** an RSA key and self-signed certificate generated in the Android
+  keystore (`Identity` in `Tls.kt`); the TV accepts any client certificate and
+  remembers the one it paired with. The key never leaves the device.
+- If something here turns out wrong on the real stick, fix this section too.
+
+**In Home Hub:** every socket of the TV code (TLS to the stick, UPnP HTTP to the TV, the DIAL request, the /24 probe)
+resolves its host with `LanHttp.resolveLan` first and refuses anything outside the LAN, like the HTTP client. Wake-on-LAN
+sends only to LAN addresses and the limited broadcast 255.255.255.255; SSDP uses the multicast group 239.255.255.250.
+Neither leaves the local network. Volume over IR (the bridge's "TV Volume Up/Down", see the Hisense section) is a
+second way to the same TV; tv-remote's UPnP volume stays on the TV page.
+

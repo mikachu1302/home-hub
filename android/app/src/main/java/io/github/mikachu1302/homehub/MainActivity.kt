@@ -55,10 +55,14 @@ import io.github.mikachu1302.homehub.ui.ImportDialog
 import io.github.mikachu1302.homehub.ui.MenuScreen
 import io.github.mikachu1302.homehub.ui.SettingsScreen
 import io.github.mikachu1302.homehub.ui.SwitchesScreen
-import io.github.mikachu1302.homehub.ui.TvScreen
+import io.github.mikachu1302.homehub.tv.RemoteViewModel
+import io.github.mikachu1302.homehub.tv.TvSection
 
 class MainActivity : ComponentActivity() {
     private val vm: HomeViewModel by viewModels()
+
+    /** tv-remote's view model (the TV page): paired TVs, the connection, TV state, voice, its settings. */
+    private val tvVm: RemoteViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -82,7 +86,7 @@ class MainActivity : ComponentActivity() {
                             .fillMaxSize()
                             .termBackground()
                             .let { if (term.crt && term.scanlines) it.crtOverlay() else it },
-                    ) { App(vm) }
+                    ) { App(vm, tvVm) }
                 }
             }
         }
@@ -101,7 +105,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-private fun App(vm: HomeViewModel) {
+private fun App(vm: HomeViewModel, tvVm: RemoteViewModel) {
     val snackbar = remember { SnackbarHostState() }
 
     // Back is the only way to the menu, the same on every page (docs/PLAN.md, "App layout").
@@ -139,8 +143,12 @@ private fun App(vm: HomeViewModel) {
                     Section.MENU -> MenuScreen(vm)
                     Section.SWITCHES -> SwitchesScreen(vm)
                     Section.AMP -> AmpScreen(vm.title(Section.AMP), vm.irBridge.isNotBlank(), vm.irStatus, vm::press)
-                    Section.TV -> TvScreen(vm.title(Section.TV))
-                    Section.TV_IR -> TvIrScreen(vm.title(Section.TV_IR), vm.irBridge.isNotBlank(), vm.irStatus, vm::press)
+                    Section.TV -> TvSection(tvVm)
+                    Section.TV_IR -> TvIrScreen(vm.title(Section.TV_IR), vm.irBridge.isNotBlank(), vm.irStatus, vm::press) {
+                        // Wake-on-LAN uses the TV chosen on the TV page (tv-remote's settings): its MAC address.
+                        vm.message = if (tvVm.wakeTv()) "Wake signal sent (works when the TV is fully in standby)"
+                        else "Set the TV's MAC address on the TV page: gear > TV volume and power"
+                    }
                     Section.PAGE -> CustomPageScreen(vm)
                     Section.HDMI -> HdmiScreen(vm.title(Section.HDMI), vm.irBridge.isNotBlank(), vm.irStatus, vm::press)
                     Section.SETTINGS -> SettingsScreen(vm)

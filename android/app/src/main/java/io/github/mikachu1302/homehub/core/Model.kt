@@ -13,8 +13,8 @@ val MENU_SECTIONS = listOf(Section.SWITCHES, Section.AMP, Section.TV, Section.TV
 fun defaultTitle(section: Section): String = when (section) {
     Section.SWITCHES -> "Switches"
     Section.AMP -> "Amplifier"
-    Section.TV -> "TV"
-    Section.TV_IR -> "TV (IR)"
+    Section.TV -> "Android TV"
+    Section.TV_IR -> "TV"
     Section.HDMI -> "HDMI switch"
     Section.SETTINGS -> "Settings"
     Section.MENU -> "Home Hub"

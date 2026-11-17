@@ -7,6 +7,8 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <!-- Multicast is needed for mDNS discovery of the Shelly devices. -->
     <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
+    <!-- Only while the TV page's mic key is held: voice search on the TV (from tv-remote). The audio goes to the TV only. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <!-- Android 17: local-network access is a runtime permission. -->
     <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
 

@@ -30,8 +30,9 @@ tv-remote's PWR key (tried below the header and at the bottom: both felt wrong).
 | Menu | one pane per section with its status line (alive colour when something is on, warn when nothing answers); glass adds an icon |
 | Switches | one pane per output; an output that is on glows in `primary`, the On/Off key is tv-remote's key with `active`. "Grid" (a preference) shows compact cards two to a row: tap the card to switch (on release), hold it for name, room, icon and timers |
 | Amplifier | laid out like tv-remote's remote: header; the inputs as the main control in the middle (‹ INPUT ›; glass: a rounded pane with ghost keys like the dial); at the bottom tv-remote's VOL rocker with Mute beside it; Power in the header |
+| TV | tv-remote's screens as they are (its header with the TV switcher and status chips, app row, the swipeable pad / number pad / more keys, the bottom cluster, keyboard bar, settings, app shortcuts, find and pair) |
 | HDMI switch | its own page and menu entry: inputs 1–5 and Next as large keys |
-| TV (IR) | laid out like tv-remote's remote: header; tv-remote's D-pad in the middle (CRT cross / glass dial, for the input menu); at the bottom the VOL rocker, Mute and Back as tv-remote's cluster keys, and Source as the wide key in tv-remote's Play/Pause spot; Power in the header |
+| TV (IR) | laid out like tv-remote's remote: header; tv-remote's D-pad in the middle (CRT cross / glass dial, for the input menu); at the bottom the VOL rocker, Wake (Wake-on-LAN, moved here from the TV page), Mute and Back as tv-remote's cluster keys, and Source as the wide key in tv-remote's Play/Pause spot; Power in the header |
 | Settings | an overview with one row per topic and its summary (Devices, IR bridge, Look, Share), each opening its own page; tv-remote's back key, cards, style cards and palette chips. Back goes page → overview → menu |
 | Menu, Edit | the menu's own "Edit" key: drag entries into order, rename them, "+ New page" (decided 2026-11-17: order is changed on the menu itself, not in Settings) |
 
@@ -41,6 +42,9 @@ The Pride palette shows the flag beyond the dial ring: each menu icon, the page 
 next flag colour (`Palette.accent`); a thin rainbow line runs under the page header (`FlagLine`); the glass background
 glows in the flag's colours instead of only pink and light blue. Colours with a meaning stay: "on" is light blue, OK
 is pink. Other palettes have no flag and are unchanged.
+
+Menu names (default titles, 2026-11-17): **"Android TV"** is the stick's remote (from tv-remote, `Section.TV`), **"TV"**
+is the TV over IR (`Section.TV_IR`, called "TV (IR)" elsewhere in these docs). The user can rename both.
 
 ## Custom pages (decided 2026-11-17)
 

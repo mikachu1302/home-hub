@@ -42,7 +42,23 @@ object SettingKeys {
 
     val HOUSEHOLD = setOf(DEVICES, OUTPUT_ORDER, ROOM_ORDER, IR_BRIDGE)
     val PREFERENCES = setOf(SWITCH_VIEW, MENU_ORDER, MENU_NAMES, STYLE, PALETTE, SCANLINES, PAGES, SWITCH_LAYOUT)
-    val STATE = setOf(LAST_SECTION, BACK_HINT, LAST_PAGE)
+    // The TV page's settings, ported from tv-remote, live in their own preferences file "tv" (tv/RemoteViewModel.kt,
+    // tv/Prefs.kt); listed here as "tv/<key>" so they are classified too. All this phone only for now: the pairing is
+    // per phone by design (its key never leaves the Keystore); the others could become shared later (docs/SHARING.md).
+    const val TV_PAIRED = "tv/tvs"
+    const val TV_ACTIVE = "tv/activeTv"
+    const val TV_APPS = "tv/apps"
+    const val TV_AUDIO = "tv/audioTv"
+    const val TV_HAPTICS = "tv/haptics"
+    const val TV_SMOOTH_PRESS = "tv/smoothPress"
+    const val TV_KEEP_AWAKE = "tv/keepAwake"
+    const val TV_THEATER = "tv/theater"
+    const val TV_VOLUME = "tv/tvVolume"
+
+    val STATE = setOf(
+        LAST_SECTION, BACK_HINT, LAST_PAGE,
+        TV_PAIRED, TV_ACTIVE, TV_APPS, TV_AUDIO, TV_HAPTICS, TV_SMOOTH_PRESS, TV_KEEP_AWAKE, TV_THEATER, TV_VOLUME,
+    )
 }
 
 /** Device list and settings (SharedPreferences, no backup). No secrets here: credentials go to [SecretStore]. */
