@@ -418,6 +418,13 @@ class RemoteViewModel(app: Application) : AndroidViewModel(app) {
 
     // ------------------------------------------------------------ settings and apps
 
+    /** An imported setup (Home Hub's sharing, docs/SHARING.md) wrote this file: show what it holds now. */
+    fun reloadShared() {
+        _settings.value = prefs.loadSettings()
+        _apps.value = parseApps(prefs.getString("apps", null))
+        _audioTv.value = parseAudioTv(prefs.getString("audioTv", null))
+    }
+
     fun updateSettings(change: (RemoteSettings) -> RemoteSettings) {
         val next = change(_settings.value)
         _settings.value = next

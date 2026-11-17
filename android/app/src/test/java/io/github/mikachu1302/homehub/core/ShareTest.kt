@@ -46,6 +46,10 @@ class ShareTest {
                         ),
                         if (p.has("pages")) PagesJson.fromJson(p.optJSONArray("pages")) else null,
                         p.optString("switchLayout").takeIf { it.isNotEmpty() }?.let { SwitchLayout.valueOf(it) } ?: SwitchLayout.LIST,
+                        p.optJSONObject("remote")?.let { r ->
+                            RemoteBehaviour(r.getBoolean("haptics"), r.getBoolean("smoothPress"), r.getBoolean("keepAwake"), r.getBoolean("theater"), r.getBoolean("tvVolume"))
+                        },
+                        p.optJSONArray("apps")?.let { a -> (0 until a.length()).map { a.getJSONObject(it).let { x -> AppLink(x.getString("name"), x.getString("link")) } } },
                     )
                 }
                 assertEquals(name, prefs, got.preferences)
@@ -78,7 +82,17 @@ class ShareTest {
         assertEquals(empty, SetupShare.fromLink(SetupShare.toLink(empty)))
         val withBridge = SharedSetup(h.copy(irBridge = "192.0.2.20"), null, Secrets(BridgeLogin("bridge-user", "made-up")))
         assertEquals(withBridge, SetupShare.fromLink(SetupShare.toLink(withBridge)))
+        // The TV for volume (household), the remote and the app shortcuts (preferences); made-up address and MAC.
+        val withTv = SharedSetup(
+            h.copy(tv = tv),
+            Preferences(SwitchView.ROOMS, remote = RemoteBehaviour(haptics = false, theater = true), apps = apps),
+        )
+        assertEquals(withTv, SetupShare.fromLink(SetupShare.toLink(withTv)))
+        assertEquals(withTv.copy(household = h.copy(tv = tv.copy(mac = null))), SetupShare.fromLink(SetupShare.toLink(withTv.copy(household = h.copy(tv = tv.copy(mac = null))))))
     }
+
+    private val tv = VolumeTv("Lounge TV", "192.0.2.30", 38400, "/ctl/rc", "02:00:5e:00:00:30")
+    private val apps = listOf(AppLink("YouTube", "https://www.youtube.com"), AppLink("Netflix", "dial://Netflix"), AppLink("Home", "key://3"))
 
     @Test
     fun sixOutputsFitEasilyIntoOneQrCode() {
@@ -87,7 +101,10 @@ class ShareTest {
                 .withPrefs(0, OutputPrefs("Some longer output name $n", "A room with a long name", "ceiling"))
         }
         val link = SetupShare.toLink(
-            SharedSetup(Household(devices, devices.map { outputKey(it.id, 0) }, listOf("A room with a long name")), Preferences(SwitchView.ROOMS)),
+            SharedSetup(
+                Household(devices, devices.map { outputKey(it.id, 0) }, listOf("A room with a long name"), "192.0.2.20", tv),
+                Preferences(SwitchView.ROOMS, remote = RemoteBehaviour(), apps = apps + apps),
+            ),
         )
         // A QR code at error correction M holds 2331 bytes; stay far below so the code stays easy to scan.
         assertTrue("link is ${link.length} chars", link.length < 1000)
@@ -102,6 +119,9 @@ class ShareTest {
         val shared = Household(listOf(lamp, ceiling), listOf(outputKey(ceiling.id, 0)), listOf("aisle", "kitchen"))
 
         val merged = SetupShare.merge(local, shared)
+        // A shared TV for volume replaces the local one; none shared keeps it.
+        assertEquals(tv, SetupShare.merge(local.copy(tv = tv.copy(host = "192.0.2.31")), shared.copy(tv = tv)).tv)
+        assertEquals(tv, SetupShare.merge(local.copy(tv = tv), shared).tv)
 
         assertEquals(3, merged.devices.size)
         assertEquals("Lamp", merged.devices.first { it.id == lamp.id }.nameOf(0))
@@ -133,10 +153,20 @@ class ShareTest {
         val unclassified = keys - sets.flatten().toSet()
         assertTrue("not classified (see docs/SHARING.md): $unclassified", unclassified.isEmpty())
         // What SetupShare carries today; change together with Household/Preferences, SetupShare and docs/SHARING.md.
-        assertEquals(setOf(SettingKeys.DEVICES, SettingKeys.OUTPUT_ORDER, SettingKeys.ROOM_ORDER, SettingKeys.IR_BRIDGE), SettingKeys.HOUSEHOLD)
         assertEquals(
-            setOf(SettingKeys.SWITCH_VIEW, SettingKeys.MENU_ORDER, SettingKeys.MENU_NAMES, SettingKeys.STYLE, SettingKeys.PALETTE, SettingKeys.SCANLINES, SettingKeys.PAGES, SettingKeys.SWITCH_LAYOUT),
+            setOf(SettingKeys.DEVICES, SettingKeys.OUTPUT_ORDER, SettingKeys.ROOM_ORDER, SettingKeys.IR_BRIDGE, SettingKeys.TV_AUDIO),
+            SettingKeys.HOUSEHOLD,
+        )
+        assertEquals(
+            setOf(
+                SettingKeys.SWITCH_VIEW, SettingKeys.MENU_ORDER, SettingKeys.MENU_NAMES, SettingKeys.STYLE, SettingKeys.PALETTE,
+                SettingKeys.SCANLINES, SettingKeys.PAGES, SettingKeys.SWITCH_LAYOUT,
+                SettingKeys.TV_APPS, SettingKeys.TV_HAPTICS, SettingKeys.TV_SMOOTH_PRESS, SettingKeys.TV_KEEP_AWAKE,
+                SettingKeys.TV_THEATER, SettingKeys.TV_VOLUME,
+            ),
             SettingKeys.PREFERENCES,
         )
+        // The pairing never leaves this phone (its key is in the Keystore).
+        assertEquals(setOf(SettingKeys.LAST_SECTION, SettingKeys.BACK_HINT, SettingKeys.LAST_PAGE, SettingKeys.TV_PAIRED, SettingKeys.TV_ACTIVE), SettingKeys.STATE)
     }
 }

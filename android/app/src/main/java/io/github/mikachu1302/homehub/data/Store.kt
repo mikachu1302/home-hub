@@ -13,6 +13,18 @@ import io.github.mikachu1302.homehub.core.UiStyle
 import io.github.mikachu1302.homehub.core.SavedDevice
 import io.github.mikachu1302.homehub.core.Section
 import io.github.mikachu1302.homehub.core.SwitchView
+import io.github.mikachu1302.homehub.core.AppLink
+import io.github.mikachu1302.homehub.core.RemoteBehaviour
+import io.github.mikachu1302.homehub.core.VolumeTv
+import io.github.mikachu1302.homehub.tv.AppShortcut
+import io.github.mikachu1302.homehub.tv.AudioTv
+import io.github.mikachu1302.homehub.tv.RemoteSettings
+import io.github.mikachu1302.homehub.tv.appsToJson
+import io.github.mikachu1302.homehub.tv.audioTvToJson
+import io.github.mikachu1302.homehub.tv.loadSettings
+import io.github.mikachu1302.homehub.tv.parseApps
+import io.github.mikachu1302.homehub.tv.parseAudioTv
+import io.github.mikachu1302.homehub.tv.putSettings
 import org.json.JSONArray
 
 /**
@@ -40,11 +52,10 @@ object SettingKeys {
     const val SWITCH_LAYOUT = "switch_layout"
     const val LAST_PAGE = "last_page"
 
-    val HOUSEHOLD = setOf(DEVICES, OUTPUT_ORDER, ROOM_ORDER, IR_BRIDGE)
-    val PREFERENCES = setOf(SWITCH_VIEW, MENU_ORDER, MENU_NAMES, STYLE, PALETTE, SCANLINES, PAGES, SWITCH_LAYOUT)
-    // The TV page's settings, ported from tv-remote, live in their own preferences file "tv" (tv/RemoteViewModel.kt,
-    // tv/Prefs.kt); listed here as "tv/<key>" so they are classified too. All this phone only for now: the pairing is
-    // per phone by design (its key never leaves the Keystore); the others could become shared later (docs/SHARING.md).
+    // The Android TV and TV settings, ported from tv-remote, live in their own preferences file "tv"
+    // (tv/RemoteViewModel.kt, tv/Prefs.kt); listed here as "tv/<key>" so they are classified too. Shared since
+    // 2026-11-17: the TV for volume (household), the remote behaviour and app shortcuts (preferences). The pairing
+    // stays on this phone by design: its key never leaves the Keystore (docs/SHARING.md).
     const val TV_PAIRED = "tv/tvs"
     const val TV_ACTIVE = "tv/activeTv"
     const val TV_APPS = "tv/apps"
@@ -55,15 +66,22 @@ object SettingKeys {
     const val TV_THEATER = "tv/theater"
     const val TV_VOLUME = "tv/tvVolume"
 
-    val STATE = setOf(
-        LAST_SECTION, BACK_HINT, LAST_PAGE,
-        TV_PAIRED, TV_ACTIVE, TV_APPS, TV_AUDIO, TV_HAPTICS, TV_SMOOTH_PRESS, TV_KEEP_AWAKE, TV_THEATER, TV_VOLUME,
+    val HOUSEHOLD = setOf(DEVICES, OUTPUT_ORDER, ROOM_ORDER, IR_BRIDGE, TV_AUDIO)
+    val PREFERENCES = setOf(
+        SWITCH_VIEW, MENU_ORDER, MENU_NAMES, STYLE, PALETTE, SCANLINES, PAGES, SWITCH_LAYOUT,
+        TV_APPS, TV_HAPTICS, TV_SMOOTH_PRESS, TV_KEEP_AWAKE, TV_THEATER, TV_VOLUME,
     )
+    val STATE = setOf(LAST_SECTION, BACK_HINT, LAST_PAGE, TV_PAIRED, TV_ACTIVE)
+
+    /** A key in the "tv" file, without the "tv/" prefix used for classifying it. */
+    fun inTvFile(key: String) = key.removePrefix("tv/")
 }
 
 /** Device list and settings (SharedPreferences, no backup). No secrets here: credentials go to [SecretStore]. */
 class Store(context: Context) {
     private val prefs = context.getSharedPreferences("home-hub", Context.MODE_PRIVATE)
+    /** tv-remote's file (tv/RemoteViewModel.kt): read and written here only for sharing; that view model reloads after an import. */
+    private val tv = context.getSharedPreferences("tv", Context.MODE_PRIVATE)
 
     // --- household (shared) ---
 
@@ -85,14 +103,24 @@ class Store(context: Context) {
         get() = prefs.getString(SettingKeys.IR_BRIDGE, "") ?: ""
         set(value) = prefs.edit { putString(SettingKeys.IR_BRIDGE, value) }
 
+    /** The TV for volume and Wake-on-LAN (Settings > TV); null = not set up. */
+    var volumeTv: VolumeTv?
+        get() = parseAudioTv(tv.getString(SettingKeys.inTvFile(SettingKeys.TV_AUDIO), null))
+            ?.let { VolumeTv(it.name, it.host, it.port, it.control, it.mac) }
+        set(value) = tv.edit {
+            val key = SettingKeys.inTvFile(SettingKeys.TV_AUDIO)
+            if (value == null) remove(key) else putString(key, audioTvToJson(AudioTv(value.name, value.host, value.port, value.control, value.mac)))
+        }
+
     /** All household settings at once, for sharing and importing. */
     var household: Household
-        get() = Household(devices, outputOrder, roomOrder, irBridge)
+        get() = Household(devices, outputOrder, roomOrder, irBridge, volumeTv)
         set(value) {
             devices = value.devices
             outputOrder = value.outputOrder
             roomOrder = value.roomOrder
             irBridge = value.irBridge
+            value.tv?.let { volumeTv = it } // none shared: keep this phone's
         }
 
     // --- preferences (shared, taken over on request) ---
@@ -139,8 +167,18 @@ class Store(context: Context) {
         get() = PagesJson.decode(prefs.getString(SettingKeys.PAGES, null))
         set(value) = prefs.edit { putString(SettingKeys.PAGES, PagesJson.encode(value)) }
 
+    /** Settings > Remote. */
+    var remote: RemoteBehaviour
+        get() = tv.loadSettings().let { RemoteBehaviour(it.haptics, it.smoothPress, it.keepAwake, it.theater, it.tvVolume) }
+        set(value) = tv.edit { putSettings(RemoteSettings(value.haptics, value.smoothPress, value.keepAwake, value.theater, value.tvVolume)) }
+
+    /** The Android TV page's app shortcuts (tv-remote's defaults until the user changes them). */
+    var apps: List<AppLink>
+        get() = parseApps(tv.getString(SettingKeys.inTvFile(SettingKeys.TV_APPS), null)).map { AppLink(it.name, it.link) }
+        set(value) = tv.edit { putString(SettingKeys.inTvFile(SettingKeys.TV_APPS), appsToJson(value.map { AppShortcut(it.name, it.link) })) }
+
     var preferences: Preferences
-        get() = Preferences(switchView, menuOrder, menuNames, appearance, pages, switchLayout)
+        get() = Preferences(switchView, menuOrder, menuNames, appearance, pages, switchLayout, remote, apps)
         set(value) {
             switchView = value.switchView
             menuOrder = value.menuOrder
@@ -148,6 +186,8 @@ class Store(context: Context) {
             appearance = value.appearance
             value.pages?.let { pages = it } // null: keep this phone's pages
             switchLayout = value.switchLayout
+            value.remote?.let { remote = it } // null (an older link): keep this phone's
+            value.apps?.let { apps = it }
         }
 
     // --- state (this phone only, never shared) ---

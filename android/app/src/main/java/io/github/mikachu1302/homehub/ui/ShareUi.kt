@@ -78,8 +78,8 @@ fun ShareDialog(
         title = { Text("Share setup") },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                CheckRow("Devices, names, rooms, icons, order", household) { household = it }
-                CheckRow("My preferences (menu, pages, look)", preferences) { preferences = it }
+                CheckRow("Devices, names, rooms, icons, order, TV", household) { household = it }
+                CheckRow("My preferences (menu, pages, look, remote, app shortcuts)", preferences) { preferences = it }
                 if (hasPasswords) {
                     CheckRow("IR Bridge password", passwords) { passwords = it }
                     if (passwords) {
@@ -136,6 +136,9 @@ fun ImportDialog(setup: SharedSetup, localDeviceIds: Set<String>, onConfirm: (ta
                 }
                 if (shared != null && shared.irBridge.isNotBlank()) {
                     Text("IR Bridge: ${shared.irBridge}", fontSize = 13.sp)
+                }
+                shared?.tv?.let { tv ->
+                    Text("TV for volume: ${tv.name}" + if (tv.mac != null) ", with Wake-on-LAN" else "", fontSize = 13.sp)
                 }
                 setup.secrets?.irBridge?.let {
                     Text("IR Bridge password (stored encrypted).")

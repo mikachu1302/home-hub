@@ -19,7 +19,28 @@ data class Household(
     val roomOrder: List<String>,
     /** The IR bridge's address; blank = not set up. */
     val irBridge: String = "",
+    /** The TV for volume and Wake-on-LAN (Settings > TV); null = not set up (an import then keeps the receiver's). */
+    val tv: VolumeTv? = null,
 )
+
+/**
+ * The TV whose own volume the volume keys control (UPnP RenderingControl at [host]:[port][control]) and that
+ * Wake-on-LAN wakes ([mac]); docs/PROTOCOLS.md. Household: it is the same TV for everyone at home.
+ */
+data class VolumeTv(val name: String, val host: String, val port: Int, val control: String, val mac: String? = null)
+
+/** How the remote keys behave (Settings > Remote): a preference. */
+data class RemoteBehaviour(
+    val haptics: Boolean = true,
+    val smoothPress: Boolean = true,
+    val keepAwake: Boolean = true,
+    val theater: Boolean = false,
+    /** The volume keys control the TV itself (when one is set up) rather than the stick. */
+    val tvVolume: Boolean = true,
+)
+
+/** A tile in the Android TV page's app row: [link] opens the app on the stick (docs/PROTOCOLS.md). */
+data class AppLink(val name: String, val link: String)
 
 /**
  * How a person likes to use the app (docs/SHARING.md). Shared too, but the receiving phone chooses whether to take
@@ -40,6 +61,10 @@ data class Preferences(
     val pages: List<CustomPage>? = emptyList(),
     /** Rows or compact cards on the Switches page. */
     val switchLayout: SwitchLayout = SwitchLayout.LIST,
+    /** Settings > Remote; null: not in the payload (a link from before it was shared), the receiver keeps its own. */
+    val remote: RemoteBehaviour? = null,
+    /** The Android TV page's app shortcuts, in order; null: not in the payload, the receiver keeps its own. */
+    val apps: List<AppLink>? = null,
 )
 
 /**
@@ -71,6 +96,10 @@ object SetupShare {
                 put("outputOrder", JSONArray(h.outputOrder))
                 put("roomOrder", JSONArray(h.roomOrder))
                 if (h.irBridge.isNotBlank()) put("irBridge", h.irBridge)
+                h.tv?.let { tv ->
+                    put("tv", JSONObject().put("name", tv.name).put("host", tv.host).put("port", tv.port).put("control", tv.control)
+                        .apply { tv.mac?.let { put("mac", it) } })
+                }
             }
             s.preferences?.let { p ->
                 put(
@@ -83,7 +112,14 @@ object SetupShare {
                         .put("palette", p.appearance.palette)
                         .put("scanlines", p.appearance.scanlines)
                         .put("pages", PagesJson.toJson(p.pages.orEmpty()))
-                        .put("switchLayout", p.switchLayout.name),
+                        .put("switchLayout", p.switchLayout.name)
+                        .apply {
+                            p.remote?.let { r ->
+                                put("remote", JSONObject().put("haptics", r.haptics).put("smoothPress", r.smoothPress)
+                                    .put("keepAwake", r.keepAwake).put("theater", r.theater).put("tvVolume", r.tvVolume))
+                            }
+                            p.apps?.let { a -> put("apps", JSONArray(a.map { JSONObject().put("name", it.name).put("link", it.link) })) }
+                        },
                 )
             }
             s.secrets?.let { x ->
@@ -109,6 +145,7 @@ object SetupShare {
             strings(o.optJSONArray("outputOrder")),
             strings(o.optJSONArray("roomOrder")),
             o.optString("irBridge").trim(),
+            o.optJSONObject("tv")?.let(::volumeTv),
         )
         // Unknown or missing values fall back to the default, so a newer sender's extra preferences do no harm.
         val prefs = o.optJSONObject("prefs")?.let { p ->
@@ -123,6 +160,24 @@ object SetupShare {
                 ),
                 pages = if (p.has("pages")) PagesJson.fromJson(p.optJSONArray("pages")) else null,
                 switchLayout = runCatching { SwitchLayout.valueOf(p.optString("switchLayout")) }.getOrDefault(SwitchLayout.LIST),
+                remote = p.optJSONObject("remote")?.let { r ->
+                    val d = RemoteBehaviour()
+                    RemoteBehaviour(
+                        haptics = r.optBoolean("haptics", d.haptics),
+                        smoothPress = r.optBoolean("smoothPress", d.smoothPress),
+                        keepAwake = r.optBoolean("keepAwake", d.keepAwake),
+                        theater = r.optBoolean("theater", d.theater),
+                        tvVolume = r.optBoolean("tvVolume", d.tvVolume),
+                    )
+                },
+                apps = p.optJSONArray("apps")?.let { a ->
+                    (0 until a.length()).mapNotNull { i ->
+                        val x = a.optJSONObject(i) ?: return@mapNotNull null
+                        val name = x.optString("name").trim()
+                        val link = x.optString("link").trim()
+                        if (name.isEmpty() || link.isEmpty()) null else AppLink(name, link)
+                    }
+                },
             )
         }
         val secrets = o.optJSONObject("secrets")?.let { x ->
@@ -154,7 +209,7 @@ object SetupShare {
     /**
      * Applies a received setup: devices are matched by id and take the shared version (address, outputs with name,
      * room, icon); devices only on this phone stay. The shared orders come first, local-only entries keep theirs after.
- * A shared bridge address replaces the local one; none shared keeps it.
+ * A shared bridge address replaces the local one; none shared keeps it. The same for the TV for volume.
      */
     fun merge(local: Household, shared: Household): Household {
         val sharedIds = shared.devices.map { it.id }.toSet()
@@ -165,7 +220,17 @@ object SetupShare {
             outputOrder = shared.outputOrder + local.outputOrder.filter { it !in shared.outputOrder },
             roomOrder = shared.roomOrder + local.roomOrder.filter { r -> shared.roomOrder.none { it.equals(r, ignoreCase = true) } },
             irBridge = shared.irBridge.ifBlank { local.irBridge },
+            tv = shared.tv ?: local.tv,
         )
+    }
+
+    /** A TV without an address, port or control path is useless and dropped; a blank MAC is none. */
+    private fun volumeTv(t: JSONObject): VolumeTv? {
+        val host = t.optString("host").trim()
+        val port = t.optInt("port", 0)
+        val control = t.optString("control").trim()
+        if (host.isEmpty() || port !in 1..65535 || control.isEmpty()) return null
+        return VolumeTv(t.optString("name").trim().ifEmpty { host }, host, port, control, t.optString("mac").trim().ifEmpty { null })
     }
 
     private fun strings(a: JSONArray?): List<String> = if (a == null) emptyList() else (0 until a.length()).map { a.optString(it) }

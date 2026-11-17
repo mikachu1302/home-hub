@@ -312,6 +312,165 @@
       }
     },
     {
+      "name": "Household with the TV for volume and Wake-on-LAN (made-up address and MAC)",
+      "input": "homehub://import?d=hVHRSsMwFP2VcZ_rmqTt0L6Jr4oDxRfZQ02vXSBNQpIWZPTfvZnOVXQbhJBzc05yzr07GKHmGbQ4KokB6tcdqBZqCFvU-sPpIQjXXzXsjUvRFli-V5BB07YeA7GB34glW4olZ6nsHJXWSbN-INyhgVpkILeNMajDHtghuiHSeQcsbabpkVT3Te9I4q3tE1KjMt1ijzJQ0tJDoBNlyoDPZE_Rq0u6sOdM05T9ycYpG-dCFEVZVtVq9X82_isbP5GNn8x2h0qTraPNWxU0Hg3K73uyuDk88uhb9DSOM2bz1PPTc8r5-WsGmy9DP18dbM27SJw4zudkB9Ph4vmFeFsb4qxPRfLjrKdacV0yRs2xJnqriZPLqHMvidA3kjATNWN1hWmnRdJp-gQ",
+      "expected": {
+        "household": {
+          "v": 1,
+          "devices": [
+            {
+              "id": "shellyplus2pm-a0b1c2d3e4f5",
+              "address": "192.0.2.10",
+              "app": "Plus2PM",
+              "gen": 2,
+              "channels": 2,
+              "outputs": {
+                "0": {
+                  "name": "Lamp",
+                  "room": "Living room",
+                  "icon": "lamp"
+                },
+                "1": {
+                  "name": "Strip",
+                  "room": "Living room",
+                  "icon": "strip"
+                }
+              }
+            },
+            {
+              "id": "shellyplus1pm-112233445566",
+              "address": "192.0.2.11",
+              "app": "Plus1PM",
+              "gen": 2,
+              "channels": 1,
+              "outputs": {
+                "0": {
+                  "name": "Ceiling",
+                  "room": "Aisle",
+                  "icon": "ceiling"
+                }
+              }
+            }
+          ],
+          "outputOrder": [
+            "shellyplus1pm-112233445566/0",
+            "shellyplus2pm-a0b1c2d3e4f5/1",
+            "shellyplus2pm-a0b1c2d3e4f5/0"
+          ],
+          "roomOrder": [
+            "Aisle",
+            "Living room"
+          ],
+          "tv": {
+            "name": "Lounge TV",
+            "host": "192.0.2.30",
+            "port": 38400,
+            "control": "/ctl/rc",
+            "mac": "02:00:5e:00:00:30"
+          }
+        },
+        "preferences": null
+      }
+    },
+    {
+      "name": "A TV without an address is dropped (the receiver keeps its own)",
+      "input": "homehub://import?d=hVHBTsQgEP2VzZxrC7TdaG_Gq8ZNNF7MHirFLgkFArSJafh3p9V1a7S7F8Ib3hvemxlhgIom0IhBcuGheh1BNlCBPwilPqzqPbPdVU3eKGdNLor3EhKom8YJj2ygNywlKUspmcrWYmk3aXYPiFuhoWIJ8EOttVB-BqYPtg94H4FMh647gar7urMoccZ0E5KD1O1mRglIbrARqIkSE6AL2VNw8pLOz5wYY_InG8VslDKW50VRltvt_9nor2x0JRtdzXYnpEJbJ5u30itxMsi_39Hi_tjk0TXC4TrOmM2mma_vKaPnnwnsvwz9fHW0tZwicsKw3JPpdSs2zy_Is8YFqPLrghAchNHBGYWUjAeVOQ4xfgI",
+      "expected": {
+        "household": {
+          "v": 1,
+          "devices": [
+            {
+              "id": "shellyplus2pm-a0b1c2d3e4f5",
+              "address": "192.0.2.10",
+              "app": "Plus2PM",
+              "gen": 2,
+              "channels": 2,
+              "outputs": {
+                "0": {
+                  "name": "Lamp",
+                  "room": "Living room",
+                  "icon": "lamp"
+                },
+                "1": {
+                  "name": "Strip",
+                  "room": "Living room",
+                  "icon": "strip"
+                }
+              }
+            },
+            {
+              "id": "shellyplus1pm-112233445566",
+              "address": "192.0.2.11",
+              "app": "Plus1PM",
+              "gen": 2,
+              "channels": 1,
+              "outputs": {
+                "0": {
+                  "name": "Ceiling",
+                  "room": "Aisle",
+                  "icon": "ceiling"
+                }
+              }
+            }
+          ],
+          "outputOrder": [
+            "shellyplus1pm-112233445566/0",
+            "shellyplus2pm-a0b1c2d3e4f5/1",
+            "shellyplus2pm-a0b1c2d3e4f5/0"
+          ],
+          "roomOrder": [
+            "Aisle",
+            "Living room"
+          ]
+        },
+        "preferences": null
+      }
+    },
+    {
+      "name": "Preferences with the remote behaviour and app shortcuts (an app without a link is dropped)",
+      "input": "homehub://import?d=TY29DsIgFEbf5c6kjSubzo1xME2MccB6GwhQCFyKpuHdpUOr6znfzwIz8AMDH3CMwBeIWdEge4UZOBy7DhgEtI5wlVJ4UkPNjcJEZBCtcyQvAWNlFFJFGtEfs9C4h0iiIAxbgObemWQ3XxgI72v9vsAkVgw3l67pifXZqElXIIl85G2bc24-LlGVzeAsFLZ3TsFpnP7JGWk06v1beSlh6sjGy6OULw",
+      "expected": {
+        "household": null,
+        "preferences": {
+          "switchView": "ALL",
+          "remote": {
+            "haptics": false,
+            "smoothPress": true,
+            "keepAwake": false,
+            "theater": true,
+            "tvVolume": false
+          },
+          "apps": [
+            {
+              "name": "YouTube",
+              "link": "https://www.youtube.com"
+            },
+            {
+              "name": "Netflix",
+              "link": "dial://Netflix"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Remote behaviour from a newer app: missing values take the default, unknown ones are ignored",
+      "input": "homehub://import?d=JcmxCoAgFAXQf7mzS-vb2p3bJW4pJMrzlYP47xGNhzPwQBaHqjwaZKD1ZHvcEjsEq_dwUOZi_NIig1EhpjcdYrnKqSH_nnO-",
+      "expected": {
+        "household": null,
+        "preferences": {
+          "switchView": "ALL",
+          "remote": {
+            "haptics": true,
+            "smoothPress": true,
+            "keepAwake": true,
+            "theater": true,
+            "tvVolume": true
+          }
+        }
+      }
+    },
+    {
       "name": "Passwords only",
       "input": "homehub://import?d=q1YqU7Iy1FEqTk0uSi0pVrKqVsoscirKTElPBbFLi1OLlKyUksACumCejlJBYnFxeX5RClAiL79EtyQjVbcoNTFHFy5eW1sLAA",
       "expected": {

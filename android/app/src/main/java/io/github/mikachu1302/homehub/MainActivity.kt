@@ -133,7 +133,10 @@ private fun App(vm: HomeViewModel, tvVm: RemoteViewModel) {
         ImportDialog(
             setup = shared,
             localDeviceIds = vm.devices.map { it.id }.toSet(),
-            onConfirm = vm::confirmImport,
+            onConfirm = {
+                vm.confirmImport(it)
+                tvVm.reloadShared() // the TV for volume, remote settings and app shortcuts are in tv-remote's file
+            },
             onCancel = vm::cancelImport,
         )
     }

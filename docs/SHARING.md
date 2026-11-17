@@ -11,9 +11,9 @@ own state never travels. This file is the contract; read it before adding any se
 
 | Class | What | Shared? | Examples |
 |---|---|---|---|
-| **Household** | describes the home | when the sender ticks it (on by default) | device list and addresses, output names, rooms, icons, output and room order, the IR bridge address |
-| **Preference** | how a person likes to use the app | when the sender ticks it (on by default); the receiver can still decline | list view ("By room"/"All", rows or grid), menu order and menu names, look (style, colours, scanlines), custom pages, switch layout (haptics and the other remote settings are state for now, see below) |
-| **State** | what the app remembers about itself | never: copying it would only do odd things | the page that was open last, hints already shown |
+| **Household** | describes the home | when the sender ticks it (on by default) | device list and addresses, output names, rooms, icons, output and room order, the IR Bridge address, the TV for volume and Wake-on-LAN |
+| **Preference** | how a person likes to use the app | when the sender ticks it (on by default); the receiver can still decline | list view ("By room"/"All", rows or grid), menu order and menu names, look (style, colours, scanlines), custom pages, switch layout, the remote's behaviour (haptics, smooth press, keep awake, theater, volume keys), the Android TV app shortcuts |
+| **State** | what the app remembers about itself | never: copying it would only do odd things | the page that was open last, hints already shown, the paired Android TV sticks |
 | **Credential** | passwords, keys | only with "Include passwords" (see below) | the IR bridge login; later a Shelly password |
 
 Then, in the same change:
@@ -28,13 +28,18 @@ Then, in the same change:
    payload, bump `SetupShare.VERSION`.
 3. **State:** nothing else; it must never appear in the payload.
 
-## The TV page's settings (from tv-remote)
+## The TV settings (from tv-remote)
 
-Stored in their own preferences file "tv" and classified in `SettingKeys` as `tv/<key>`: paired TVs and the active one,
-app shortcuts, the TV chosen for volume (address, MAC), haptics, smooth press, keep awake, theater mode, TV volume.
-Haptics, keep awake and theater mode apply to the whole app since 2026-11-17 (Settings > Remote) but stay in that file.
-**All this phone only for now** (state). The pairing can never be shared: it is bound to this phone's key in the Keystore.
-The others could become shared later (app shortcuts and remote behaviour as preferences, the volume TV as household).
+Stored in tv-remote's own preferences file "tv" and classified in `SettingKeys` as `tv/<key>`. Shared since 2026-11-17
+(the user's call):
+
+- **Household:** the TV for volume and Wake-on-LAN (Settings > TV: name, address, UPnP port and control path, MAC).
+- **Preferences:** Settings > Remote (haptics, smooth press, keep awake, theater mode, "volume keys control the TV")
+  and the app shortcuts of the Android TV page.
+- **State, never shared:** the paired sticks and the one in use. A pairing is bound to this phone's key in the
+  Keystore, so every phone pairs with the stick itself; a shared custom page with Android TV blocks asks for that.
+
+`Store` reads and writes these keys in the "tv" file; after an import the Android TV view model reloads them.
 
 ## Credentials ("Include passwords")
 
@@ -53,7 +58,7 @@ the meaning of a field does.
 
 ## Choosing what to share
 
-- **Sender** (Settings → "Show QR code"): one checkbox per part – "Devices, names, rooms, icons, order" and
+- **Sender** (Settings → "Show QR code"): one checkbox per part – "Devices, names, rooms, icons, order, TV" and
   "My preferences", and "Include passwords" (off each time). The QR code and "Copy link" follow the ticks; with nothing ticked
   there is no code. The choice is per sharing and not remembered.
 - **Receiver**: the import dialog lists only the parts the code carries. With household and preferences it offers
@@ -109,6 +114,7 @@ the same way, so the iOS app only has to register `homehub`.
 | `outputOrder` | output keys `<device id>/<channel>` | shared order first, local-only keys after it |
 | `roomOrder` | room names | shared order first, local rooms not in it after (compared ignoring case) |
 | `irBridge` | the IR bridge's address (household part; left out when not set up) | replaces this phone's bridge address; absent → kept |
+| `tv` | the TV for volume and Wake-on-LAN (household part; left out when not set up): `{"name", "host", "port", "control", "mac"?}` | replaces this phone's; without `host`, a port in 1–65535 or `control` it is dropped; absent → kept |
 | `prefs` | the sender's preferences; optional (left out by the sender, or a link from the first version) | replace this phone's preferences only if the receiver agrees |
 | `prefs.switchView` | `ROOMS` or `ALL` | unknown value → `ROOMS` |
 | `prefs.menuOrder` | menu sections as `Section` names (`SWITCHES`, `AMP`, `TV`, `TV_IR`, `HDMI`) and custom pages (`page:<id>`) | unknown ids are ignored; sections not listed come last; missing → default order |
@@ -117,6 +123,8 @@ the same way, so the iOS app only has to register `homehub`.
 | `prefs.palette` | a palette id: `neon`, `dracula`, `synthwave`, `catppuccin`, `gruvbox`, `tokyo`, `nord`, `amber`, `matrix`, `pride` (fixed: `PaletteTest`) | missing → `neon`; an unknown id is kept and shown as `neon` |
 | `prefs.scanlines` | scanlines over the CRT style | missing → on |
 | `prefs.switchLayout` | `LIST` (rows) or `GRID` (compact cards, two to a row) on the Switches page | unknown or missing → `LIST` |
+| `prefs.remote` | Settings > Remote: `{"haptics", "smoothPress", "keepAwake", "theater", "tvVolume"}` (booleans) | a missing value takes its default (on, except `theater`); absent → this phone's stay |
+| `prefs.apps` | the Android TV page's app shortcuts in order: `[{"name", "link"}]` (link formats: docs/PROTOCOLS.md, tv-remote) | an entry without name or link is dropped; absent → this phone's stay |
 | `prefs.pages` | custom pages: `[{"id", "title", "sections": [{"blocks": [{"kind", "output"?}]}]}]` (a page swipes between its sections); `kind` is a `BlockKind` id, `output` (switch blocks only) an output key. Their menu place is `page:<id>` in `prefs.menuOrder` | a page without an id is dropped, a missing title becomes "Page", an unknown block is dropped, a plain `blocks` list (before sections) is one section, a switch block without `output` is kept with an empty one (shown as a removed output); missing → the receiver keeps its own pages (a link from before custom pages), `[]` → no pages (spec/fixtures/custom-pages.json) |
 | `secrets` | only with "Include passwords": `{"irBridge": {"user": …, "password": …}}` | stored encrypted, replaces this phone's bridge login; an entry with an empty user is ignored |
 
