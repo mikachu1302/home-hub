@@ -16,7 +16,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -82,7 +81,7 @@ fun ShareDialog(
                 CheckRow("Devices, names, rooms, icons, order", household) { household = it }
                 CheckRow("My preferences (menu, pages, look)", preferences) { preferences = it }
                 if (hasPasswords) {
-                    CheckRow("IR bridge password", passwords) { passwords = it }
+                    CheckRow("IR Bridge password", passwords) { passwords = it }
                     if (passwords) {
                         Text(
                             "Anyone who sees this code can read the password.",
@@ -136,10 +135,10 @@ fun ImportDialog(setup: SharedSetup, localDeviceIds: Set<String>, onConfirm: (ta
                     )
                 }
                 if (shared != null && shared.irBridge.isNotBlank()) {
-                    Text("IR bridge: ${shared.irBridge}", fontSize = 13.sp)
+                    Text("IR Bridge: ${shared.irBridge}", fontSize = 13.sp)
                 }
                 setup.secrets?.irBridge?.let {
-                    Text("IR bridge password (stored encrypted).")
+                    Text("IR Bridge password (stored encrypted).")
                 }
                 if (setup.preferences != null) {
                     if (shared != null) {

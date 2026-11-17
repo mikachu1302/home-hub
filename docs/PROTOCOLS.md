@@ -58,7 +58,7 @@ device (`Schedule.Create`, cron-like `timespec`, sunrise/sunset possible); not n
 - Authentication: Gen2/Gen3 use HTTP digest authentication when enabled in the device settings (`auth_en: true`).
 - Gen1 devices (`/relay/0?turn=on`) are out of scope; none in the household.
 
-## IR bridge (M5Stack ATOM Lite, ESPHome)
+## IR Bridge (M5Stack ATOM Lite, ESPHome)
 
 Config and setup: `esphome/`. The bridge's host name is `ir-bridge.local` unless changed in the config (mDNS: at home only, not through the VPN, so the app stores the address).
 
@@ -125,7 +125,7 @@ Flipper-IRDB's VIDAA sets (`TVs/Hisense/Hisense_32A4HAU.ir` and `Hisense_55E7KQ.
 | OK | 0x15 | yes |
 | Back | 0x48 | yes |
 | Mute | 0x0E | yes |
-| Volume − / + | 0x43 / 0x44 | yes, both (+ confirmed by the user 2026-11-17). On the bridge as "TV Volume Down" / "TV Volume Up" since 2026-11-17 (the TV (IR) page); UPnP volume comes with tv-remote |
+| Volume − / + | 0x43 / 0x44 | yes, both (+ confirmed by the user 2026-11-17). On the bridge as "TV Volume Down" / "TV Volume Up" since 2026-11-17 (the TV (IR) page); the UPnP volume from tv-remote is ported too |
 
 ## UGREEN HDMI switch (5 inputs)
 
@@ -192,19 +192,21 @@ The same protocol Google's own remote uses. Reference: `tronikos/androidtvremote
   GATT and classic `BluetoothHidDevice`, both worked on the phone and were visible to a laptop scan), but the TV's Bluetooth
   device list never showed the phone (it listed the waipu stick, an audio adapter and its own remote): it filters on something
   an Android app cannot set (device class / GAP appearance). Power-off and input switching therefore need a Wi-Fi IR bridge
-  (Broadlink-style) or the Hisense app.
-- **Connection life:** the app connects when it is visible and closes the connection in the
-  background; the loop retries with backoff (0.5 s … 8 s), re-finds the TV by its mDNS
-  name when its address changed, and stops with a message if the pinned certificate no
+  (Broadlink-style) or the Hisense app; Home Hub's IR Bridge (the ATOM Lite) does exactly that.
+- **Connection life:** the app connects while a page with the remote is visible (in Home Hub: the Android TV page or a
+  custom page with its blocks, never Settings) and closes the connection otherwise; the loop retries with backoff
+  (0.5 s … 8 s), re-finds the TV by its mDNS name when its address changed (AGENTS.md: the one discovery exception), and stops with a message if the pinned certificate no
   longer matches.
 - **Identity:** an RSA key and self-signed certificate generated in the Android
   keystore (`Identity` in `Tls.kt`); the TV accepts any client certificate and
   remembers the one it paired with. The key never leaves the device.
 - If something here turns out wrong on the real stick, fix this section too.
 
-**In Home Hub:** every socket of the TV code (TLS to the stick, UPnP HTTP to the TV, the DIAL request, the /24 probe)
+**In Home Hub:** the stick sees the client as "Home Hub" (pairing service name, configure vendor and package;
+2026-11-17), tv-remote as "TV Remote". The Keystore key alias and certificate subject stay tv-remote's, so the
+pairing made with them stays valid. Every socket of the TV code (TLS to the stick, UPnP HTTP to the TV, the DIAL request, the /24 probe)
 resolves its host with `LanHttp.resolveLan` first and refuses anything outside the LAN, like the HTTP client. Wake-on-LAN
 sends only to LAN addresses and the limited broadcast 255.255.255.255; SSDP uses the multicast group 239.255.255.250.
 Neither leaves the local network. Volume over IR (the bridge's "TV Volume Up/Down", see the Hisense section) is a
-second way to the same TV; tv-remote's UPnP volume stays on the TV page.
+second way to the same TV; tv-remote's UPnP volume stays on the Android TV page.
 

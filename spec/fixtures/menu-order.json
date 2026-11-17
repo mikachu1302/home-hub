@@ -1,0 +1,65 @@
+{
+  "description": "The menu's entries: built-in sections (`Section` names) and custom pages (`page:<id>`) in the user's order (`prefs.menuOrder`, docs/SHARING.md). `input.order` is the saved order, `input.pages` the ids of the existing custom pages; `expected` the menu from top to bottom. Unknown ids are ignored, entries not in the order come last (sections first, then pages).",
+  "cases": [
+    {
+      "name": "No saved order: sections, then pages",
+      "input": {
+        "order": [],
+        "pages": [
+          "k3",
+          "z9"
+        ]
+      },
+      "expected": [
+        "SWITCHES",
+        "AMP",
+        "TV",
+        "TV_IR",
+        "HDMI",
+        "page:k3",
+        "page:z9"
+      ]
+    },
+    {
+      "name": "The user's order; a deleted page in it is ignored, missing entries come last",
+      "input": {
+        "order": [
+          "page:z9",
+          "page:gone",
+          "HDMI",
+          "SWITCHES"
+        ],
+        "pages": [
+          "k3",
+          "z9"
+        ]
+      },
+      "expected": [
+        "page:z9",
+        "HDMI",
+        "SWITCHES",
+        "AMP",
+        "TV",
+        "TV_IR",
+        "page:k3"
+      ]
+    },
+    {
+      "name": "An unknown section from a newer app is ignored",
+      "input": {
+        "order": [
+          "SOMETHING_NEW",
+          "TV"
+        ],
+        "pages": []
+      },
+      "expected": [
+        "TV",
+        "SWITCHES",
+        "AMP",
+        "TV_IR",
+        "HDMI"
+      ]
+    }
+  ]
+}

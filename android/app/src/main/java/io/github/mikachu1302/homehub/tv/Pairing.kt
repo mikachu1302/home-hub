@@ -74,7 +74,7 @@ class Pairing(private val host: String) {
     fun start() {
         val s = openTls(host, PAIRING_PORT, pin = null, timeoutMs = 10_000).also { socket = it }
         try {
-            send(outer { message(F_PAIRING_REQUEST) { string(1, "atvremote"); string(2, "TV Remote") } })
+            send(outer { message(F_PAIRING_REQUEST) { string(1, "atvremote"); string(2, "Home Hub") } })
             next(F_PAIRING_REQUEST_ACK)
             send(outer { message(F_OPTIONS) { encoding(1); varint(3, ROLE_INPUT) } })
             next(F_OPTIONS)

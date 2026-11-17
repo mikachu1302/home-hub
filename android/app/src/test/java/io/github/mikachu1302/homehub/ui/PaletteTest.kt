@@ -41,4 +41,14 @@ class PaletteTest {
         assertEquals(Palettes.Neon, Palettes.byId("nope"))
         assertEquals(Palettes.Nord, Palettes.byId("nord"))
     }
+
+    @Test
+    fun paletteIdsNeverChange() {
+        // Stored and shared (docs/SHARING.md, prefs.palette) and part of the launcher alias names: renaming one would
+        // reset everyone who chose it.
+        assertEquals(
+            listOf("neon", "dracula", "synthwave", "catppuccin", "gruvbox", "tokyo", "nord", "amber", "matrix", "pride"),
+            Palettes.all.map { it.id },
+        )
+    }
 }

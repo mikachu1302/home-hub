@@ -63,7 +63,8 @@ class PbMessage(val fields: Map<Int, List<Any>>) {
     private fun describeBytes(bytes: ByteArray, depth: Int): String {
         if (bytes.isEmpty()) return "{}"
         val text = bytes.toString(Charsets.UTF_8)
-        if (text.all { it >= ' ' && it != '\uFFFD' }) return "\"" + text.take(60) + "\""
+        // Text only as its length: the debug log must not show what was typed on the TV (Home Hub change).
+        if (text.all { it >= ' ' && it != '\uFFFD' }) return "text[${bytes.size}]"
         return runCatching { if (depth < 4) parsePb(bytes).describe(depth + 1) else "bytes[${bytes.size}]" }
             .getOrDefault("bytes[${bytes.size}]")
     }

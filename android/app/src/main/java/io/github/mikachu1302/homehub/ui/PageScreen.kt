@@ -41,10 +41,11 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -77,8 +78,15 @@ fun CustomPageScreen(vm: HomeViewModel) {
         return
     }
     var editing by rememberSaveable(page.id) { mutableStateOf(page.blocks.isEmpty()) }
+    // The section on screen; the editor opens at it and the page returns to it after editing.
+    var shown by rememberSaveable(page.id) { mutableIntStateOf(0) }
     // Back leaves edit mode first, then the page.
     BackHandler(enabled = editing) { editing = false }
+    // No theater dimming while editing: typing and dialogs don't count as touches on the page (ui/ControlPage.kt).
+    DisposableEffect(editing) {
+        vm.pageEditing = editing
+        onDispose { vm.pageEditing = false }
+    }
     if (page.blocks.any { it.kind == BlockKind.SWITCH }) PollDevices(vm, withConfig = false)
     val hasIr = page.blocks.any { it.kind != BlockKind.SWITCH && !it.kind.androidTv }
     val hasAtv = page.blocks.any { it.kind.androidTv }
@@ -106,8 +114,14 @@ fun CustomPageScreen(vm: HomeViewModel) {
         list.forEach { BlockView(it, vm, ready, tvVm, swipeable) }
     }
     val notices = @Composable {
-        if (hasIr && !ready) Notice("Set up the IR bridge in Settings first.")
+        if (hasIr && !ready) Notice("Set up the IR Bridge in Settings first.")
         if (hasAtv && tvPaired == null) Notice("Pair the Android TV stick on its page first.")
+        // With IR blocks the header shows the IR status, so the stick's connection problems go here.
+        if (hasAtv && hasIr && tvPaired != null) when (link) {
+            Link.Retrying -> Notice("Can't reach the stick, retrying.")
+            Link.PinChanged -> Notice("The stick's certificate changed: pair again on the Android TV page.")
+            else -> Unit
+        }
     }
     val header = @Composable {
         PageHeader(
@@ -125,14 +139,15 @@ fun CustomPageScreen(vm: HomeViewModel) {
         ) {
             header()
             if (editing) {
-                EditPage(page, vm)
+                EditPage(page, vm, shown) { shown = it }
             } else {
                 notices()
                 blocks(page.blocks, false)
             }
         }
     } else {
-        val pager = rememberPagerState { page.sections.size }
+        val pager = rememberPagerState(initialPage = shown.coerceIn(0, page.sections.lastIndex)) { page.sections.size }
+        LaunchedEffect(pager) { snapshotFlow { pager.currentPage }.collect { shown = it } }
         Column(Modifier.fillMaxSize().then(padding).padding(bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             header()
             notices()
@@ -199,7 +214,7 @@ private fun BlockView(block: Block, vm: HomeViewModel, ready: Boolean, tvVm: Rem
         val label = block.kind.title.substringBefore(" · ")
         Text(if (term.crt) label.uppercase() else label, color = term.palette.dim, fontSize = 12.sp)
         if (block.kind.androidTv) {
-            AndroidTvBlock(block.kind, tvVm, swipeable, onOpenTvPage = { vm.open(Section.TV) })
+            AndroidTvBlock(block.kind, tvVm, swipeable, onAddApp = { vm.openSettings("AppShortcuts", Section.PAGE) })
             return@Column
         }
         when (block.kind) {
@@ -264,13 +279,12 @@ private fun RepeatKey(key: IrKey, text: String, enabled: Boolean, onPress: (IrKe
 // ------------------------------------------------------------------ editing
 
 @Composable
-private fun EditPage(page: CustomPage, vm: HomeViewModel) {
+private fun EditPage(page: CustomPage, vm: HomeViewModel, current: Int, setCurrent: (Int) -> Unit) {
     val p = LocalTerm.current.palette
     var title by rememberSaveable(page.id) { mutableStateOf(page.title) }
-    var current by rememberSaveable(page.id) { mutableIntStateOf(0) }
-    var adding by remember { mutableStateOf(false) }
-    var deleting by remember { mutableStateOf(false) }
-    var removingSection by remember { mutableStateOf(false) }
+    var adding by rememberSaveable { mutableStateOf(false) }
+    var deleting by rememberSaveable { mutableStateOf(false) }
+    var removingSection by rememberSaveable { mutableStateOf(false) }
     val index = current.coerceIn(0, page.sections.lastIndex)
     val section = page.sections[index]
     fun setSection(s: PageSection) = vm.updatePage(page.copy(sections = page.sections.mapIndexed { i, old -> if (i == index) s else old }))
@@ -289,11 +303,11 @@ private fun EditPage(page: CustomPage, vm: HomeViewModel) {
     // Sections: one tab each; the page swipes between them.
     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
         page.sections.forEachIndexed { i, _ ->
-            FilterChip(selected = i == index, onClick = { current = i }, label = { Text(if (page.sections.size == 1) "Page" else "Section ${i + 1}") })
+            FilterChip(selected = i == index, onClick = { setCurrent(i) }, label = { Text(if (page.sections.size == 1) "Page" else "Section ${i + 1}") })
         }
         TTextButton(onClick = {
             vm.updatePage(page.copy(sections = page.sections + PageSection()))
-            current = page.sections.size
+            setCurrent(page.sections.size)
         }) { Text("+ Section") }
     }
     if (page.sections.size > 1) Text("Swipe between sections on the page.", color = p.dim, fontSize = 12.sp)
@@ -314,7 +328,7 @@ private fun EditPage(page: CustomPage, vm: HomeViewModel) {
     TButton(onClick = { adding = true }, modifier = Modifier.fillMaxWidth().height(52.dp)) { Text("+ Add block") }
     if (page.sections.size > 1) {
         TOutlinedButton(
-            onClick = { if (section.blocks.isEmpty()) removeSection(page, index, vm) { current = it } else removingSection = true },
+            onClick = { if (section.blocks.isEmpty()) removeSection(page, index, vm, setCurrent) else removingSection = true },
             modifier = Modifier.fillMaxWidth().height(48.dp),
         ) { Text("Remove section ${index + 1}") }
     }
@@ -332,7 +346,7 @@ private fun EditPage(page: CustomPage, vm: HomeViewModel) {
             onDismissRequest = { removingSection = false },
             title = { Text("Remove section ${index + 1}?") },
             text = { Text("Its ${section.blocks.size} blocks go with it.") },
-            confirmButton = { TTextButton(onClick = { removingSection = false; removeSection(page, index, vm) { current = it } }) { Text("Remove", color = p.warn) } },
+            confirmButton = { TTextButton(onClick = { removingSection = false; removeSection(page, index, vm, setCurrent) }) { Text("Remove", color = p.warn) } },
             dismissButton = { TTextButton(onClick = { removingSection = false }) { Text("Cancel") } },
         )
     }
@@ -360,7 +374,7 @@ private fun blockName(block: Block, vm: HomeViewModel): String =
 @Composable
 private fun AddBlockDialog(section: PageSection, vm: HomeViewModel, onAdd: (Block) -> Unit, onDismiss: () -> Unit) {
     val p = LocalTerm.current.palette
-    var pickOutput by remember { mutableStateOf(false) }
+    var pickOutput by rememberSaveable { mutableStateOf(false) }
     val used = section.blocks.toSet()
     AlertDialog(
         onDismissRequest = onDismiss,

@@ -68,8 +68,8 @@ Status as of 2026-11-10. Keep this file current; it is the single source of trut
 
 From a wireframe round (variants: one long list, tabs, tiles + amp bar, menu first). Chosen: **menu first**.
 
-- **Start screen = menu** with one large entry per section (Switches, Amplifier, TV later), each with a short
-  status line ("1 of 6 on · 7.6 W"). More sections later are more entries. Device settings behind a gear icon.
+- **Start screen = menu** with one large entry per section (Switches, Amplifier, TV, Android TV, HDMI Switch and custom pages), each with a short
+  status line ("1 of 6 on · 7.6 W"). More sections later are more entries. Settings behind a key in the menu's header.
 - **Each section opens full screen.** No tab bar: the TV remote needs all the vertical space.
 - **Back to the menu: the system back only, the same on every page** (Android back button / back gesture, iOS
   left-edge swipe). No header, no back button, no extra row anywhere, so every page keeps its full height and width.
@@ -86,12 +86,12 @@ From a wireframe round (variants: one long list, tabs, tiles + amp bar, menu fir
   - Watch while building: the remote's pager swipe must not trigger the back gesture; on iOS the edge swipe can stop
     working when the navigation bar is hidden (known SwiftUI pitfall, needs the usual fix).
 - **The app reopens on the last page used**, not always on the menu.
-- **The menu is the user's** (2026-11-10): in Settings → Menu the sections can be renamed (the name is also the
-  page title) and reordered by drag. A preference (shared on request, docs/SHARING.md).
+- **The menu is the user's** (2026-11-10): the sections can be renamed (the name is also the page title) and
+  reordered by drag, since 2026-11-17 with the menu's own "Edit" key (it was Settings → Menu). A preference (shared on request, docs/SHARING.md).
 - **Settings has a visible back button** (top left, "‹") as well as the system back: it is not a full-height
-  control page, so the button costs nothing. The section pages stay gesture-only.
+  control page, so the button costs nothing. Since 2026-11-17 every page has a small back key (above).
 - **Switches page:** one row per output (name, watts, timer), On/Off button on the right; tapping the name opens a
-  sheet with rename + auto-off/auto-on.
+  sheet with rename + auto-off/auto-on. Or "Grid" (2026-11-17): compact cards of equal height, two to a row.
 - **Amp page:** will grow (more keys than power/volume/mute/inputs); built like the TV remote, with a pager if the
   keys stop fitting.
 - Look and feel (colours, fonts, styles) comes after the first slice, before the iOS port. The first slice used plain
@@ -116,7 +116,7 @@ From a wireframe round (variants: one long list, tabs, tiles + amp bar, menu fir
 - [x] Choose the IR approach (ESPHome on ATOM Lite, HTTP)
 - [x] Prepare ESPHome config and docs (this repo)
 
-### Phase 1 – IR bridge (in progress)
+### Phase 1 – IR Bridge (in progress)
 - [x] Plug the Unit IR into the Grove port: receiver GPIO32 (white), LED GPIO26 (yellow)
 - [x] Install ESPHome, copy `secrets.example.yaml` to `secrets.yaml`, flash over USB
 - [x] Reserve fixed IPs in the FRITZ!Box for the bridge and all five Shellys (`*.local` names do not work through WireGuard)
@@ -140,7 +140,7 @@ From a wireframe round (variants: one long list, tabs, tiles + amp bar, menu fir
 - [x] Device list storage (names per output, stored on the phone only, no backup)
 - [x] Timers per output: show and edit auto-off and auto-on (on/off + delay), written to the device (`Switch.SetConfig`). Two outputs use auto-off today, one for a light after 7 min. Part of the minimum for the Shelly side.
 - [x] IR client: amp keys via HTTP with digest login (`IrBridgeClient`); bridge address and login in Settings, "Check" without sending IR
-- [x] Menu + Switches + Settings pages (Settings holds devices, IR bridge, sharing); Amp page with power, mute, volume and inputs; "TV (IR)" page with power, mute, the input menu (until tv-remote moves into the TV page); "HDMI switch" page for the UGREEN switch (1–5, Next; captured 2026-11-17)
+- [x] Menu + Switches + Settings pages (Settings holds devices, IR bridge, sharing); Amp page with power, mute, volume and inputs; "TV (IR)" page with power, mute, the input menu (tv-remote moved into the Android TV page on 2026-11-17); "HDMI Switch" page for the UGREEN switch (1–5, Next; captured 2026-11-17)
 - [x] Test through WireGuard from outside (switches and amp, 2026-11-11)
 - [ ] First slice done = Shelly outputs (switch, power, timers) and amp buttons work on the real phone
 
@@ -161,7 +161,7 @@ classification of every setting: `docs/SHARING.md`** (every future setting must 
 - [x] Settings → "Show QR code" (with "Copy link") and "Paste link"; `homehub://import?d=…` opens the app from the
       camera; an import dialog says what changes and nothing is applied before "Import".
 - [x] Shared: all settings (2026-11-10, the user's call). Household (devices with address, names, rooms, icons,
-      output and room order) always; preferences (list view, later theme …) when the receiver ticks the box. Never:
+      output and room order) always; preferences (list view, look, menu, custom pages) when the receiver ticks the box. Never:
       app state (last page, hints). No credentials yet.
 - [ ] "Include passwords" switch, built with the IR bridge (its login): rules in docs/SHARING.md.
 - [x] Import: devices matched by id take the shared version; local-only devices stay.
@@ -170,13 +170,13 @@ classification of every setting: `docs/SHARING.md`** (every future setting must 
 - [ ] Check on the second phone: scan with its camera app (does that camera open `homehub://` links?) and import.
 - It is a copy, not a sync (see SHARING.md).
 
-### TV page – tv-remote ported (2026-11-17)
+### Android TV page – tv-remote ported (2026-11-17)
 
 The user's call: port everything, leave `tv-remote` itself as it is. Its code moved into `tv/` nearly unchanged
 (package, Home Hub's theme, LAN checks, its own appearance settings and launcher icons dropped in favour of Home Hub's).
 
 - [x] Protocol, pairing, connection, TV state, voice, app shortcuts, UPnP volume, Wake-on-LAN, keep-awake, theater mode
-- [x] The TV page: find and pair when no TV is paired, the remote, TV settings and app shortcuts behind its gear key
+- [x] The TV page: find and pair when no TV is paired, the remote; its settings (first behind its gear key) are in Settings > Remote, TV and Android TV since 2026-11-17
 - [x] Pair the stick from Home Hub on the real phone (each app has its own pairing; tv-remote keeps its own), 2026-11-17
 - [x] TV for volume and Wake-on-LAN set up (copied from tv-remote's settings); Wake-on-LAN moved to the TV (IR) page
 - [x] Android TV blocks for custom pages (app row, D-pad, keys, volume, number pad, more keys), 2026-11-17

@@ -32,7 +32,7 @@ import io.github.mikachu1302.homehub.ui.glowStyle
  * between sections, so a swipe that starts on a key presses nothing (tv-remote's rule).
  */
 @Composable
-fun AndroidTvBlock(kind: BlockKind, vm: RemoteViewModel, swipeable: Boolean, onOpenTvPage: () -> Unit) {
+fun AndroidTvBlock(kind: BlockKind, vm: RemoteViewModel, swipeable: Boolean, onAddApp: () -> Unit) {
     val settings by vm.settings.collectAsStateWithLifecycle()
     val term = LocalTerm.current
     CompositionLocalProvider(LocalSettings provides settings, LocalSwipeable provides swipeable) {
@@ -42,7 +42,7 @@ fun AndroidTvBlock(kind: BlockKind, vm: RemoteViewModel, swipeable: Boolean, onO
                 val state by vm.tvState.collectAsStateWithLifecycle()
                 // As on the Android TV page: only an app on a stick that is on counts as open.
                 val current = state.appPackage?.takeIf { state.on != false }?.let { shortcutForPackage(it, state.appLabel) }
-                AppRow(apps, current, vm, onAddApp = onOpenTvPage)
+                AppRow(apps, current, vm, onAddApp = onAddApp)
             }
             BlockKind.ATV_PAD -> Box(Modifier.fillMaxWidth().height(250.dp), contentAlignment = Alignment.Center) {
                 if (term.crt) CrtPad(vm) else GlassDial(vm)

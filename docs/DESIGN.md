@@ -6,8 +6,7 @@ without being redesigned. Its rules (tv-remote `AGENTS.md`, "Two styles, one lay
 ## Rules
 
 - **Two styles, one layout.** *Neon CRT*: square keys, glow, scanlines, text labels, VT323. *Glass*: round keys,
-  soft glow, a circular dial, icons, Fira Code. The user picks style, palette and scanlines in Settings → Style /
-  Colors (a preference, shared on request: docs/SHARING.md).
+  soft glow, a circular dial, icons, Fira Code. The user picks style, palette and scanlines in Settings → Look (a preference, shared on request: docs/SHARING.md).
 - **Everything reads `LocalTerm`** (style + palette) or the Material colour scheme made from it, never a hard-coded
   colour. CRT text is scaled up through the density's font scale (VT323 is drawn small), so sizes are plain `sp`.
 - **Palette roles:** `primary` = alive (an output that is on, a successful send, + and −), `action` = the action
@@ -16,6 +15,10 @@ without being redesigned. Its rules (tv-remote `AGENTS.md`, "Two styles, one lay
 - **All palettes are dark.** The phone's light/dark setting no longer changes the app; the system bars always get
   light icons.
 - Colour is never the only signal (AGENTS.md): "On"/"Off" is written on the key, a send says ✓ or ✗.
+- **Names are capitalised** (decided 2026-11-17): page, device and settings-page names are written in Title Case
+  wherever they appear as a name – headings, menu entries, settings rows and in running text: "Android TV", "TV",
+  "HDMI Switch", "IR Bridge", "App Shortcuts". Everything else stays sentence case: buttons, dialog titles
+  ("Share setup", "Import setup?"), labels and messages. Short forms like "the bridge" stay lower case.
 
 ## How the Home Hub pages use it
 
@@ -30,10 +33,10 @@ tv-remote's PWR key (tried below the header and at the bottom: both felt wrong).
 | Menu | one pane per section with its status line (alive colour when something is on, warn when nothing answers); glass adds an icon |
 | Switches | one pane per output; an output that is on glows in `primary`, the On/Off key is tv-remote's key with `active`. "Grid" (a preference) shows compact cards two to a row: tap the card to switch (on release), hold it for name, room, icon and timers |
 | Amplifier | header with Power; one centered group: tv-remote's VOL rocker with Mute below it, and beside it on the right the input as an upright rocker of the same total height (up = next, down = previous) |
-| Android TV | tv-remote's screens as they are (its header with the TV switcher and status chips, without the "tv on/off" chip so the open app fits in the row (the power key still glows while the stick is on), the connection as a link icon (glass; CRT keeps its text line), chips on one line that never wraps, app row, the swipeable pad / number pad / more keys, the bottom cluster, keyboard bar, find and pair), without its settings key. tv-remote's settings are split by what they belong to (2026-11-17): Settings > Remote (haptics for every key; keep-awake and theater mode on every control page; smooth press for the stick), Settings > TV (the TV's network volume and Wake-on-LAN MAC), Settings > Android TV (paired sticks, app shortcuts). The app row's "+" opens the app shortcuts, and back returns to the Android TV page |
-| HDMI switch | its own page and menu entry: inputs 1–5 and Next as large keys |
+| Android TV | tv-remote's screens as they are (its header with the TV switcher and status chips, without the "tv on/off" chip so the open app fits in the row (the power key still glows while the stick is on), the connection as a link icon (glass; CRT keeps its text line), chips on one line that never wraps, app row, the swipeable pad / number pad / more keys, the bottom cluster, keyboard bar, find and pair: with the page header and its back key, the search starts on "Find TVs" or "Add a TV"), without its settings key. tv-remote's settings are split by what they belong to (2026-11-17): Settings > Remote (haptics for every key; keep-awake and theater mode on every control page; smooth press for the stick), Settings > TV (the TV's network volume and Wake-on-LAN MAC), Settings > Android TV (paired sticks, app shortcuts). The app row's "+" opens the app shortcuts, and back returns to the Android TV page |
+| HDMI Switch | its own page and menu entry: inputs 1–5 and Next as large keys |
 | TV (IR) | laid out like tv-remote's remote: header; tv-remote's D-pad in the middle (CRT cross / glass dial, for the input menu); at the bottom the VOL rocker, Wake (Wake-on-LAN, moved here from the TV page), Mute and Back as tv-remote's cluster keys, and Source as the wide key in tv-remote's Play/Pause spot; Power in the header |
-| Settings | an overview with one row per topic and its summary (Devices, IR bridge, Remote, TV, Android TV, Look, Share), each opening its own page; tv-remote's back key, cards, style cards and palette chips. Back goes page → overview → menu |
+| Settings | an overview with one row per topic and its summary (Devices, IR Bridge, Remote, TV, Android TV, Look, Share), each opening its own page; tv-remote's back key, cards, style cards and palette chips. Back goes page → overview → menu |
 | Menu, Edit | the menu's own "Edit" key: drag entries into order, rename them, "+ New page" (decided 2026-11-17: order is changed on the menu itself, not in Settings) |
 
 ## Pride palette (decided 2026-11-17)
@@ -49,11 +52,11 @@ is the TV over IR (`Section.TV_IR`, called "TV (IR)" elsewhere in these docs). T
 ## Custom pages (decided 2026-11-17)
 
 The user builds own pages from **ready-made blocks stacked top to bottom** (not a free grid of single keys): each block
-lays itself out in both styles, so a page always looks right. The built-in pages (Amplifier, TV (IR), HDMI switch, TV)
+lays itself out in both styles, so a page always looks right. The built-in pages (Amplifier, TV (IR), HDMI Switch, Android TV)
 **stay fixed**; custom pages are extra menu entries, ordered with the rest.
 
 - Blocks (`BlockKind`): amplifier volume and mute; amplifier power and input; TV (IR) arrows, OK, back; TV (IR) power,
-  source, mute; TV (IR) volume; HDMI switch inputs; one Shelly output; and the Android TV blocks (2026-11-17), pieces of
+  source, mute; TV (IR) volume; HDMI Switch inputs; one Shelly output; and the Android TV blocks (2026-11-17), pieces of
   tv-remote's remote with its own keys: app shortcuts, arrows and OK, power/home/back/menu/play, volume and mute (the
   TV's own volume when set up), number pad, playback and more keys. A page with Android TV blocks connects to the stick
   while it is shown; its status line then shows the connection (IR blocks: the last IR key). Each block once per section (a switch block once per output).
@@ -84,7 +87,7 @@ glyph); `ui/Controls.kt` has tv-remote's `RemoteButton` without its TV connectio
 rocker and cluster keys. When the TV remote moves in, its screens should need little more than an `onPress` in place of
 `vm.press(keyCode)`.
 
-Not taken over (yet): the Pride flag icons, haptics/smooth-press settings, keep awake,
-theater mode. They come with the TV remote if wanted.
+Not taken over: the Pride flag icons. Haptics, smooth press, keep awake and theater mode came with the TV remote
+(2026-11-17) and are in Settings > Remote.
 
 Fonts: VT323 and Fira Code, SIL Open Font License (`licenses/`).

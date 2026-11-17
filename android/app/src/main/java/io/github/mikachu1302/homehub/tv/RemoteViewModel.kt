@@ -113,15 +113,25 @@ class RemoteViewModel(app: Application) : AndroidViewModel(app) {
 
     // ------------------------------------------------------------ connection
 
-    /** The app is visible: keep a connection to the paired TV, reconnecting when it drops. */
+    /** A page with the remote (Android TV page, custom page with its blocks) is on screen. Settings is not one. */
+    @Volatile private var visible = false
+
+    /** (Re)connects only while such a page is visible, so Settings never leaves a connection open. */
+    private fun reconnect() {
+        if (visible) onForeground()
+    }
+
+    /** A page with the remote is visible: keep a connection to the paired TV, reconnecting when it drops. */
     fun onForeground() {
+        visible = true
         startAudio()
         if (loop?.isActive == true || _paired.value == null) return
         loop = viewModelScope.launch(Dispatchers.IO) { connectionLoop() }
     }
 
-    /** The app left the screen: close the connection (the TV frees the session; no battery use). */
+    /** That page or the app left the screen: close the connection (the TV frees the session; no battery use). */
     fun onBackground() {
+        visible = false
         stopConnection()
         stopAudio()
     }
@@ -179,7 +189,7 @@ class RemoteViewModel(app: Application) : AndroidViewModel(app) {
     fun retry() {
         if (_link.value == Link.PinChanged) return
         retryNow.trySend(Unit)
-        onForeground()
+        reconnect()
     }
 
     // ------------------------------------------------------------ sending
@@ -206,7 +216,7 @@ class RemoteViewModel(app: Application) : AndroidViewModel(app) {
 
     // ------------------------------------------------------------ the TV's own volume and power
 
-    /** Polls the TV's volume while the app is visible; null while it does not answer (off, or another network). */
+    /** Polls the TV's volume while a page with the remote is visible; null while it does not answer (off, or another network). */
     private fun startAudio() {
         if (audioLoop?.isActive == true) return
         audioLoop = viewModelScope.launch(Dispatchers.IO) {
@@ -231,6 +241,11 @@ class RemoteViewModel(app: Application) : AndroidViewModel(app) {
                 delay(wait)
             }
         }
+    }
+
+    /** Settings > TV shows the TV's answer too: it reads the volume while shown, without the stick's connection. */
+    fun showAudioStatus(shown: Boolean) {
+        if (shown) startAudio() else if (!visible) stopAudio()
     }
 
     private fun stopAudio() {
@@ -469,7 +484,7 @@ class RemoteViewModel(app: Application) : AndroidViewModel(app) {
                 // Pairing a TV again replaces its entry; a new one is added and becomes active.
                 stopConnection()
                 saveTvs(_tvs.value.filter { it.name != tv.name } + tv, tv)
-                onForeground()
+                reconnect()
             } else {
                 // The TV closes the session after a bad code: start over, it shows a fresh one.
                 session.close()
@@ -494,7 +509,7 @@ class RemoteViewModel(app: Application) : AndroidViewModel(app) {
         if (tv == _paired.value) return
         stopConnection()
         saveTvs(_tvs.value, tv)
-        onForeground()
+        reconnect()
     }
 
     /** Forgets a TV. Only the TV's entry goes: settings and app shortcuts stay. */
@@ -503,7 +518,7 @@ class RemoteViewModel(app: Application) : AndroidViewModel(app) {
         val wasActive = _paired.value?.name == tv.name
         if (wasActive) stopConnection()
         saveTvs(rest, if (wasActive) rest.firstOrNull() else _paired.value)
-        if (wasActive && rest.isNotEmpty()) onForeground()
+        if (wasActive && rest.isNotEmpty()) reconnect()
     }
 
     /** Closes the connection and stops reconnecting, without touching what is paired. */

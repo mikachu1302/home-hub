@@ -222,7 +222,7 @@
       }
     },
     {
-      "name": "Only preferences (sender left the household out)",
+      "name": "Only preferences (sender left the household out); no pages in them (a link from before custom pages): the receiver keeps its own pages",
       "input": "homehub://import?d=q1YqU7Iy1FEqKEpNK1ayqlYqLs8sSc4Iy0wtV7JScvTxUaqtBQA",
       "expected": {
         "household": null,
@@ -418,6 +418,17 @@
               ]
             }
           ]
+        }
+      }
+    },
+    {
+      "name": "An empty page list: the sender has no custom pages, so the receiver's pages go too",
+      "input": "homehub://import?d=q1YqU7Iy1FEqKEpNK1ayqlYqLs8sSc4Iy0wtV7JScvTxUQLKJaanAuWiY2trAQ",
+      "expected": {
+        "household": null,
+        "preferences": {
+          "switchView": "ALL",
+          "pages": []
         }
       }
     },

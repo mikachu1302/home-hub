@@ -1,0 +1,131 @@
+{
+  "description": "Custom pages as stored on the phone and in a setup link (`prefs.pages`, docs/SHARING.md) → the pages the app reads. `input` is the stored text; `expected` lists every page in full (id, title, sections with their blocks; `output` only on switch blocks). Made-up ids and output keys.",
+  "cases": [
+    {
+      "name": "A page with two sections",
+      "input": "[{\"id\":\"k3\",\"title\":\"Movie night\",\"sections\":[{\"blocks\":[{\"kind\":\"hdmi\"},{\"kind\":\"switch\",\"output\":\"shellyplus1pm-112233445566/0\"}]},{\"blocks\":[{\"kind\":\"amp_volume\"}]}]}]",
+      "expected": [
+        {
+          "id": "k3",
+          "title": "Movie night",
+          "sections": [
+            {
+              "blocks": [
+                {
+                  "kind": "hdmi"
+                },
+                {
+                  "kind": "switch",
+                  "output": "shellyplus1pm-112233445566/0"
+                }
+              ]
+            },
+            {
+              "blocks": [
+                {
+                  "kind": "amp_volume"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Forgiving: unknown block dropped, output on a non-switch block ignored, missing title becomes Page, page without id dropped, duplicate id: the first wins",
+      "input": "[{\"id\":\"a\",\"blocks\":[{\"kind\":\"nope\"},{\"kind\":\"hdmi\",\"output\":\"ignored\"}]},{\"title\":\"x\"},{\"id\":\"a\",\"title\":\"dup\"}]",
+      "expected": [
+        {
+          "id": "a",
+          "title": "Page",
+          "sections": [
+            {
+              "blocks": [
+                {
+                  "kind": "hdmi"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "A page from before sections (a plain blocks list) is one section",
+      "input": "[{\"id\":\"k3\",\"title\":\"Old\",\"blocks\":[{\"kind\":\"hdmi\"},{\"kind\":\"amp_keys\"}]}]",
+      "expected": [
+        {
+          "id": "k3",
+          "title": "Old",
+          "sections": [
+            {
+              "blocks": [
+                {
+                  "kind": "hdmi"
+                },
+                {
+                  "kind": "amp_keys"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "No sections at all: one empty section, so the editor always has one to fill",
+      "input": "[{\"id\":\"e\",\"title\":\"Empty\",\"sections\":[]}]",
+      "expected": [
+        {
+          "id": "e",
+          "title": "Empty",
+          "sections": [
+            {
+              "blocks": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "A switch block without an output is kept with an empty one (the editor shows it as a removed output)",
+      "input": "[{\"id\":\"s\",\"title\":\"Lights\",\"sections\":[{\"blocks\":[{\"kind\":\"switch\"}]}]}]",
+      "expected": [
+        {
+          "id": "s",
+          "title": "Lights",
+          "sections": [
+            {
+              "blocks": [
+                {
+                  "kind": "switch",
+                  "output": ""
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Title and id are trimmed",
+      "input": "[{\"id\":\" k3 \",\"title\":\"  Radio \",\"sections\":[{\"blocks\":[]}]}]",
+      "expected": [
+        {
+          "id": "k3",
+          "title": "Radio",
+          "sections": [
+            {
+              "blocks": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Not JSON: no pages",
+      "input": "not json",
+      "expected": []
+    }
+  ]
+}

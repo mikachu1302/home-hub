@@ -12,7 +12,7 @@ own state never travels. This file is the contract; read it before adding any se
 | Class | What | Shared? | Examples |
 |---|---|---|---|
 | **Household** | describes the home | when the sender ticks it (on by default) | device list and addresses, output names, rooms, icons, output and room order, the IR bridge address |
-| **Preference** | how a person likes to use the app | when the sender ticks it (on by default); the receiver can still decline | list view ("By room"/"All", rows or grid), menu order and menu names, look (style, colours, scanlines), custom pages; later haptics |
+| **Preference** | how a person likes to use the app | when the sender ticks it (on by default); the receiver can still decline | list view ("By room"/"All", rows or grid), menu order and menu names, look (style, colours, scanlines), custom pages, switch layout (haptics and the other remote settings are state for now, see below) |
 | **State** | what the app remembers about itself | never: copying it would only do odd things | the page that was open last, hints already shown |
 | **Credential** | passwords, keys | only with "Include passwords" (see below) | the IR bridge login; later a Shelly password |
 
@@ -110,15 +110,14 @@ the same way, so the iOS app only has to register `homehub`.
 | `roomOrder` | room names | shared order first, local rooms not in it after (compared ignoring case) |
 | `irBridge` | the IR bridge's address (household part; left out when not set up) | replaces this phone's bridge address; absent → kept |
 | `prefs` | the sender's preferences; optional (left out by the sender, or a link from the first version) | replace this phone's preferences only if the receiver agrees |
-
 | `prefs.switchView` | `ROOMS` or `ALL` | unknown value → `ROOMS` |
 | `prefs.menuOrder` | menu sections as `Section` names (`SWITCHES`, `AMP`, `TV`, `TV_IR`, `HDMI`) and custom pages (`page:<id>`) | unknown ids are ignored; sections not listed come last; missing → default order |
 | `prefs.menuNames` | the user's titles, keyed by `Section` name | blank or missing → the default title |
 | `prefs.style` | `Crt` or `Glass` (docs/DESIGN.md) | unknown or missing → `Crt` |
-| `prefs.palette` | a palette id (`neon`, `dracula`, `nord`, …) | missing → `neon`; an unknown id is kept and shown as `neon` |
+| `prefs.palette` | a palette id: `neon`, `dracula`, `synthwave`, `catppuccin`, `gruvbox`, `tokyo`, `nord`, `amber`, `matrix`, `pride` (fixed: `PaletteTest`) | missing → `neon`; an unknown id is kept and shown as `neon` |
 | `prefs.scanlines` | scanlines over the CRT style | missing → on |
 | `prefs.switchLayout` | `LIST` (rows) or `GRID` (compact cards, two to a row) on the Switches page | unknown or missing → `LIST` |
-| `prefs.pages` | custom pages: `[{"id", "title", "sections": [{"blocks": [{"kind", "output"?}]}]}]` (a page swipes between its sections); `kind` is a `BlockKind` id, `output` (switch blocks only) an output key. Their menu place is `page:<id>` in `prefs.menuOrder` | a page without an id is dropped, a missing title becomes "Page", an unknown block is dropped, a plain `blocks` list (before sections) is one section; missing → no pages |
+| `prefs.pages` | custom pages: `[{"id", "title", "sections": [{"blocks": [{"kind", "output"?}]}]}]` (a page swipes between its sections); `kind` is a `BlockKind` id, `output` (switch blocks only) an output key. Their menu place is `page:<id>` in `prefs.menuOrder` | a page without an id is dropped, a missing title becomes "Page", an unknown block is dropped, a plain `blocks` list (before sections) is one section, a switch block without `output` is kept with an empty one (shown as a removed output); missing → the receiver keeps its own pages (a link from before custom pages), `[]` → no pages (spec/fixtures/custom-pages.json) |
 | `secrets` | only with "Include passwords": `{"irBridge": {"user": …, "password": …}}` | stored encrypted, replaces this phone's bridge login; an entry with an empty user is ignored |
 
 A payload with none of the parts (household, `prefs`, `secrets`) is refused ("This setup is empty.").

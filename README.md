@@ -35,7 +35,11 @@ android/    Android app (Kotlin, Jetpack Compose)
 ios/        iPhone app (SwiftUI), starts after the Android first slice, see AGENTS.md
 esphome/    firmware config + setup guide for the IR bridge
 scripts/    small helpers for testing the bridge from a shell
-docs/       PLAN.md (status and plan), PROTOCOLS.md (what we talk to)
+tools/      gen_launcher_icons.py (launcher icons and splash colours per palette)
+spec/       fixtures/: shared test data for the Android and the later iOS core
+docs/       PLAN.md (status and plan), PROTOCOLS.md (what we talk to), SHARING.md (the shared setup),
+            DESIGN.md (the look)
+licenses/   font licences
 AGENTS.md   rules and conventions for contributors and coding agents
 ```
 
@@ -52,7 +56,7 @@ cd android
 Needs the Android SDK (platform 37) and a JDK. `local.properties` with `sdk.dir=…` is created per machine
 and is not committed.
 
-## IR bridge
+## IR Bridge
 
 Parts: an M5Stack ATOM Lite and a Unit IR (both plug together, no soldering). Setup and firmware:
 [esphome/README.md](esphome/README.md).
@@ -60,7 +64,7 @@ Parts: an M5Stack ATOM Lite and a Unit IR (both plug together, no soldering). Se
 ## Look
 
 The look of the TV remote app (Neon CRT or Glass, ten colour palettes), chosen in Settings. Fonts: VT323 and
-Fira Code (SIL Open Font License, see `licenses/`). App logos on the TV page: shapes from Simple Icons (CC0,
+Fira Code (SIL Open Font License, see `licenses/`). App logos on the Android TV page: shapes from Simple Icons (CC0,
 simpleicons.org); the brands are trademarks of their owners and the shapes only say which app a tile opens.
 
 ## Privacy

@@ -27,14 +27,17 @@ data class Household(
  */
 data class Preferences(
     val switchView: SwitchView,
-    /** Menu sections in the user's order, as `Section` names. Empty = default order. */
+    /** Menu entries in the user's order: `Section` names and custom pages as `page:<id>`. Empty = default order. */
     val menuOrder: List<String> = emptyList(),
     /** The user's titles for menu sections, keyed by `Section` name. Missing = default title. */
     val menuNames: Map<String, String> = emptyMap(),
     /** Look and colours. */
     val appearance: Appearance = Appearance(),
-    /** The user's own pages (custom pages; their place in the menu is in [menuOrder]). */
-    val pages: List<CustomPage> = emptyList(),
+    /**
+     * The user's own pages (custom pages; their place in the menu is in [menuOrder]). Null: the payload has none
+     * (a link from before custom pages), so the receiver keeps its own pages (docs/SHARING.md).
+     */
+    val pages: List<CustomPage>? = emptyList(),
     /** Rows or compact cards on the Switches page. */
     val switchLayout: SwitchLayout = SwitchLayout.LIST,
 )
@@ -79,7 +82,7 @@ object SetupShare {
                         .put("style", p.appearance.style.name)
                         .put("palette", p.appearance.palette)
                         .put("scanlines", p.appearance.scanlines)
-                        .put("pages", PagesJson.toJson(p.pages))
+                        .put("pages", PagesJson.toJson(p.pages.orEmpty()))
                         .put("switchLayout", p.switchLayout.name),
                 )
             }
@@ -118,7 +121,7 @@ object SetupShare {
                     palette = p.optString("palette").ifBlank { Appearance().palette },
                     scanlines = p.optBoolean("scanlines", Appearance().scanlines),
                 ),
-                pages = PagesJson.fromJson(p.optJSONArray("pages")),
+                pages = if (p.has("pages")) PagesJson.fromJson(p.optJSONArray("pages")) else null,
                 switchLayout = runCatching { SwitchLayout.valueOf(p.optString("switchLayout")) }.getOrDefault(SwitchLayout.LIST),
             )
         }

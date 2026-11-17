@@ -208,10 +208,10 @@ class RemoteConnection(
                             varint(1, active)
                             message(2) {
                                 string(1, "Android") // model
-                                string(2, "TV Remote") // vendor
+                                string(2, "Home Hub") // vendor
                                 varint(3, 1)
                                 string(4, "1")
-                                string(5, "io.github.mikachu1302.tvremote")
+                                string(5, "io.github.mikachu1302.homehub")
                                 string(6, appVersion)
                             }
                         }.toByteArray())

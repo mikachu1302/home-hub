@@ -2,12 +2,9 @@ package io.github.mikachu1302.homehub.tv
 
 import io.github.mikachu1302.homehub.ui.LocalTerm
 import io.github.mikachu1302.homehub.ui.pane
-import io.github.mikachu1302.homehub.ui.Palette
-import io.github.mikachu1302.homehub.ui.Palettes
 import io.github.mikachu1302.homehub.ui.TOutlinedButton
 import io.github.mikachu1302.homehub.ui.TTextButton
 import io.github.mikachu1302.homehub.ui.Glyph
-import io.github.mikachu1302.homehub.core.UiStyle
 
 import androidx.compose.foundation.layout.Arrangement
 import kotlin.math.roundToInt
@@ -24,26 +21,18 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.requiredSize
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.nativeCanvas
-import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.border
 import androidx.compose.foundation.background
-import androidx.compose.foundation.Canvas
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.draw.clip
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -61,6 +50,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -70,13 +60,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.delay
 
 /**
  * tv-remote's settings screen, split over three Home Hub Settings pages (docs/DESIGN.md): Remote (how keys and the screen
@@ -157,7 +146,7 @@ fun AndroidTvSettingsPage(tv: PairedTv?, vm: RemoteViewModel, onBack: () -> Unit
             TOutlinedButton(onClick = onAddTv, modifier = Modifier.padding(vertical = 8.dp)) { Text(if (tvs.isEmpty()) "Pair a TV…" else "Add a TV…") }
         }
         Section("Applications")
-        NavRow("App shortcuts", "${apps.size} apps", onApps)
+        NavRow("App Shortcuts", "${apps.size} apps", onApps)
     }
 }
 
@@ -167,6 +156,17 @@ private fun TvVolumeSection(settings: RemoteSettings, vm: RemoteViewModel) {
     val tv by vm.audioTv.collectAsStateWithLifecycle()
     val audio by vm.audio.collectAsStateWithLifecycle()
     var choosing by remember { mutableStateOf(false) }
+    // The volume is read only while a remote page or this one is shown; give the first reading a moment.
+    DisposableEffect(vm) {
+        vm.showAudioStatus(true)
+        onDispose { vm.showAudioStatus(false) }
+    }
+    var waited by remember { mutableStateOf(false) }
+    LaunchedEffect(tv?.host) {
+        waited = false
+        delay(4_000)
+        waited = true
+    }
     Section(
         "Volume and power",
         "TVs with a UPnP media renderer (Hisense VIDAA has one) let apps read and set their volume over the network, " +
@@ -184,6 +184,7 @@ private fun TvVolumeSection(settings: RemoteSettings, vm: RemoteViewModel) {
                 val status = when {
                     current == null -> "Volume: the stick"
                     audio != null -> "Connected, volume ${audio?.level}"
+                    !waited || !settings.tvVolume -> if (settings.tvVolume) "Checking…" else "Volume keys go to the stick"
                     else -> "Not answering (TV off?)"
                 }
                 Text(status, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -358,7 +359,7 @@ fun AppShortcutsScreen(vm: RemoteViewModel, onBack: () -> Unit) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 8.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
             BackButton(onBack)
-            Text("App shortcuts", fontSize = 24.sp, fontWeight = FontWeight.Bold)
+            Text("App Shortcuts", fontSize = 24.sp, fontWeight = FontWeight.Bold)
         }
 
         PickerSection("Your apps (${apps.size})")

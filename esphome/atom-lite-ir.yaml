@@ -156,7 +156,7 @@ button:
     on_press:
       - remote_transmitter.transmit_nec: {address: 0xBF00, command: 0xF10E}
   - platform: template
-    name: "TV Volume Up"        # k 0x44, from the database (not tested yet)
+    name: "TV Volume Up"        # k 0x44, from the database, confirmed 2026-11-17
     on_press:
       - remote_transmitter.transmit_nec: {address: 0xBF00, command: 0xBB44}
   - platform: template

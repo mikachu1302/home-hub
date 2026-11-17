@@ -38,6 +38,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Row
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -60,12 +61,11 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
-import io.github.mikachu1302.homehub.core.defaultTitle
 
 /** The pages under Settings; null is the overview. */
 private enum class SettingsPage(val title: String, val parent: SettingsPage? = null) {
-    Devices("Devices"), Bridge("IR bridge"), Remote("Remote"), Tv("TV"), AndroidTv("Android TV"),
-    AppShortcuts("App shortcuts", AndroidTv), Look("Look"), Share("Share"),
+    Devices("Devices"), Bridge("IR Bridge"), Remote("Remote"), Tv("TV"), AndroidTv("Android TV"),
+    AppShortcuts("App Shortcuts", AndroidTv), Look("Look"), Share("Share"),
 }
 
 /**
@@ -75,9 +75,12 @@ private enum class SettingsPage(val title: String, val parent: SettingsPage? = n
 @Composable
 fun SettingsScreen(vm: HomeViewModel) {
     // Opened at a page by another page (the Android TV page's "+": app shortcuts)? Then back returns there.
-    val entry = remember { vm.settingsEntry.also { vm.settingsEntry = null } }
-    val direct = entry?.first?.let { name -> SettingsPage.entries.firstOrNull { it.name == name } }
-    val returnTo = entry?.second
+    // Saved as names, so a rotation keeps where back returns to; the request is used up once read.
+    val directName by rememberSaveable { mutableStateOf(vm.settingsEntry?.first) }
+    val returnName by rememberSaveable { mutableStateOf(vm.settingsEntry?.second?.name) }
+    LaunchedEffect(Unit) { vm.settingsEntry = null }
+    val direct = directName?.let { name -> SettingsPage.entries.firstOrNull { it.name == name } }
+    val returnTo = returnName?.let { name -> Section.entries.firstOrNull { it.name == name } }
     var page by rememberSaveable { mutableStateOf(direct) }
     fun goBack() {
         val current = page
@@ -118,8 +121,7 @@ fun SettingsScreen(vm: HomeViewModel) {
             .padding(start = Dimens.screenPadding, end = Dimens.screenPadding, top = Dimens.topPadding, bottom = 32.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        // Settings is not a full-height control page, so it gets a visible back key (the sections use the system
-        // back only; docs/PLAN.md, "App layout").
+        // The visible back key, as on every page (docs/PLAN.md, "App layout").
         val current = page
         // tv-remote's settings header: the back key and a large title (no pane).
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -146,7 +148,7 @@ private fun Overview(vm: HomeViewModel, open: (SettingsPage) -> Unit) {
         if (vm.devices.isEmpty()) "None yet" else "Shelly · ${vm.devices.size} devices, $outputs outputs",
     ) { open(SettingsPage.Devices) }
     NavRow(
-        "IR bridge",
+        "IR Bridge",
         when {
             vm.irBridge.isBlank() -> "Not set up"
             vm.bridgeCheck?.first == true -> "✓ Works"
@@ -455,7 +457,7 @@ private fun BridgeDialog(
     var showPassword by remember { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("IR bridge") },
+        title = { Text("IR Bridge") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(

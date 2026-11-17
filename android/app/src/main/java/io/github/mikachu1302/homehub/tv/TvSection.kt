@@ -1,13 +1,6 @@
 package io.github.mikachu1302.homehub.tv
 
-import android.Manifest
-import android.os.Build
-import android.os.SystemClock
-import android.view.WindowManager
 import androidx.activity.compose.BackHandler
-import androidx.activity.compose.LocalActivity
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,6 +8,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -25,28 +20,27 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.pointer.PointerEventPass
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import io.github.mikachu1302.homehub.ui.BackKey
+import io.github.mikachu1302.homehub.ui.Dimens
+import io.github.mikachu1302.homehub.ui.LocalTerm
+import io.github.mikachu1302.homehub.ui.PageHeader
 import io.github.mikachu1302.homehub.ui.TButton
 import io.github.mikachu1302.homehub.ui.TTextButton
-import kotlinx.coroutines.delay
 
 /**
  * The Android TV page: tv-remote's app, moved in (docs/DESIGN.md, docs/PROTOCOLS.md). The remote, or finding and
  * pairing a TV when none is paired; its settings and app shortcuts are in Settings > Android TV. Connects while the page is visible and the app is in
  * front, and closes the connection otherwise (tv-remote did that for the whole app). Keep-awake and theater mode
- * apply only here.
+ * come from ui/ControlPage, as on every control page.
  */
 @Composable
 fun TvSection(vm: RemoteViewModel, onAddApp: () -> Unit) {
@@ -64,7 +58,8 @@ fun TvSection(vm: RemoteViewModel, onAddApp: () -> Unit) {
             val tv = paired
             when {
                 pairing != PairingUi.None -> PairingScreen(pairing, vm)
-                tv == null || adding -> FindTvScreen(vm, canCancel = tv != null)
+                // [adding]: the user asked to add a TV (here or in Settings), so the search starts at once.
+                tv == null || adding -> FindTvScreen(vm, adding = adding)
                 // Its settings and app shortcuts are in Settings > Android TV (Home Hub); "+" in the app row opens them.
                 else -> RemoteScreen(tv, vm, onAddApp = onAddApp)
             }
@@ -94,29 +89,32 @@ internal fun ConnectWhileVisible(vm: RemoteViewModel) {
 
 // ---------------------------------------------------------------- finding and pairing (tv-remote's screens)
 
+/** The page frame for finding and pairing: the usual header (its back key cancels like the system back), then the content. */
 @Composable
-private fun FindTvScreen(vm: RemoteViewModel, canCancel: Boolean) {
+private fun FindFrame(status: String, onCancel: (() -> Unit)?, content: @Composable () -> Unit) {
+    Column(
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState())
+            .padding(start = Dimens.screenPadding, end = Dimens.screenPadding, top = Dimens.topPadding, bottom = 32.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        PageHeader("Android TV", status, leading = onCancel?.let { { BackKey(it) } })
+        content()
+    }
+}
+
+@Composable
+private fun FindTvScreen(vm: RemoteViewModel, adding: Boolean) {
     val context = LocalContext.current
     val paired by vm.tvs.collectAsStateWithLifecycle()
-    var allowed by remember {
-        mutableStateOf(
-            Build.VERSION.SDK_INT < 37 ||
-                context.checkSelfPermission(Manifest.permission.ACCESS_LOCAL_NETWORK) == android.content.pm.PackageManager.PERMISSION_GRANTED,
-        )
-    }
-    val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { allowed = it }
-    LaunchedEffect(Unit) {
-        if (!allowed && Build.VERSION.SDK_INT >= 37) ask.launch(Manifest.permission.ACCESS_LOCAL_NETWORK)
-    }
-
-    Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Text(if (canCancel) "Add a TV" else "Find your TV", fontSize = 28.sp, fontWeight = FontWeight.Bold)
-        if (!allowed) {
-            Text("The app needs access to devices on your network to find the TV.")
-            TButton(onClick = { if (Build.VERSION.SDK_INT >= 37) ask.launch(Manifest.permission.ACCESS_LOCAL_NETWORK) }) { Text("Allow") }
-            return@Column
+    // Discovery runs only on the user's action (AGENTS.md): "Add a TV" was one; with nothing paired, "Find TVs" is.
+    var searching by rememberSaveable(adding) { mutableStateOf(adding) }
+    FindFrame(if (adding) "Add a TV" else "No stick paired yet", if (adding) vm::cancelAddTv else null) {
+        if (!searching) {
+            Text("Make sure the TV is on and on the same Wi-Fi, then look for it.")
+            TButton(onClick = { searching = true }, modifier = Modifier.fillMaxWidth().height(56.dp)) { Text("Find TVs") }
+            return@FindFrame
         }
-        // Discovery runs only while this screen is open: the user's action (AGENTS.md).
+        // The search stops when this screen goes away.
         var tvs by remember { mutableStateOf(emptyList<Tv>()) }
         LaunchedEffect(Unit) { discoverTvs(context).collect { tvs = it } }
         if (tvs.isEmpty()) {
@@ -130,14 +128,14 @@ private fun FindTvScreen(vm: RemoteViewModel, canCancel: Boolean) {
                 }
             }
         }
-        if (canCancel) TTextButton(onClick = vm::cancelAddTv) { Text("Cancel") }
+        if (adding) TTextButton(onClick = vm::cancelAddTv) { Text("Cancel") }
     }
 }
 
 @Composable
 private fun PairingScreen(state: PairingUi, vm: RemoteViewModel) {
-    Column(Modifier.fillMaxSize().padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Text("Pairing", fontSize = 28.sp, fontWeight = FontWeight.Bold)
+    val warn = LocalTerm.current.palette.warn
+    FindFrame("Pairing", vm::cancelPairing) {
         when (state) {
             is PairingUi.Starting -> Text("Contacting ${state.tv.name}…")
             is PairingUi.WaitingForCode -> {
@@ -160,7 +158,7 @@ private fun PairingScreen(state: PairingUi, vm: RemoteViewModel) {
                 ) { Text("Pair") }
             }
             is PairingUi.Failed -> {
-                Text("Pairing failed: ${state.message}", color = MaterialTheme.colorScheme.error)
+                Text("Pairing failed: ${state.message}", color = warn)
             }
             PairingUi.None -> Unit
         }

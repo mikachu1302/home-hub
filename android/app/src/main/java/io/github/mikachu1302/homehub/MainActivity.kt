@@ -66,7 +66,7 @@ import io.github.mikachu1302.homehub.tv.TvSection
 class MainActivity : ComponentActivity() {
     private val vm: HomeViewModel by viewModels()
 
-    /** tv-remote's view model (the TV page): paired TVs, the connection, TV state, voice, its settings. */
+    /** tv-remote's view model (the Android TV page and its blocks): paired TVs, the connection, TV state, voice, its settings. */
     private val tvVm: RemoteViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -151,7 +151,7 @@ private fun App(vm: HomeViewModel, tvVm: RemoteViewModel) {
             val back: (() -> Unit)? = if (vm.section == Section.MENU) null else vm::back
             CompositionLocalProvider(LocalHaptics provides remote.haptics, LocalBack provides back) {
                 LocalNetworkGate {
-                    ControlPage(keepAwake = control && remote.keepAwake, theater = control && remote.theater) {
+                    ControlPage(keepAwake = control && remote.keepAwake, theater = control && remote.theater && !vm.pageEditing) {
                         when (vm.section) {
                             Section.MENU -> MenuScreen(vm)
                             Section.SWITCHES -> SwitchesScreen(vm)
@@ -190,7 +190,7 @@ private fun LocalNetworkGate(content: @Composable () -> Unit) {
     } else {
         Column(Modifier.padding(Dimens.screenPadding), verticalArrangement = Arrangement.spacedBy(Dimens.gap)) {
             Text("Home Hub", fontSize = 28.sp, fontWeight = FontWeight.Bold)
-            Text("The app needs access to devices on your network to reach the switches and the IR bridge.")
+            Text("The app needs access to devices on your network to reach the switches and the IR Bridge.")
             TButton(onClick = { if (Build.VERSION.SDK_INT >= 37) ask.launch(localNetworkPermission()) }) { Text("Allow") }
         }
     }

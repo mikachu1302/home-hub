@@ -21,7 +21,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -32,7 +31,6 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -57,11 +55,11 @@ fun MenuScreen(vm: HomeViewModel) {
     var editing by rememberSaveable { mutableStateOf(false) }
     // Back leaves edit mode first (registered after the app's own handler, so it wins).
     BackHandler(enabled = editing) { editing = false }
-    var renaming by remember { mutableStateOf<String?>(null) }
+    var renaming by rememberSaveable { mutableStateOf<String?>(null) }
     val switches = switchesSummary(vm, p)
-    // The TV page's paired TV (tv-remote's view model, shared with the TV page).
+    // The paired stick (tv-remote's view model, shared with the Android TV page).
     val tvPaired = viewModel<RemoteViewModel>().paired.collectAsStateWithLifecycle().value?.name
-    val bridge = if (vm.irBridge.isBlank()) "IR bridge not set up yet" to p.dim else "Through the IR bridge" to p.dim
+    val bridge = (if (vm.irBridge.isBlank()) "IR Bridge not set up yet" else "Through the IR Bridge") to p.dim
     Column(
         Modifier.fillMaxSize().verticalScroll(rememberScrollState())
             .padding(start = Dimens.screenPadding, end = Dimens.screenPadding, top = Dimens.topPadding, bottom = 32.dp),
@@ -101,7 +99,7 @@ fun MenuScreen(vm: HomeViewModel) {
                     val (line, color) = when (section) {
                         Section.SWITCHES -> switches
                         Section.AMP, Section.TV_IR, Section.HDMI -> bridge
-                        Section.TV -> (tvPaired?.let { "Paired with $it" } ?: "No TV paired yet") to p.dim
+                        Section.TV -> (tvPaired?.let { "Paired with $it" } ?: "No stick paired yet") to p.dim
                         else -> "" to p.dim
                     }
                     MenuEntry(vm.title(section), glyphOf(section), line, color, p.accent(index)) { vm.open(section) }

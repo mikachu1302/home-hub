@@ -4,7 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Test
 
-/** Custom pages: menu order, storage JSON, ids. Made-up output keys. */
+/** Custom pages: storage round trip and ids. Reading and the menu order run from spec/fixtures (FixtureTest). Made-up output keys. */
 class PagesTest {
     private fun page(id: String, title: String, vararg sections: List<Block>) = CustomPage(id, title, sections.map { PageSection(it) })
 
@@ -16,34 +16,9 @@ class PagesTest {
     private val radio = page("z9", "Radio", listOf(Block(BlockKind.AMP_VOLUME)))
 
     @Test
-    fun menuListsSectionsThenPagesInTheUsersOrder() {
-        assertEquals(MENU_SECTIONS.map { it.name } + listOf("page:k3", "page:z9"), menuIds(emptyList(), listOf(movie, radio)))
-        assertEquals(
-            listOf("page:z9", "HDMI", "SWITCHES", "AMP", "TV", "TV_IR", "page:k3"),
-            menuIds(listOf("page:z9", "page:gone", "HDMI", "SWITCHES"), listOf(movie, radio)),
-        )
-    }
-
-    @Test
     fun jsonRoundTrip() {
         val pages = listOf(movie, radio, CustomPage("e1", "Empty"))
         assertEquals(pages, PagesJson.decode(PagesJson.encode(pages)))
-    }
-
-    @Test
-    fun readingIsForgiving() {
-        val text = """[{"id":"a","blocks":[{"kind":"nope"},{"kind":"hdmi","output":"ignored"}]},{"title":"x"},{"id":"a","title":"dup"}]"""
-        assertEquals(listOf(page("a", "Page", listOf(Block(BlockKind.HDMI)))), PagesJson.decode(text))
-        assertEquals(emptyList<CustomPage>(), PagesJson.decode("not json"))
-        assertEquals(emptyList<CustomPage>(), PagesJson.decode(null))
-    }
-
-    @Test
-    fun aPageFromBeforeSectionsIsOneSection() {
-        val old = """[{"id":"k3","title":"Old","blocks":[{"kind":"hdmi"},{"kind":"amp_keys"}]}]"""
-        assertEquals(listOf(page("k3", "Old", listOf(Block(BlockKind.HDMI), Block(BlockKind.AMP_KEYS)))), PagesJson.decode(old))
-        // No sections at all: one empty section, so the editor always has one to fill.
-        assertEquals(listOf(CustomPage("e", "Empty")), PagesJson.decode("""[{"id":"e","title":"Empty","sections":[]}]"""))
     }
 
     @Test

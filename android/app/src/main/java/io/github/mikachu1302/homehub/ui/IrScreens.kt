@@ -28,12 +28,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.semantics.LiveRegionMode
-import androidx.compose.ui.semantics.liveRegion
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -82,7 +77,7 @@ private fun IrPage(
             PageHeader(title, irStatusText(status, ready), irStatusColor(status)) {
                 HeaderKey(power.label, "PWR", "power", enabled = ready, onPress = { onPress(power, false) })
             }
-            if (!ready) Notice("Set up the IR bridge in Settings first.")
+            if (!ready) Notice("Set up the IR Bridge in Settings first.")
             val bottomRow = @Composable {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     if (term.crt) {
@@ -216,7 +211,7 @@ fun TvIrScreen(title: String, ready: Boolean, status: IrStatus?, onPress: (IrKey
 }
 
 /**
- * Wake-on-LAN (tv-remote's "TV on"): not IR, a network packet to the TV's MAC address from the TV page's settings. Works
+ * Wake-on-LAN (tv-remote's "TV on"): not IR, a network packet to the TV's MAC address from Settings > TV. Works
  * only from the TV's real standby, a few minutes after it was switched off; IR power works from either.
  */
 @Composable
@@ -255,7 +250,7 @@ fun HdmiScreen(title: String, ready: Boolean, status: IrStatus?, onPress: (IrKey
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         PageHeader(title, irStatusText(status, ready), irStatusColor(status))
-        if (!ready) Notice("Set up the IR bridge in Settings first.")
+        if (!ready) Notice("Set up the IR Bridge in Settings first.")
         Column(Modifier.fillMaxWidth().heightIn(max = 420.dp), verticalArrangement = Arrangement.spacedBy(gap)) {
             val keys = HdmiKeys.inputs.mapIndexed { i, k -> Triple(k, "${i + 1}", Look.Normal) } +
                 Triple(HdmiKeys.next, "NEXT", Look.Primary)
@@ -280,7 +275,7 @@ fun HdmiScreen(title: String, ready: Boolean, status: IrStatus?, onPress: (IrKey
 
 /** The last key's fate in one line: a mark and words, not colour alone. */
 fun irStatusText(status: IrStatus?, ready: Boolean): String = when (status) {
-    null -> if (ready) "Through the IR bridge" else "IR bridge not set up yet"
+    null -> if (ready) "Through the IR Bridge" else "IR Bridge not set up yet"
     is IrStatus.Sending -> "Sending ${status.key.label}…"
     is IrStatus.Sent ->
         "✓ ${status.key.label} sent · " + if (status.ms < SLOW_MS) "${status.ms} ms" else "slow (%.1f s)".format(status.ms / 1000.0)
@@ -310,17 +305,11 @@ fun IrKeyButton(
     look: Look = Look.Normal,
     fontSize: Int = 16,
     shape: androidx.compose.ui.graphics.Shape? = null,
-    /** Glass: icon and text side by side (wide keys) instead of the icon alone. */
-    labelled: Boolean = false,
     tint: Color? = null,
 ) {
     val term = LocalTerm.current
     RemoteButton(key.label, modifier, enabled = enabled, look = look, tint = tint, shape = shape, onPress = { onPress(key, false) }) { color ->
         when {
-            !term.crt && glyph != null && labelled -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Glyph(glyph, color, Modifier.size(24.dp))
-                Text(glassText, color = color, fontSize = fontSize.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
-            }
             !term.crt && glyph != null -> Glyph(glyph, color, Modifier.size(26.dp))
             term.crt -> Text(crtText, color = color, fontSize = (fontSize + 2).sp, maxLines = 1)
             else -> Text(glassText, color = color, fontSize = fontSize.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)

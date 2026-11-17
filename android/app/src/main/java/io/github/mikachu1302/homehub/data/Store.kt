@@ -102,7 +102,7 @@ class Store(context: Context) {
         get() = prefs.getString(SettingKeys.SWITCH_VIEW, null)?.let { runCatching { SwitchView.valueOf(it) }.getOrNull() } ?: SwitchView.ROOMS
         set(value) = prefs.edit { putString(SettingKeys.SWITCH_VIEW, value.name) }
 
-    /** Menu sections in the user's order (`Section` names), and the user's titles for them. */
+    /** Menu entries in the user's order (`Section` names and `page:<id>`), and the user's titles for them. */
     var menuOrder: List<String>
         get() = readList(SettingKeys.MENU_ORDER)
         set(value) = writeList(SettingKeys.MENU_ORDER, value)
@@ -146,7 +146,7 @@ class Store(context: Context) {
             menuOrder = value.menuOrder
             menuNames = value.menuNames
             appearance = value.appearance
-            pages = value.pages
+            value.pages?.let { pages = it } // null: keep this phone's pages
             switchLayout = value.switchLayout
         }
 

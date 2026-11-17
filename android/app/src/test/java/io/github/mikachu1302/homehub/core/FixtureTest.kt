@@ -106,6 +106,37 @@ class FixtureTest {
         assertEquals(c.getString("name"), want, got)
     }
 
+    /** The expected pages, built without the parser under test. */
+    private fun pagesOf(a: JSONArray): List<CustomPage> = (0 until a.length()).map { i ->
+        val p = a.getJSONObject(i)
+        val sections = p.getJSONArray("sections")
+        CustomPage(
+            p.getString("id"), p.getString("title"),
+            (0 until sections.length()).map { j ->
+                val blocks = sections.getJSONObject(j).getJSONArray("blocks")
+                PageSection(
+                    (0 until blocks.length()).map { k ->
+                        val b = blocks.getJSONObject(k)
+                        Block(BlockKind.entries.single { it.id == b.getString("kind") }, b.optString("output"))
+                    },
+                )
+            },
+        )
+    }
+
+    @Test
+    fun customPages() = cases("custom-pages.json").forEach { c ->
+        assertEquals(c.getString("name"), pagesOf(c.getJSONArray("expected")), PagesJson.decode(raw(c)))
+    }
+
+    @Test
+    fun menuOrder() = cases("menu-order.json").forEach { c ->
+        val input = c.getJSONObject("input")
+        fun list(a: JSONArray) = (0 until a.length()).map { a.getString(it) }
+        val pages = list(input.getJSONArray("pages")).map { CustomPage(it, "Page") }
+        assertEquals(c.getString("name"), list(c.getJSONArray("expected")), menuIds(list(input.getJSONArray("order")), pages))
+    }
+
     @Test
     fun fixturesAreValidJson() {
         val dir = File(System.getProperty("fixtures")!!)

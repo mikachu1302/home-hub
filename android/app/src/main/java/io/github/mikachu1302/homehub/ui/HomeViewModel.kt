@@ -33,7 +33,6 @@ import io.github.mikachu1302.homehub.core.SwitchView
 import io.github.mikachu1302.homehub.core.RoomGroup
 import io.github.mikachu1302.homehub.core.groupByRoom
 import io.github.mikachu1302.homehub.core.mergeDevices
-import io.github.mikachu1302.homehub.core.menuSections
 import io.github.mikachu1302.homehub.core.sectionTitle
 import io.github.mikachu1302.homehub.core.moved
 import io.github.mikachu1302.homehub.core.outputKey
@@ -292,6 +291,9 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     /** A Settings page another page asked for (its name) and where back from it returns to; read once by Settings. */
     var settingsEntry by mutableStateOf<Pair<String, Section>?>(null)
 
+    /** A custom page is in edit mode: MainActivity turns theater mode off meanwhile. */
+    var pageEditing by mutableStateOf(false)
+
     /** Opens Settings at [page] (a page name); back from it returns to [from]. */
     fun openSettings(page: String, from: Section) {
         settingsEntry = page to from
@@ -380,7 +382,7 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
                 menuOrder = p.menuOrder
                 menuNames = p.menuNames
                 appearance = p.appearance
-                pages = p.pages
+                pages = p.pages ?: pages // a link from before custom pages keeps this phone's pages
                 switchLayout = p.switchLayout
                 followIcon()
             }
@@ -500,7 +502,7 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
 
     private var pressesInFlight = 0
 
-    /** The last IR key's fate, shown on the Amp and TV (IR) pages. */
+    /** The last IR key's fate, shown on the page that sent it (Amplifier, TV, HDMI Switch, custom pages). */
     var irStatus by mutableStateOf<IrStatus?>(null)
         private set
 

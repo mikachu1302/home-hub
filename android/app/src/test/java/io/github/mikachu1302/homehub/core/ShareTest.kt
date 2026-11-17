@@ -44,7 +44,7 @@ class ShareTest {
                             p.optString("palette").ifEmpty { Appearance().palette },
                             p.optBoolean("scanlines", Appearance().scanlines),
                         ),
-                        PagesJson.fromJson(p.optJSONArray("pages")),
+                        if (p.has("pages")) PagesJson.fromJson(p.optJSONArray("pages")) else null,
                         p.optString("switchLayout").takeIf { it.isNotEmpty() }?.let { SwitchLayout.valueOf(it) } ?: SwitchLayout.LIST,
                     )
                 }

@@ -3,7 +3,6 @@
 package io.github.mikachu1302.homehub.ui
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
@@ -14,12 +13,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.role
 import io.github.mikachu1302.homehub.core.SwitchLayout
 import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -40,17 +37,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -265,12 +258,20 @@ private fun OutputCard(o: OutputUi, showRoom: Boolean, onToggle: () -> Unit, onE
             .pane(glowColor = if (on) p.primary.copy(alpha = 0.6f) else null)
             .clip(term.controlShape)
             .semantics(mergeDescendants = true) {
-                contentDescription = "${o.name}: ${if (!known) "state unknown" else if (on) "on" else "off"}"
+                // Not disabled() when it can't switch: TalkBack would drop the long press (name, room, icon, timers) too.
+                val said = when {
+                    !o.reachable -> "no connection"
+                    o.busy -> "switching"
+                    !known -> "state unknown"
+                    on -> "on"
+                    else -> "off"
+                }
+                contentDescription = listOf("${o.name}: $said", detail.takeIf { o.reachable && it.isNotEmpty() })
+                    .filterNotNull().joinToString(", ")
                 role = Role.Switch
-                if (!canSwitch) disabled()
             }
             .combinedClickable(
-                onClickLabel = "Switch",
+                onClickLabel = if (canSwitch) "Switch" else null,
                 onLongClickLabel = "Name, room, icon and timers",
                 onLongClick = {
                     if (haptics) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
