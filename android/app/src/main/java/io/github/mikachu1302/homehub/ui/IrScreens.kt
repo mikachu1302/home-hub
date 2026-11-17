@@ -64,6 +64,8 @@ private fun IrPage(
     onPress: (IrKey, Boolean) -> Unit,
     pad: @Composable () -> Unit,
     cluster: @Composable ColumnScope.() -> Unit,
+    /** [pad] is the whole control group, centered on the page (the amp page); no bottom row. */
+    grouped: Boolean = false,
 ) {
     val term = LocalTerm.current
     BoxWithConstraints(Modifier.fillMaxSize()) {
@@ -81,39 +83,99 @@ private fun IrPage(
                 HeaderKey(power.label, "PWR", "power", enabled = ready, onPress = { onPress(power, false) })
             }
             if (!ready) Notice("Set up the IR bridge in Settings first.")
-            Box((if (tight) Modifier.height(280.dp) else Modifier.weight(1f)).fillMaxWidth(), contentAlignment = Alignment.Center) { pad() }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                if (term.crt) {
-                    Rocker("VOL", volumeUp, volumeDown, ready, onPress, width = 72.dp, height = 184.dp)
-                } else {
-                    Rocker("VOL", volumeUp, volumeDown, ready, onPress, width = 74.dp, height = 188.dp)
+            val bottomRow = @Composable {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    if (term.crt) {
+                        Rocker("VOL", volumeUp, volumeDown, ready, onPress, width = 72.dp, height = 184.dp)
+                    } else {
+                        Rocker("VOL", volumeUp, volumeDown, ready, onPress, width = 74.dp, height = 188.dp)
+                    }
+                    Column(
+                        Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(if (term.crt) 6.dp else 8.dp),
+                        content = cluster,
+                    )
                 }
-                Column(
-                    Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(if (term.crt) 6.dp else 8.dp),
-                    content = cluster,
-                )
+            }
+            if (grouped) {
+                Box((if (tight) Modifier else Modifier.weight(1f)).fillMaxWidth(), contentAlignment = Alignment.Center) { pad() }
+            } else {
+                Box((if (tight) Modifier.height(280.dp) else Modifier.weight(1f)).fillMaxWidth(), contentAlignment = Alignment.Center) { pad() }
+                bottomRow()
             }
         }
     }
 }
 
 /**
- * Amp page: Power in the header; the inputs as the main control (‹ and › around INPUT, where the TV has its dial); at
- * the bottom the VOL rocker and Mute. IR is one-way, so no key shows a power, volume or mute state (AGENTS.md). Disabled until the
+ * Amp page: Power in the header; VOL rocker with Mute below and the input rocker beside them, one centered group
+ * (the user's call, 2026-11-17). IR is one-way, so no key shows a power, volume or mute state (AGENTS.md). Disabled until the
  * bridge is set up.
  */
 @Composable
 fun AmpScreen(title: String, ready: Boolean, status: IrStatus?, onPress: (IrKey, Boolean) -> Unit) {
     IrPage(
         title, ready, status, AmpKeys.power, AmpKeys.volumeUp, AmpKeys.volumeDown, onPress,
-        pad = { InputPad(AmpKeys.inputPrevious, AmpKeys.inputNext, ready, onPress) },
-        cluster = {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                ClusterKey(AmpKeys.mute, "MUTE", "speaker-off", ready, onPress)
-            }
-        },
+        grouped = true,
+        pad = { AmpGroup(ready, onPress) },
+        cluster = {},
     )
+}
+
+/**
+ * The amp's controls as one centered group (the user's layout, 2026-11-17): on the left tv-remote's VOL rocker with
+ * Mute below it, on the right the input as an upright rocker of the same total height (up = next, down = previous).
+ */
+@Composable
+private fun AmpGroup(ready: Boolean, onPress: (IrKey, Boolean) -> Unit) {
+    val term = LocalTerm.current
+    val width = if (term.crt) 72.dp else 74.dp
+    val rocker = if (term.crt) 184.dp else 188.dp
+    val mute = if (term.crt) 56.dp else 60.dp
+    val gap = 14.dp
+    Row(horizontalArrangement = Arrangement.spacedBy(20.dp), verticalAlignment = Alignment.Top) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(gap)) {
+            Rocker("VOL", AmpKeys.volumeUp, AmpKeys.volumeDown, ready, onPress, width = width, height = rocker)
+            if (term.crt) {
+                IrKeyButton(AmpKeys.mute, "MUTE", "speaker-off", ready, onPress, Modifier.width(width).height(mute))
+            } else {
+                IrKeyButton(AmpKeys.mute, "MUTE", "speaker-off", ready, onPress, Modifier.size(mute), shape = CircleShape)
+            }
+        }
+        InputRocker(AmpKeys.inputNext, AmpKeys.inputPrevious, ready, onPress, width, rocker + gap + mute)
+    }
+}
+
+/** The amp's input as an upright rocker, drawn like the VOL rocker: › (next) on top, ‹ (previous) below. No repeat. */
+@Composable
+private fun InputRocker(next: IrKey, previous: IrKey, enabled: Boolean, onPress: (IrKey, Boolean) -> Unit, width: Dp, height: Dp) {
+    val term = LocalTerm.current
+    val p = term.palette
+    val keyHeight = (height - 40.dp) / 2 // as the VOL rocker
+    if (term.crt) {
+        Column(Modifier.width(width).height(height), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.SpaceBetween) {
+            RemoteButton(next.label, Modifier.fillMaxWidth().height(keyHeight), enabled = enabled, onPress = { onPress(next, false) }) {
+                Triangle("up", it, Modifier.size(26.dp))
+            }
+            Text("INPUT", color = p.dim, fontSize = 14.sp, maxLines = 1)
+            RemoteButton(previous.label, Modifier.fillMaxWidth().height(keyHeight), enabled = enabled, onPress = { onPress(previous, false) }) {
+                Triangle("down", it, Modifier.size(26.dp))
+            }
+        }
+    } else {
+        Column(
+            Modifier.width(width).height(height).pane(RoundedCornerShape(width / 2)).padding(6.dp),
+            horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.SpaceBetween,
+        ) {
+            RemoteButton(next.label, Modifier.fillMaxWidth().height(keyHeight - 8.dp), enabled = enabled, shape = RoundedCornerShape(width / 2), onPress = { onPress(next, false) }) {
+                Glyph("up", it, Modifier.size(28.dp), 2.4f)
+            }
+            Text("Input", color = p.dim, fontSize = 11.sp, maxLines = 1)
+            RemoteButton(previous.label, Modifier.fillMaxWidth().height(keyHeight - 8.dp), enabled = enabled, shape = RoundedCornerShape(width / 2), onPress = { onPress(previous, false) }) {
+                Glyph("down", it, Modifier.size(28.dp), 2.4f)
+            }
+        }
+    }
 }
 
 /**
@@ -151,38 +213,6 @@ fun TvIrScreen(title: String, ready: Boolean, status: IrStatus?, onPress: (IrKey
             )
         },
     )
-}
-
-/**
- * The amp's main control: input previous and next as two large keys around the word INPUT, in the space where the TV
- * page has its dial (glass: one rounded pane with ghost keys, like the dial; CRT: square keys with triangles).
- */
-@Composable
-private fun InputPad(previous: IrKey, next: IrKey, enabled: Boolean, onPress: (IrKey, Boolean) -> Unit) {
-    val term = LocalTerm.current
-    val p = term.palette
-    if (term.crt) {
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-            RemoteButton(previous.label, Modifier.size(92.dp), enabled = enabled, onPress = { onPress(previous, false) }) { Triangle("left", it, Modifier.size(30.dp)) }
-            Box(Modifier.size(width = 110.dp, height = 92.dp), contentAlignment = Alignment.Center) {
-                Text("INPUT", color = p.dim, fontSize = 18.sp)
-            }
-            RemoteButton(next.label, Modifier.size(92.dp), enabled = enabled, onPress = { onPress(next, false) }) { Triangle("right", it, Modifier.size(30.dp)) }
-        }
-    } else {
-        Row(
-            Modifier.fillMaxWidth().height(120.dp).pane(RoundedCornerShape(60.dp)).padding(10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            RemoteButton(previous.label, Modifier.size(100.dp), enabled = enabled, ghost = true, shape = CircleShape, onPress = { onPress(previous, false) }) {
-                Glyph("left", it, Modifier.size(34.dp), 2.4f)
-            }
-            Text("Input", color = p.dim, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, textAlign = TextAlign.Center, modifier = Modifier.weight(1f))
-            RemoteButton(next.label, Modifier.size(100.dp), enabled = enabled, ghost = true, shape = CircleShape, onPress = { onPress(next, false) }) {
-                Glyph("right", it, Modifier.size(34.dp), 2.4f)
-            }
-        }
-    }
 }
 
 /**
