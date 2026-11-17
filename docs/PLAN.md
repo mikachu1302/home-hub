@@ -78,7 +78,9 @@ From a wireframe round (variants: one long list, tabs, tiles + amp bar, menu fir
     the TV remote, and different per page), a pull-down from the top (notification shade / Control Center), a custom
     sideways swipe (the remote's pager), a bottom grab handle (the user's swipe-up gesture starts there).
   - **To evaluate in daily use:** the user is usually not a fan of gesture-only navigation. If it does not work out,
-    add the fallback: **a small back button at the top left, on every page** (same place and look everywhere). It sits
+    add the fallback: **a small back button at the top left, on every page** (same place and look everywhere).
+    **Added 2026-11-17 (the user's call):** a small back key at the start of every page header below the menu
+    (`LocalBack`, `BackKey`), also in the Android TV header where its settings key was. The system back still works. It sits
     in each page's own top row rather than a separate header; on the TV page that means making room in the remote's
     top row.
   - Watch while building: the remote's pager swipe must not trigger the back gesture; on iOS the edge swipe can stop

@@ -1,5 +1,7 @@
 package io.github.mikachu1302.homehub.tv
 
+import io.github.mikachu1302.homehub.ui.BackKey
+import io.github.mikachu1302.homehub.ui.LocalBack
 import io.github.mikachu1302.homehub.ui.glowIf
 import io.github.mikachu1302.homehub.ui.glowStyle
 
@@ -24,8 +26,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
@@ -246,7 +246,8 @@ fun RemoteScreen(tv: PairedTv, vm: RemoteViewModel, onAddApp: () -> Unit) {
 
 // ------------------------------------------------------------------ status
 
-private data class Chip(val text: String, val color: Color, val dot: Boolean = true)
+/** A status chip; with [glyph] (Home Hub) the glass style shows only that icon, [text] is what screen readers say. */
+private data class Chip(val text: String, val color: Color, val dot: Boolean = true, val glyph: String? = null)
 
 private fun statusChips(link: Link, state: TvState, voice: VoiceUi, p: Palette): List<Chip> = buildList {
     when (voice) {
@@ -256,18 +257,12 @@ private fun statusChips(link: Link, state: TvState, voice: VoiceUi, p: Palette):
         VoiceUi.Idle -> Unit
     }
     when (link) {
-        Link.Connected -> {
-            add(Chip("connected", p.primary))
-            when (state.on) {
-                true -> add(Chip("tv on", p.soft))
-                false -> add(Chip("tv off", p.dim))
-                null -> Unit
-            }
-        }
-        Link.Connecting -> add(Chip("connecting…", p.dim))
-        Link.Retrying -> add(Chip("can't reach the TV, retrying (tap to retry now)", p.warn))
+        // Home Hub: no "tv on/off" chip, so the open app fits in the same row; the power key glows while the stick is on.
+        Link.Connected -> add(Chip("connected", p.primary, glyph = "link"))
+        Link.Connecting -> add(Chip("connecting…", p.dim, glyph = "link"))
+        Link.Retrying -> add(Chip("can't reach the TV, retrying (tap to retry now)", p.warn, glyph = "link-off"))
         Link.PinChanged -> add(Chip("certificate changed, pair again", p.warn))
-        Link.Idle -> add(Chip("not connected", p.dim))
+        Link.Idle -> add(Chip("not connected", p.dim, glyph = "link-off"))
     }
     state.appPackage?.takeIf { state.on != false }?.let { add(Chip(shortcutForPackage(it, state.appLabel).name, p.action, dot = false)) }
 }
@@ -288,11 +283,12 @@ private fun CrtHeader(
     powerLabel: String,
 ) {
     val p = LocalTerm.current.palette
-    // Home Hub: no settings key here; the Android TV settings are in Settings > Android TV.
+    // Home Hub: no settings key here (Settings > Android TV); the small back key where it was.
     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Top) {
+        LocalBack.current?.let { BackKey(it) }
         Column(Modifier.weight(1f).clickable(onClick = vm::retry)) {
             TvSwitcher(tv, vm)
-            Text(statusLine(chips, p.dim), fontSize = 14.sp, lineHeight = 16.sp)
+            Text(statusLine(chips, p.dim), fontSize = 14.sp, lineHeight = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         RemoteButton(powerLabel, Key.POWER, vm, Modifier.size(52.dp), active = on) {
             Text("PWR", color = it, fontSize = 13.sp, style = glowIf(on, it))
@@ -300,21 +296,23 @@ private fun CrtHeader(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun GlassHeader(
     tv: PairedTv, vm: RemoteViewModel, chips: List<Chip>, on: Boolean,
     powerLabel: String,
 ) {
-    // Home Hub: no settings key here; the Android TV settings are in Settings > Android TV.
+    // Home Hub: no settings key here (Settings > Android TV); the small back key where it was.
+    val back = LocalBack.current
     Row(
-        Modifier.fillMaxWidth().pane(RoundedCornerShape(20.dp)).padding(start = 16.dp, end = 12.dp, top = 12.dp, bottom = 12.dp),
+        Modifier.fillMaxWidth().pane(RoundedCornerShape(20.dp)).padding(start = if (back == null) 16.dp else 12.dp, end = 12.dp, top = 12.dp, bottom = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically,
     ) {
+        back?.let { BackKey(it) }
         Column(Modifier.weight(1f).clickable(onClick = vm::retry)) {
             TvSwitcher(tv, vm)
-            FlowRow(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                chips.forEach { StatusChip(it) }
+            // Home Hub: one line that never wraps; chips shrink to the space left and end in "…".
+            Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                chips.forEach { StatusChip(it, if (it.glyph == null) Modifier.weight(1f, fill = false) else Modifier) }
             }
         }
         RemoteButton(powerLabel, Key.POWER, vm, Modifier.size(46.dp), shape = CircleShape, active = on) {
@@ -324,9 +322,21 @@ private fun GlassHeader(
 }
 
 @Composable
-private fun StatusChip(chip: Chip) {
+private fun StatusChip(chip: Chip, modifier: Modifier = Modifier) {
+    if (chip.glyph != null) {
+        // Home Hub: the connection as an icon in a small round badge; the words stay for screen readers.
+        Box(
+            Modifier
+                .size(22.dp)
+                .background(chip.color.copy(alpha = 0.12f), CircleShape)
+                .border(1.dp, chip.color.copy(alpha = 0.5f), CircleShape)
+                .semantics { contentDescription = chip.text },
+            contentAlignment = Alignment.Center,
+        ) { Glyph(chip.glyph, chip.color, Modifier.size(13.dp), strokeWidth = 2.4f) }
+        return
+    }
     Row(
-        Modifier
+        modifier
             .background(chip.color.copy(alpha = 0.12f), CircleShape)
             .border(1.dp, chip.color.copy(alpha = 0.5f), CircleShape)
             .padding(horizontal = 9.dp, vertical = 2.dp),
@@ -335,7 +345,7 @@ private fun StatusChip(chip: Chip) {
         if (chip.dot) {
             Box(Modifier.padding(end = 5.dp).size(6.dp).background(chip.color, CircleShape))
         }
-        Text(chip.text, color = chip.color, fontSize = 12.sp, lineHeight = 14.sp)
+        Text(chip.text, color = chip.color, fontSize = 12.sp, lineHeight = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 

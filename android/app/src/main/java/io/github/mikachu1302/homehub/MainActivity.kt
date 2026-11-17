@@ -47,6 +47,7 @@ import io.github.mikachu1302.homehub.ui.TvIrScreen
 import io.github.mikachu1302.homehub.ui.Dimens
 import io.github.mikachu1302.homehub.ui.ControlPage
 import io.github.mikachu1302.homehub.ui.HomeHubTheme
+import io.github.mikachu1302.homehub.ui.LocalBack
 import io.github.mikachu1302.homehub.ui.LocalHaptics
 import io.github.mikachu1302.homehub.ui.LocalTerm
 import io.github.mikachu1302.homehub.ui.Palettes
@@ -146,7 +147,9 @@ private fun App(vm: HomeViewModel, tvVm: RemoteViewModel) {
             // mode on the control pages.
             val remote by tvVm.settings.collectAsStateWithLifecycle()
             val control = vm.section in setOf(Section.AMP, Section.TV, Section.TV_IR, Section.HDMI, Section.PAGE)
-            CompositionLocalProvider(LocalHaptics provides remote.haptics) {
+            // The small back key in page headers: on every page below the menu (Settings has its own).
+            val back: (() -> Unit)? = if (vm.section == Section.MENU) null else vm::back
+            CompositionLocalProvider(LocalHaptics provides remote.haptics, LocalBack provides back) {
                 LocalNetworkGate {
                     ControlPage(keepAwake = control && remote.keepAwake, theater = control && remote.theater) {
                         when (vm.section) {

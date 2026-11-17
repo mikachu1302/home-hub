@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -28,6 +29,22 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+
+/**
+ * Back to the menu, for the header's small back key (docs/PLAN.md, "App layout": the fallback to gesture-only back,
+ * added 2026-11-17). Provided by MainActivity on every page below the menu; null on the menu itself.
+ */
+val LocalBack = staticCompositionLocalOf<(() -> Unit)?> { null }
+
+/** The small back key at the start of a page header: smaller than the other header keys, the same on every page. */
+@Composable
+fun BackKey(onBack: () -> Unit) {
+    val term = LocalTerm.current
+    RemoteButton(
+        "Back to the menu", Modifier.size(if (term.crt) 40.dp else 38.dp),
+        shape = if (term.crt) null else CircleShape, onClick = onBack,
+    ) { Glyph("arrow-left", it, Modifier.size(18.dp), strokeWidth = 2.4f) }
+}
 
 /** Size of the keys in the header: tv-remote's 52 dp squares (CRT) and 46 dp circles (glass). */
 val HeaderKeySize: Dp
@@ -55,9 +72,13 @@ fun PageHeader(
         Modifier.fillMaxWidth().pane(RoundedCornerShape(20.dp)).padding(12.dp)
     }
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    val back = LocalBack.current
     Row(row, horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-        leading?.invoke()
-        Column(Modifier.weight(1f).padding(start = if (leading == null && !term.crt) 4.dp else 0.dp)) {
+        when {
+            leading != null -> leading()
+            back != null -> BackKey(back)
+        }
+        Column(Modifier.weight(1f).padding(start = if (leading == null && back == null && !term.crt) 4.dp else 0.dp)) {
             if (term.crt) {
                 Text(
                     "> " + title.uppercase(), color = p.primary, fontSize = 18.sp, style = glowStyle(p.primary),

@@ -40,6 +40,9 @@ private val STROKED = mapOf(
     "plus" to "M12 5v14M5 12h14",
     "check" to "M5 12.5l5 5L19.5 7",
     "info" to "M21 12a9 9 0 1 1-18 0a9 9 0 1 1 18 0M12 11v5M12 8h.01",
+    // Added in home-hub: a chain link (connected) and a broken one (not connected), for the Android TV status.
+    "link" to "M10 14a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1M14 10a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1",
+    "link-off" to "M10 14a4 4 0 0 0 5.66 0l3-3a4 4 0 0 0-5.66-5.66l-1 1M14 10a4 4 0 0 0-5.66 0l-3 3a4 4 0 0 0 5.66 5.66l1-1M4 4l16 16",
     // Added in home-hub: a screen on a stand (TV pages).
     "tv" to "M3 4h18v12H3zM12 16v4M8 20h8",
     // Added in home-hub: a plug going into a port (HDMI switch).
