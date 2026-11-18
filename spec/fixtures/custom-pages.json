@@ -1,5 +1,5 @@
 {
-  "description": "Custom pages as stored on the phone and in a setup link (`prefs.pages`, docs/SHARING.md) → the pages the app reads. `input` is the stored text; `expected` lists every page in full (id, title, sections with their blocks; `output` only on switch blocks). Made-up ids and output keys.",
+  "description": "Custom pages as stored on the phone and in a setup link (`prefs.pages`, docs/SHARING.md) → the pages the app reads. `input` is the stored text; `expected` lists every page in full (id, title, sections with their blocks; `output` only on switch blocks; action blocks with `id`, `name` and `steps`). Made-up ids and output keys.",
   "cases": [
     {
       "name": "A page with two sections",
@@ -117,6 +117,73 @@
           "sections": [
             {
               "blocks": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "An action block: steps in order; an unknown step, an IR step without a key and a switch step without an output are dropped, a wait is kept within 1–60 s, a missing name becomes Action",
+      "input": "[{\"id\":\"m\",\"title\":\"Movie\",\"sections\":[{\"blocks\":[{\"kind\":\"action\",\"id\":\"a1\",\"steps\":[{\"do\":\"stick_on\"},{\"do\":\"tv_wake\"},{\"do\":\"wait\",\"seconds\":90},{\"do\":\"ir\",\"key\":\"Amp Power\"},{\"do\":\"ir\"},{\"do\":\"switch_off\",\"output\":\"shellyplus1pm-112233445566/0\"},{\"do\":\"switch_on\"},{\"do\":\"teleport\"},{\"do\":\"wait\"},{\"do\":\"stick_off\"}]}]}]}]",
+      "expected": [
+        {
+          "id": "m",
+          "title": "Movie",
+          "sections": [
+            {
+              "blocks": [
+                {
+                  "kind": "action",
+                  "id": "a1",
+                  "name": "Action",
+                  "steps": [
+                    {
+                      "do": "stick_on"
+                    },
+                    {
+                      "do": "tv_wake"
+                    },
+                    {
+                      "do": "wait",
+                      "seconds": 60
+                    },
+                    {
+                      "do": "ir",
+                      "key": "Amp Power"
+                    },
+                    {
+                      "do": "switch_off",
+                      "output": "shellyplus1pm-112233445566/0"
+                    },
+                    {
+                      "do": "wait",
+                      "seconds": 1
+                    },
+                    {
+                      "do": "stick_off"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "An action block without an id is dropped",
+      "input": "[{\"id\":\"m\",\"title\":\"Movie\",\"sections\":[{\"blocks\":[{\"kind\":\"action\",\"name\":\"On\"},{\"kind\":\"hdmi\"}]}]}]",
+      "expected": [
+        {
+          "id": "m",
+          "title": "Movie",
+          "sections": [
+            {
+              "blocks": [
+                {
+                  "kind": "hdmi"
+                }
+              ]
             }
           ]
         }

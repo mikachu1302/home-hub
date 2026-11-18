@@ -117,9 +117,21 @@ class FixtureTest {
                 PageSection(
                     (0 until blocks.length()).map { k ->
                         val b = blocks.getJSONObject(k)
-                        Block(BlockKind.entries.single { it.id == b.getString("kind") }, b.optString("output"))
+                        val kind = BlockKind.entries.single { it.id == b.getString("kind") }
+                        if (kind == BlockKind.ACTION) Block(kind, action = actionOf(b)) else Block(kind, b.optString("output"))
                     },
                 )
+            },
+        )
+    }
+
+    private fun actionOf(b: JSONObject): Action {
+        val steps = b.getJSONArray("steps")
+        return Action(
+            b.getString("id"), b.getString("name"),
+            (0 until steps.length()).map { i ->
+                val s = steps.getJSONObject(i)
+                Step(StepKind.entries.single { it.id == s.getString("do") }, s.optString("key"), s.optString("output"), s.optInt("seconds"))
             },
         )
     }

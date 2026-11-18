@@ -180,6 +180,8 @@ The user's call: port everything, leave `tv-remote` itself as it is. Its code mo
 - [x] Pair the stick from Home Hub on the real phone (each app has its own pairing; tv-remote keeps its own), 2026-11-17
 - [x] TV for volume and Wake-on-LAN set up (copied from tv-remote's settings); Wake-on-LAN moved to the TV (IR) page
 - [x] Android TV blocks for custom pages (app row, D-pad, keys, volume, number pad, more keys), 2026-11-17
+- [x] Actions: one key on a custom page runs the user's steps (stick on/off, Wake-on-LAN, IR keys, switches, waits), 2026-11-18 (docs/DESIGN.md)
+- [ ] Try an "all on" action on the real devices (stick, TV, amp)
 - [x] TV settings shared between phones (2026-11-17): the TV for volume as household, remote behaviour and app shortcuts as preferences; the pairing stays per phone (docs/SHARING.md)
 
 ### iOS (after the first slice)

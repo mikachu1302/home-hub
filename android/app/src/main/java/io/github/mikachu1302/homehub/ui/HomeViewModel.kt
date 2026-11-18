@@ -16,6 +16,14 @@ import io.github.mikachu1302.homehub.core.SwitchLayout
 import io.github.mikachu1302.homehub.core.PAGE_PREFIX
 import io.github.mikachu1302.homehub.core.menuIds
 import io.github.mikachu1302.homehub.core.newPageId
+import io.github.mikachu1302.homehub.core.newActionId
+import io.github.mikachu1302.homehub.core.Action
+import io.github.mikachu1302.homehub.core.ActionTargets
+import io.github.mikachu1302.homehub.core.StepKind
+import io.github.mikachu1302.homehub.core.irKeyOf
+import io.github.mikachu1302.homehub.core.stepTitle
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import io.github.mikachu1302.homehub.core.pageMenuId
 import io.github.mikachu1302.homehub.core.BridgeLogin
 import io.github.mikachu1302.homehub.core.IrKey
@@ -72,6 +80,9 @@ data class OutputUi(
  * What happened to the last IR key. "Sent" means the bridge accepted it and fires the LED; whether the amp or TV saw
  * the light is unknowable (IR is one-way). [ms] counts from the tap, so waiting behind earlier presses shows too.
  */
+/** An action running or done on the custom page [pageId] (shown in its header); [done] with [failed] steps. */
+data class ActionRun(val pageId: String, val actionId: String, val text: String, val done: Boolean, val failed: Boolean = false)
+
 sealed interface IrStatus {
     val key: IrKey
 
@@ -257,7 +268,10 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
 
     fun open(target: Section) {
         // The IR send status belongs to the page the key was sent from: a new page starts without one.
-        if (target != section || target == Section.PAGE) irStatus = null
+        if (target != section || target == Section.PAGE) {
+            irStatus = null
+            actionRun = null
+        }
         section = target
         store.lastSection = target
         if (target != Section.MENU && !store.backHintShown) {
@@ -513,6 +527,76 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
             } finally {
                 pressesInFlight--
             }
+        }
+    }
+
+    // --- actions (core/Actions.kt) ---
+
+    /** The action running or last run, for the header of the page it belongs to. */
+    var actionRun by mutableStateOf<ActionRun?>(null)
+        private set
+    private var actionJob: Job? = null
+
+    /** An id for a new action block. */
+    fun newActionId(): String = newActionId(pages) { kotlin.random.Random.nextLong() }
+
+    /**
+     * Runs [action]'s steps in order. A failed step does not stop the others (an amp that does not answer should not
+     * keep the TV off); the header says which failed. Runs on when the page is left; one action at a time.
+     */
+    fun runAction(action: Action, tv: ActionTargets) {
+        if (actionJob?.isActive == true) {
+            message = "An action is still running"
+            return
+        }
+        val page = pageId
+        val names = { key: String -> outputs.firstOrNull { it.key == key }?.name }
+        actionJob = viewModelScope.launch {
+            val failures = mutableListOf<String>()
+            action.steps.forEachIndexed { i, step ->
+                val title = stepTitle(step, names)
+                actionRun = ActionRun(page, action.id, "${action.name}: ${i + 1}/${action.steps.size} $title…", done = false)
+                val error: String? = try {
+                    when (step.kind) {
+                        StepKind.IR -> if (irBridge.isBlank()) "IR Bridge not set up" else {
+                            bridge.press(irBridge, bridgeLogin, irKeyOf(step))
+                            delay(300) // the next key right after can get lost
+                            null
+                        }
+                        StepKind.WAIT -> {
+                            delay(step.seconds * 1_000L)
+                            null
+                        }
+                        StepKind.SWITCH_ON, StepKind.SWITCH_OFF -> {
+                            val o = outputs.firstOrNull { it.key == step.output }
+                            if (o == null) "switch removed" else {
+                                shelly.set(o.device.address, o.channel, step.kind == StepKind.SWITCH_ON)
+                                // Show what the device reports now, not what was asked for (AGENTS.md).
+                                statuses[o.device.id] = shelly.switches(o.device.address)
+                                null
+                            }
+                        }
+                        StepKind.STICK_ON, StepKind.STICK_OFF -> tv.stickPower(step.kind == StepKind.STICK_ON)
+                        StepKind.TV_WAKE -> if (tv.wakeTv()) null else "no TV MAC address (Settings > TV)"
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: BridgeException) {
+                    e.message ?: "the bridge refused it"
+                } catch (_: Exception) {
+                    "no answer"
+                }
+                if (error != null) failures += "$title: $error"
+            }
+            actionRun = ActionRun(
+                page, action.id,
+                when {
+                    failures.isEmpty() -> "✓ ${action.name} sent"
+                    failures.size == 1 -> "✗ ${action.name}: ${failures[0]}"
+                    else -> "✗ ${action.name}: ${failures[0]} (+${failures.size - 1} more)"
+                },
+                done = true, failed = failures.isNotEmpty(),
+            )
         }
     }
 

@@ -58,6 +58,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.mikachu1302.homehub.core.AmpKeys
+import io.github.mikachu1302.homehub.core.ACTION_IR_KEYS
+import io.github.mikachu1302.homehub.core.Action
+import io.github.mikachu1302.homehub.core.Step
+import io.github.mikachu1302.homehub.core.StepKind
+import io.github.mikachu1302.homehub.core.stepTitle
 import io.github.mikachu1302.homehub.core.Block
 import io.github.mikachu1302.homehub.core.BlockKind
 import io.github.mikachu1302.homehub.core.CustomPage
@@ -88,18 +93,24 @@ fun CustomPageScreen(vm: HomeViewModel) {
         onDispose { vm.pageEditing = false }
     }
     if (page.blocks.any { it.kind == BlockKind.SWITCH }) PollDevices(vm, withConfig = false)
-    val hasIr = page.blocks.any { it.kind != BlockKind.SWITCH && !it.kind.androidTv }
+    val hasIr = page.blocks.any { it.kind != BlockKind.SWITCH && it.kind != BlockKind.ACTION && !it.kind.androidTv }
     val hasAtv = page.blocks.any { it.kind.androidTv }
+    // Actions need the bridge or the stick only for their steps of that kind.
+    val actionSteps = page.blocks.mapNotNull { it.action }.flatMap { it.steps }.map { it.kind }.toSet()
+    val needsBridge = hasIr || StepKind.IR in actionSteps
+    val needsStick = hasAtv || StepKind.STICK_ON in actionSteps || StepKind.STICK_OFF in actionSteps
     val ready = vm.irBridge.isNotBlank()
-    // The Android TV page's view model (tv-remote's): connected while this page shows Android TV blocks.
+    // The Android TV page's view model (tv-remote's): connected while this page shows Android TV blocks or actions.
     val tvVm = viewModel<RemoteViewModel>()
-    if (hasAtv && !editing) ConnectWhileVisible(tvVm)
+    if (needsStick && !editing) ConnectWhileVisible(tvVm)
     val tvPaired = tvVm.paired.collectAsStateWithLifecycle().value
     val link = tvVm.link.collectAsStateWithLifecycle().value
     val p = LocalTerm.current.palette
-    // IR blocks: the last key's fate; only Android TV blocks: the connection to the stick.
+    // An action's progress or result first; then IR blocks: the last key's fate; only Android TV blocks: the stick.
+    val run = vm.actionRun?.takeIf { it.pageId == page.id }
     val (status, statusColor) = when {
         editing -> null to null
+        run != null -> run.text to (if (!run.done) p.dim else if (run.failed) p.warn else p.primary)
         hasIr -> irStatusText(vm.irStatus, ready) to irStatusColor(vm.irStatus)
         hasAtv -> when (link) {
             Link.Connected -> "Connected to ${tvPaired?.name ?: "the stick"}" to p.primary
@@ -114,8 +125,8 @@ fun CustomPageScreen(vm: HomeViewModel) {
         list.forEach { BlockView(it, vm, ready, tvVm, swipeable) }
     }
     val notices = @Composable {
-        if (hasIr && !ready) Notice("Set up the IR Bridge in Settings first.")
-        if (hasAtv && tvPaired == null) Notice("Pair the Android TV stick on its page first.")
+        if (needsBridge && !ready) Notice("Set up the IR Bridge in Settings first.")
+        if (needsStick && tvPaired == null) Notice("Pair the Android TV stick on its page first.")
         // With IR blocks the header shows the IR status, so the stick's connection problems go here.
         if (hasAtv && hasIr && tvPaired != null) when (link) {
             Link.Retrying -> Notice("Can't reach the stick, retrying.")
@@ -210,6 +221,10 @@ private fun BlockView(block: Block, vm: HomeViewModel, ready: Boolean, tvVm: Rem
         else OutputRow(o, showRoom = true, onToggle = { vm.toggle(o) }, onEdit = null)
         return
     }
+    block.action?.let {
+        ActionKey(it, vm, tvVm)
+        return
+    }
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         val label = block.kind.title.substringBefore(" · ")
         Text(if (term.crt) label.uppercase() else label, color = term.palette.dim, fontSize = 12.sp)
@@ -267,6 +282,30 @@ private fun BlockView(block: Block, vm: HomeViewModel, ready: Boolean, tvVm: Rem
     }
 }
 
+/** An action: one wide key with its name, the steps in small print under it. Runs on release (a swipe runs nothing). */
+@Composable
+private fun ActionKey(action: Action, vm: HomeViewModel, tvVm: RemoteViewModel) {
+    val term = LocalTerm.current
+    val running = vm.actionRun?.let { it.actionId == action.id && !it.done } == true
+    val steps = action.steps.joinToString(" · ") { s -> stepTitle(s) { key -> vm.outputs.firstOrNull { it.key == key }?.name } }
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        RemoteButton(
+            "Run ${action.name}" + if (steps.isEmpty()) ", no steps yet" else ": $steps",
+            Modifier.fillMaxWidth().height(64.dp),
+            enabled = action.steps.isNotEmpty() && !running,
+            look = Look.Primary,
+            onClick = { vm.runAction(action, tvVm) },
+        ) { color ->
+            val name = if (running) "${action.name} …" else action.name
+            Text(
+                if (term.crt) name.uppercase() else name, color = color, fontSize = 18.sp,
+                fontWeight = if (term.crt) FontWeight.Normal else FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis,
+            )
+        }
+        Text(steps.ifEmpty { "No steps yet: add them under Edit." }, color = term.palette.dim, fontSize = 12.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+    }
+}
+
 /** A volume key that repeats while held (tv-remote's rocker keys, side by side). */
 @Composable
 private fun RepeatKey(key: IrKey, text: String, enabled: Boolean, onPress: (IrKey, Boolean) -> Unit, modifier: Modifier) {
@@ -285,6 +324,8 @@ private fun EditPage(page: CustomPage, vm: HomeViewModel, current: Int, setCurre
     var adding by rememberSaveable { mutableStateOf(false) }
     var deleting by rememberSaveable { mutableStateOf(false) }
     var removingSection by rememberSaveable { mutableStateOf(false) }
+    // The action whose steps are being edited (its id).
+    var editingAction by rememberSaveable { mutableStateOf<String?>(null) }
     val index = current.coerceIn(0, page.sections.lastIndex)
     val section = page.sections[index]
     fun setSection(s: PageSection) = vm.updatePage(page.copy(sections = page.sections.mapIndexed { i, old -> if (i == index) s else old }))
@@ -317,11 +358,12 @@ private fun EditPage(page: CustomPage, vm: HomeViewModel, current: Int, setCurre
     } else {
         ReorderableList(
             items = section.blocks,
-            keyOf = { it.kind.id + "/" + it.output },
+            keyOf = { it.kind.id + "/" + it.output + "/" + it.action?.id.orEmpty() },
             nameOf = { blockName(it, vm) },
             onMove = { from, delta -> setSection(section.copy(blocks = io.github.mikachu1302.homehub.core.moved(section.blocks, from, delta))) },
         ) { block ->
             Text(blockName(block, vm), fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+            block.action?.let { a -> TTextButton(onClick = { editingAction = a.id }) { Text("Steps") } }
             TTextButton(onClick = { setSection(section.copy(blocks = section.blocks - block)) }) { Text("Remove") }
         }
     }
@@ -337,8 +379,19 @@ private fun EditPage(page: CustomPage, vm: HomeViewModel, current: Int, setCurre
     if (adding) {
         AddBlockDialog(
             section, vm,
-            onAdd = { setSection(section.copy(blocks = section.blocks + it)); adding = false },
+            onAdd = {
+                setSection(section.copy(blocks = section.blocks + it))
+                adding = false
+                editingAction = it.action?.id // a new action opens its steps at once
+            },
             onDismiss = { adding = false },
+        )
+    }
+    section.blocks.firstOrNull { it.action?.id == editingAction }?.let { block ->
+        ActionEditor(
+            block.action!!, vm,
+            onChange = { a -> setSection(section.copy(blocks = section.blocks.map { if (it.action?.id == a.id) it.copy(action = a) else it })) },
+            onDone = { editingAction = null },
         )
     }
     if (removingSection) {
@@ -366,9 +419,11 @@ private fun removeSection(page: CustomPage, index: Int, vm: HomeViewModel, selec
     select((index - 1).coerceAtLeast(0))
 }
 
-private fun blockName(block: Block, vm: HomeViewModel): String =
-    if (block.kind == BlockKind.SWITCH) "Switch · " + (vm.outputs.firstOrNull { it.key == block.output }?.name ?: "removed output")
-    else block.kind.title
+private fun blockName(block: Block, vm: HomeViewModel): String = when {
+    block.kind == BlockKind.SWITCH -> "Switch · " + (vm.outputs.firstOrNull { it.key == block.output }?.name ?: "removed output")
+    block.action != null -> block.action.name // "Steps" next to it says what it is
+    else -> block.kind.title
+}
 
 /** Blocks not in the section yet; "Switch" then asks which output. Each block appears once per section. */
 @Composable
@@ -385,8 +440,14 @@ private fun AddBlockDialog(section: PageSection, vm: HomeViewModel, onAdd: (Bloc
                     vm.outputs.map { Block(BlockKind.SWITCH, it.key) to it }.filter { it.first !in used }
                         .map { (b, o) -> (o.name + if (o.room.isNotEmpty()) " · ${o.room}" else "") to { onAdd(b) } }
                 } else {
-                    BlockKind.entries.filter { it.needsOutput || Block(it) !in used }.map { kind ->
-                        kind.title to { if (kind.needsOutput) pickOutput = true else onAdd(Block(kind)) }
+                    BlockKind.entries.filter { it.needsOutput || it == BlockKind.ACTION || Block(it) !in used }.map { kind ->
+                        kind.title to {
+                            when {
+                                kind.needsOutput -> pickOutput = true
+                                kind == BlockKind.ACTION -> onAdd(Block(kind, action = Action(vm.newActionId(), "Action")))
+                                else -> onAdd(Block(kind))
+                            }
+                        }
                     }
                 }
                 if (rows.isEmpty()) Text(if (pickOutput) "Every switch is in this section already." else "Every block is in this section already.", color = p.dim)
@@ -403,4 +464,109 @@ private fun AddBlockDialog(section: PageSection, vm: HomeViewModel, onAdd: (Bloc
         },
         confirmButton = { TTextButton(onClick = { if (pickOutput) pickOutput = false else onDismiss() }) { Text(if (pickOutput) "Back" else "Close") } },
     )
+}
+
+/** What the step picker shows: the list of step kinds, or the second choice for a switch or a wait. */
+private enum class StepPick { None, Kind, SwitchOn, SwitchOff, Wait }
+
+/**
+ * An action's name and steps. Steps run top to bottom; "↑" moves one up, "✕" removes it. Changes are saved at once,
+ * like the rest of the page editor.
+ */
+@Composable
+private fun ActionEditor(action: Action, vm: HomeViewModel, onChange: (Action) -> Unit, onDone: () -> Unit) {
+    val p = LocalTerm.current.palette
+    var name by rememberSaveable(action.id) { mutableStateOf(action.name) }
+    var pick by rememberSaveable { mutableStateOf(StepPick.None) }
+    val outputName = { key: String -> vm.outputs.firstOrNull { it.key == key }?.name }
+    fun add(step: Step) {
+        onChange(action.copy(steps = action.steps + step))
+        pick = StepPick.None
+    }
+    BackHandler(enabled = pick != StepPick.None) { pick = StepPick.None }
+    AlertDialog(
+        onDismissRequest = onDone,
+        title = {
+            Text(
+                when (pick) {
+                    StepPick.None -> "Action"
+                    StepPick.Kind -> "Add a step"
+                    StepPick.SwitchOn, StepPick.SwitchOff -> "Which switch?"
+                    StepPick.Wait -> "How long?"
+                },
+            )
+        },
+        text = {
+            Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                when (pick) {
+                    StepPick.None -> {
+                        OutlinedTextField(
+                            value = name,
+                            onValueChange = {
+                                name = it
+                                if (it.isNotBlank()) onChange(action.copy(name = it.trim()))
+                            },
+                            label = { Text("Name") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        if (action.steps.isEmpty()) Text("No steps yet.", color = p.dim, fontSize = 13.sp)
+                        action.steps.forEachIndexed { i, step ->
+                            val title = stepTitle(step, outputName)
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("${i + 1}. $title", fontSize = 15.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                                if (i > 0) {
+                                    TTextButton(
+                                        onClick = { onChange(action.copy(steps = io.github.mikachu1302.homehub.core.moved(action.steps, i, -1))) },
+                                        modifier = Modifier.semantics { contentDescription = "Move $title up" },
+                                    ) { Text("↑") }
+                                }
+                                TTextButton(
+                                    onClick = { onChange(action.copy(steps = action.steps.filterIndexed { j, _ -> j != i })) },
+                                    modifier = Modifier.semantics { contentDescription = "Remove $title" },
+                                ) { Text("✕") }
+                            }
+                        }
+                        TButton(onClick = { pick = StepPick.Kind }, modifier = Modifier.fillMaxWidth().height(48.dp)) { Text("+ Step") }
+                        Text("Power over IR toggles: run it when the devices are off.", color = p.dim, fontSize = 12.sp)
+                    }
+                    StepPick.Kind -> PickList(
+                        listOf<Pair<String, () -> Unit>>(
+                            "Android TV on" to { add(Step(StepKind.STICK_ON)) },
+                            "Android TV off" to { add(Step(StepKind.STICK_OFF)) },
+                            "TV on (Wake-on-LAN)" to { add(Step(StepKind.TV_WAKE)) },
+                        ) + ACTION_IR_KEYS.map { (key, title) -> title to { add(Step(StepKind.IR, key = key.bridgeName)) } } + listOf(
+                            "Switch on…" to { pick = StepPick.SwitchOn },
+                            "Switch off…" to { pick = StepPick.SwitchOff },
+                            "Wait…" to { pick = StepPick.Wait },
+                        ),
+                    )
+                    StepPick.SwitchOn, StepPick.SwitchOff -> {
+                        val kind = if (pick == StepPick.SwitchOn) StepKind.SWITCH_ON else StepKind.SWITCH_OFF
+                        if (vm.outputs.isEmpty()) Text("No switches yet.", color = p.dim)
+                        PickList(vm.outputs.map { o -> (o.name + if (o.room.isNotEmpty()) " · ${o.room}" else "") to { add(Step(kind, output = o.key)) } })
+                    }
+                    StepPick.Wait -> PickList(listOf(1, 2, 3, 5, 10, 15, 20, 30).map { s -> "$s s" to { add(Step(StepKind.WAIT, seconds = s)) } })
+                }
+            }
+        },
+        confirmButton = {
+            TTextButton(onClick = { if (pick == StepPick.None) onDone() else pick = StepPick.None }) { Text(if (pick == StepPick.None) "Done" else "Back") }
+        },
+    )
+}
+
+/** Rows to tap, as in the add-block dialog. */
+@Composable
+private fun PickList(rows: List<Pair<String, () -> Unit>>) {
+    Column {
+        rows.forEachIndexed { i, (name, action) ->
+            if (i > 0) HorizontalDivider()
+            Text(
+                name,
+                fontSize = 16.sp,
+                modifier = Modifier.fillMaxWidth().semantics { role = Role.Button }.clickable(onClick = action).padding(vertical = 14.dp),
+            )
+        }
+    }
 }

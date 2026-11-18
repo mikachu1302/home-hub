@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
+import io.github.mikachu1302.homehub.core.ActionTargets
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import java.io.IOException
@@ -38,7 +39,7 @@ sealed interface PairingUi {
 }
 
 @OptIn(ExperimentalCoroutinesApi::class)
-class RemoteViewModel(app: Application) : AndroidViewModel(app) {
+class RemoteViewModel(app: Application) : AndroidViewModel(app), ActionTargets {
     private val prefs = app.getSharedPreferences("tv", 0)
     private val debug = app.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0
     private val appVersion = runCatching { app.packageManager.getPackageInfo(app.packageName, 0).versionName }.getOrNull() ?: "0"
@@ -337,7 +338,7 @@ class RemoteViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** Switches the TV on from standby with a Wake-on-LAN packet. False when there is no address to wake. */
-    fun wakeTv(): Boolean {
+    override fun wakeTv(): Boolean {
         val tv = _audioTv.value
         val mac = tv?.mac?.let(Wol::parseMac) ?: return false
         viewModelScope.launch(Dispatchers.IO) {
@@ -537,6 +538,23 @@ class RemoteViewModel(app: Application) : AndroidViewModel(app) {
         connection = null
         _tvState.value = TvState()
         _link.value = Link.Idle
+    }
+
+    /**
+     * An action's "stick on/off" (core/Actions.kt): connects if needed (the page with the action is open), then presses
+     * power only when the stick reports the other state; when it reports none, sends the one-way wake or sleep key.
+     */
+    override suspend fun stickPower(on: Boolean): String? {
+        if (_paired.value == null) return "no stick paired"
+        if (_link.value != Link.Connected) {
+            retry()
+            withTimeoutOrNull(10_000) { _link.first { it == Link.Connected || it == Link.PinChanged } }
+            if (_link.value != Link.Connected) return "can't reach the stick"
+        }
+        val now = withTimeoutOrNull(2_000) { _tvState.first { it.on != null } }?.on
+        if (now == on) return null
+        press(if (now != null) Key.POWER else if (on) Key.WAKEUP else Key.SLEEP)
+        return null
     }
 
     override fun onCleared() {

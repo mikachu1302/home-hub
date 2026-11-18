@@ -21,6 +21,8 @@ enum class BlockKind(val id: String, val title: String, val needsOutput: Boolean
     ATV_VOLUME("atv_volume", "Android TV · volume and mute"),
     ATV_NUMBERS("atv_numbers", "Android TV · number pad"),
     ATV_MORE("atv_more", "Android TV · playback and more keys"),
+    /** One key that runs the user's own steps ([Block.action]; core/Actions.kt). As many per section as wanted. */
+    ACTION("action", "Action · one key, your own steps"),
     ;
 
     /** A block that talks to the Android TV stick (tv-remote's protocol), not to the IR bridge. */
@@ -31,8 +33,11 @@ enum class BlockKind(val id: String, val title: String, val needsOutput: Boolean
     }
 }
 
-/** One block on a page; [output] is the output key (`<device id>/<channel>`) of a [BlockKind.SWITCH] block. */
-data class Block(val kind: BlockKind, val output: String = "")
+/**
+ * One block on a page; [output] is the output key (`<device id>/<channel>`) of a [BlockKind.SWITCH] block, [action]
+ * the steps of a [BlockKind.ACTION] block.
+ */
+data class Block(val kind: BlockKind, val output: String = "", val action: Action? = null)
 
 /** One swipeable part of a page: blocks from top to bottom. */
 data class PageSection(val blocks: List<Block> = emptyList())
@@ -56,8 +61,13 @@ fun menuIds(order: List<String>, pages: List<CustomPage>): List<String> =
     sortByOrder(MENU_SECTIONS.map { it.name } + pages.map(::pageMenuId), { it }, order)
 
 /** An id for a new page that none of [pages] uses. */
-fun newPageId(pages: List<CustomPage>, random: () -> Long): String {
-    val used = pages.map { it.id }.toSet()
+fun newPageId(pages: List<CustomPage>, random: () -> Long): String = freshId(pages.map { it.id }.toSet(), random)
+
+/** An id for a new action that no action on any of [pages] uses. */
+fun newActionId(pages: List<CustomPage>, random: () -> Long): String =
+    freshId(pages.flatMap { p -> p.blocks.mapNotNull { it.action?.id } }.toSet(), random)
+
+private fun freshId(used: Set<String>, random: () -> Long): String {
     while (true) {
         val id = java.lang.Long.toString(random() and 0xFFFFFFFFL, 36)
         if (id !in used) return id
@@ -80,12 +90,44 @@ object PagesJson {
         }
     }
 
-    private fun blockJson(b: Block) = JSONObject().put("kind", b.kind.id).apply { if (b.kind.needsOutput) put("output", b.output) }
+    private fun blockJson(b: Block) = JSONObject().put("kind", b.kind.id).apply {
+        if (b.kind.needsOutput) put("output", b.output)
+        b.action?.takeIf { b.kind == BlockKind.ACTION }?.let { a ->
+            put("id", a.id).put("name", a.name).put("steps", JSONArray().apply { a.steps.forEach { put(stepJson(it)) } })
+        }
+    }
+
+    private fun stepJson(s: Step) = JSONObject().put("do", s.kind.id).apply {
+        when (s.kind) {
+            StepKind.IR -> put("key", s.key)
+            StepKind.SWITCH_ON, StepKind.SWITCH_OFF -> put("output", s.output)
+            StepKind.WAIT -> put("seconds", s.seconds)
+            else -> Unit
+        }
+    }
 
     private fun blocks(b: JSONArray?): List<Block> = if (b == null) emptyList() else (0 until b.length()).mapNotNull { j ->
         val bo = b.optJSONObject(j) ?: return@mapNotNull null
         val kind = BlockKind.byId(bo.optString("kind")) ?: return@mapNotNull null
+        if (kind == BlockKind.ACTION) return@mapNotNull action(bo)?.let { Block(kind, action = it) }
         Block(kind, if (kind.needsOutput) bo.optString("output") else "")
+    }
+
+    /** An action without an id is dropped; a missing name becomes "Action"; unknown or incomplete steps are dropped. */
+    private fun action(o: JSONObject): Action? {
+        val id = o.optString("id").trim().takeIf { it.isNotEmpty() } ?: return null
+        val steps = o.optJSONArray("steps")?.let { a -> (0 until a.length()).mapNotNull { a.optJSONObject(it)?.let(::step) } }.orEmpty()
+        return Action(id, o.optString("name").trim().ifEmpty { "Action" }, steps)
+    }
+
+    private fun step(o: JSONObject): Step? {
+        val kind = StepKind.byId(o.optString("do")) ?: return null
+        return when (kind) {
+            StepKind.IR -> o.optString("key").trim().takeIf { it.isNotEmpty() }?.let { Step(kind, key = it) }
+            StepKind.SWITCH_ON, StepKind.SWITCH_OFF -> o.optString("output").trim().takeIf { it.isNotEmpty() }?.let { Step(kind, output = it) }
+            StepKind.WAIT -> Step(kind, seconds = o.optInt("seconds", WAIT_SECONDS.first).coerceIn(WAIT_SECONDS))
+            else -> Step(kind)
+        }
     }
 
     /**

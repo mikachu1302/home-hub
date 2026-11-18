@@ -68,6 +68,24 @@ lays itself out in both styles, so a page always looks right. The built-in pages
   page opens in edit mode.
 - Pages are a preference (shared on request, docs/SHARING.md); a block's id never changes.
 
+## Actions (decided 2026-11-18)
+
+One key that runs several steps in order, for example "Android TV on, TV on, amp power, HDMI 2". The user's calls:
+
+- An action is a **block on a custom page** ("Action · one key, your own steps"; as many per section as wanted): a wide
+  key with the action's name and the steps in small print under it. It runs on release, so a swipe runs nothing.
+- **The user builds the step list** (`core/Actions.kt`, `StepKind`): Android TV on / off, TV on (Wake-on-LAN), any IR
+  key the bridge has (amp power, amp next/previous input, amp mute, TV power, TV source, TV mute, HDMI 1–5, HDMI next),
+  a Shelly output on / off, wait 1–30 s. Edit mode: "Steps" on the block opens the name and the list ("↑" moves a
+  step up, "✕" removes it, "+ Step").
+- **Power over IR toggles** (no discrete on code works for the amp or the TV, docs/PROTOCOLS.md): those steps are sent
+  as toggles and labelled "(toggle)"; an "all on" action is meant for when the devices are off. The stick is real
+  on/off: the app reads its power state and presses power only when needed (the one-way wake/sleep key when the state
+  is unknown). Wake-on-LAN is a real "on", but only from deep standby.
+- Running: the page header shows "Name: 2/5 Amp power (toggle)…", then "✓ Name sent" or "✗ Name: step: reason". A
+  failed step does not stop the others. An IR step waits 300 ms before the next one; one action at a time; it runs on
+  when the page is left. A page with stick steps connects to the stick while it is shown, like Android TV blocks.
+
 ## App icon (decided 2026-11-17)
 
 A lowercase **h in CRT pixels** (a 7-unit grid, 6-unit pixels with a gap, like a monitor's dot mask) in the palette's

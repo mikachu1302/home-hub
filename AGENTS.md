@@ -80,7 +80,7 @@ Android layout, under `android/app/src/main/java/io/github/mikachu1302/homehub/`
 
 - `core/` – pure, JVM-tested against `spec/fixtures`: `Shelly.kt` (parsing, request bodies), `Model.kt` (saved devices,
   output settings, icons, rooms, ordering, formatting, merge, storage JSON), `Share.kt` (setup link, import rules),
-  `Lan.kt` (`isLanAddress`), `IrBridge.kt` (amp keys, bridge login), `Digest.kt` (HTTP digest login), `Pages.kt` (custom pages, blocks, menu ids)
+  `Lan.kt` (`isLanAddress`), `IrBridge.kt` (amp keys, bridge login), `Digest.kt` (HTTP digest login), `Pages.kt` (custom pages, blocks, menu ids), `Actions.kt` (action steps)
 - `net/` – `LanHttp` (the one HTTP client), `ShellyClient`, `IrBridgeClient` (digest login, key presses), `Discovery` (/24 probe, user action only)
 - `data/Store.kt` – `SettingKeys` (every key, classified household/preference/state) and `Store` (SharedPreferences; backup disabled);
   `data/SecretStore.kt` – credentials, encrypted with a Keystore key
