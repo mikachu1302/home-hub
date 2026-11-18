@@ -351,7 +351,15 @@ private fun EditPage(page: CustomPage, vm: HomeViewModel, current: Int, setCurre
             setCurrent(page.sections.size)
         }) { Text("+ Section") }
     }
-    if (page.sections.size > 1) Text("Swipe between sections on the page.", color = p.dim, fontSize = 12.sp)
+    if (page.sections.size > 1) {
+        // Next to the tabs, where the section is chosen (it was easy to miss at the bottom).
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text("Swipe between sections on the page.", color = p.dim, fontSize = 12.sp, modifier = Modifier.weight(1f))
+            TTextButton(onClick = { if (section.blocks.isEmpty()) removeSection(page, index, vm, setCurrent) else removingSection = true }) {
+                Text("Remove section ${index + 1}", color = p.warn)
+            }
+        }
+    }
 
     if (section.blocks.isEmpty()) {
         Text("No blocks yet.", color = p.dim, fontSize = 13.sp)
@@ -368,12 +376,6 @@ private fun EditPage(page: CustomPage, vm: HomeViewModel, current: Int, setCurre
         }
     }
     TButton(onClick = { adding = true }, modifier = Modifier.fillMaxWidth().height(52.dp)) { Text("+ Add block") }
-    if (page.sections.size > 1) {
-        TOutlinedButton(
-            onClick = { if (section.blocks.isEmpty()) removeSection(page, index, vm, setCurrent) else removingSection = true },
-            modifier = Modifier.fillMaxWidth().height(48.dp),
-        ) { Text("Remove section ${index + 1}") }
-    }
     TTextButton(onClick = { deleting = true }, modifier = Modifier.fillMaxWidth()) { Text("Delete this page", color = p.warn) }
 
     if (adding) {

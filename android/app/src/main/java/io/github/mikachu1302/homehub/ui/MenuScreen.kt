@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -56,6 +57,8 @@ fun MenuScreen(vm: HomeViewModel) {
     // Back leaves edit mode first (registered after the app's own handler, so it wins).
     BackHandler(enabled = editing) { editing = false }
     var renaming by rememberSaveable { mutableStateOf<String?>(null) }
+    // The custom page (menu id) whose delete is being confirmed.
+    var deleting by rememberSaveable { mutableStateOf<String?>(null) }
     val switches = switchesSummary(vm, p)
     // The paired stick (tv-remote's view model, shared with the Android TV page).
     val tvPaired = viewModel<RemoteViewModel>().paired.collectAsStateWithLifecycle().value?.name
@@ -78,8 +81,12 @@ fun MenuScreen(vm: HomeViewModel) {
             ReorderableList(items = vm.menu, keyOf = { it }, nameOf = vm::menuTitle, onMove = vm::moveMenu) { id ->
                 Text(vm.menuTitle(id), fontSize = 16.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                 TTextButton(onClick = { renaming = id }) { Text("Rename") }
+                // Only custom pages can go; the built-in pages stay (docs/DESIGN.md).
+                if (vm.pages.any { pageMenuId(it) == id }) {
+                    TTextButton(onClick = { deleting = id }) { Text("Delete", color = p.warn) }
+                }
             }
-            Text("Drag the handle to move. A name is also the page's title.", fontSize = 12.sp, color = p.dim)
+            Text("Drag the handle to move. A name is also the page's title. Your own pages can be deleted.", fontSize = 12.sp, color = p.dim)
             TOutlinedButton(
                 onClick = {
                     val page = vm.newPage()
@@ -105,6 +112,20 @@ fun MenuScreen(vm: HomeViewModel) {
                     MenuEntry(vm.title(section), glyphOf(section), line, color, p.accent(index)) { vm.open(section) }
                 }
             }
+        }
+    }
+    deleting?.let { id ->
+        val page = vm.pages.firstOrNull { pageMenuId(it) == id }
+        if (page == null) {
+            deleting = null
+        } else {
+            AlertDialog(
+                onDismissRequest = { deleting = null },
+                title = { Text("Delete \"${page.title}\"?") },
+                text = { Text("Devices are not affected.") },
+                confirmButton = { TTextButton(onClick = { deleting = null; vm.deletePage(page.id) }) { Text("Delete", color = p.warn) } },
+                dismissButton = { TTextButton(onClick = { deleting = null }) { Text("Cancel") } },
+            )
         }
     }
     renaming?.let { id ->

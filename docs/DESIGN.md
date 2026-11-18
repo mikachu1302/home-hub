@@ -37,7 +37,7 @@ tv-remote's PWR key (tried below the header and at the bottom: both felt wrong).
 | HDMI Switch | its own page and menu entry: inputs 1–5 and Next as large keys |
 | TV (IR) | laid out like tv-remote's remote: header; tv-remote's D-pad in the middle (CRT cross / glass dial, for the input menu); at the bottom the VOL rocker, Wake (Wake-on-LAN, moved here from the TV page), Mute and Back as tv-remote's cluster keys, and Source as the wide key in tv-remote's Play/Pause spot; Power in the header |
 | Settings | an overview with one row per topic and its summary (Devices, IR Bridge, Remote, TV, Android TV, Look, Share), each opening its own page; tv-remote's back key, cards, style cards and palette chips. Back goes page → overview → menu |
-| Menu, Edit | the menu's own "Edit" key: drag entries into order, rename them, "+ New page" (decided 2026-11-17: order is changed on the menu itself, not in Settings) |
+| Menu, Edit | the menu's own "Edit" key: drag entries into order, rename them, delete custom pages (with a confirmation; 2026-11-18), "+ New page" (decided 2026-11-17: order is changed on the menu itself, not in Settings) |
 
 ## Pride palette (decided 2026-11-17)
 
@@ -64,8 +64,9 @@ lays itself out in both styles, so a page always looks right. The built-in pages
   sideways between them, with tv-remote's dots below; a touch on a key waits 100 ms to see whether it is a swipe
   (tv-remote's `LocalSwipeable`), so a swipe never presses a key. No fixed blocks for now.
 - A page has the shared header (title, IR send status, "Edit"). Edit mode: name, one tab per section and
-  "+ Section", the section's block list (drag, Remove), "+ Add block", "Remove section", "Delete this page". A new
-  page opens in edit mode.
+  "+ Section", "Remove section N" right under the tabs (with more than one section; moved there 2026-11-18, it was
+  missed at the bottom), the section's block list (drag, Remove), "+ Add block", "Delete this page". A new page opens
+  in edit mode.
 - Pages are a preference (shared on request, docs/SHARING.md); a block's id never changes.
 
 ## Actions (decided 2026-11-18)
